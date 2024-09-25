@@ -86,7 +86,8 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                 'risk present': 1,
                 'risk not present': 0
             },
-            'regex_pattern': r"'risk_output':\s*'(.*?)'"
+            'regex_pattern': r"'risk_output':\s*'(.*?)'",
+            'use_json_mode': False  # Add this line
         }
 
     # Main optimization loop

@@ -8,7 +8,7 @@ from . import config
 
 MAX_RETRIES = 3
 
-def get_model_output(full_prompt: str, text: str, index: int, total: int) -> dict:
+def get_model_output(full_prompt: str, text: str, index: int, total: int, use_json_mode: bool = False) -> dict:
     """
     Get the output from the selected AI model for evaluation.
 
@@ -17,6 +17,7 @@ def get_model_output(full_prompt: str, text: str, index: int, total: int) -> dic
         text (str): The input text to be evaluated
         index (int): Current index in the dataset
         total (int): Total number of samples
+        use_json_mode (bool): Whether to use JSON mode for output
 
     Returns:
         dict: Model output containing the generated content
@@ -31,7 +32,7 @@ def get_model_output(full_prompt: str, text: str, index: int, total: int) -> dic
             elif EVAL_PROVIDER == "openai":
                 return _get_openai_output(EVAL_MODEL, full_prompt, text)
             elif EVAL_PROVIDER == "azure_openai":
-                return _get_azure_openai_output(EVAL_MODEL, full_prompt, text)
+                return _get_azure_openai_output(EVAL_MODEL, full_prompt, text, use_json_mode)
             elif EVAL_PROVIDER == "anthropic":
                 return _get_anthropic_output(EVAL_MODEL, full_prompt, text)
             elif EVAL_PROVIDER == "google":
@@ -67,7 +68,7 @@ def _get_openai_output(model_name: str, full_prompt: str, text: str) -> dict:
     )
     return {'choices': [{'message': {'content': response.choices[0].message['content'].strip()}}]}
 
-def _get_azure_openai_output(model_name: str, full_prompt: str, text: str) -> dict:
+def _get_azure_openai_output(model_name: str, full_prompt: str, text: str, use_json_mode: bool = False) -> dict:
     """Helper function to get output from Azure OpenAI models."""
     client = AzureOpenAI(
         api_key=config.AZURE_OPENAI_API_KEY,  
@@ -75,15 +76,20 @@ def _get_azure_openai_output(model_name: str, full_prompt: str, text: str) -> di
         azure_endpoint=config.AZURE_OPENAI_API_BASE
     )
     deployment_name = config.get_azure_deployment_name(model_name)
-    response = client.chat.completions.create(
-        model=deployment_name,
-        messages=[
+    
+    completion_args = {
+        "model": deployment_name,
+        "messages": [
             {"role": "system", "content": full_prompt},
             {"role": "user", "content": text}
         ],
-        temperature=0.7,  # You can adjust this value as needed
-        response_format={"type": "json_object"}
-    )
+        "temperature": 0.7,  # You can adjust this value as needed
+    }
+    
+    if use_json_mode:
+        completion_args["response_format"] = {"type": "json_object"}
+    
+    response = client.chat.completions.create(**completion_args)
     return {'choices': [{'message': {'content': response.choices[0].message.content.strip()}}]}
 
 def _get_anthropic_output(model_name: str, full_prompt: str, text: str) -> dict:
@@ -152,7 +158,6 @@ def _get_azure_openai_analysis(model_name: str, analysis_prompt: str) -> str:
             {"role": "user", "content": analysis_prompt},
         ],
         temperature=0.7,  # You can adjust this value as needed
-        response_format={"type": "json_object"}
     )
     return response.choices[0].message.content.strip()
 

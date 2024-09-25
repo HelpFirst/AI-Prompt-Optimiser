@@ -26,9 +26,11 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
     
     log_data = initialize_log_data(full_prompt) if log_dir else None
 
+    use_json_mode = output_schema.get('use_json_mode', False)
+
     for index, row in eval_data.iterrows():
         # Get model output for the current text
-        model_output = get_model_output(full_prompt, row['text'], index, len(eval_data))
+        model_output = get_model_output(full_prompt, row['text'], index, len(eval_data), use_json_mode)
         raw_output = model_output['choices'][0]['message']['content']
         
         # Transform and compare the model output with the true label
