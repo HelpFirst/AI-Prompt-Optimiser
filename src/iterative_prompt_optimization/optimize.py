@@ -6,6 +6,8 @@ from .utils import (estimate_token_usage, estimate_cost, display_best_prompt,
                     create_log_directory, log_initial_setup, display_metrics,
                     create_metric_entry, update_best_metrics)
 from . import config
+from rich import print as rprint
+from rich.panel import Panel
 
 def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: pd.DataFrame, iterations: int,
                     eval_provider: str = None, eval_model: str = None,
@@ -91,8 +93,14 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
     for i in range(iterations):
         print(f"\nIteration {i+1}/{iterations}")
         
+        # Combine current prompt with output format prompt
+        full_prompt = f"{current_prompt}\n\n{output_format_prompt}"
+        
+        # Print the full prompt
+        rprint(Panel(full_prompt, title="Current Full Prompt", expand=False, border_style="blue"))
+        
         # Evaluate the current prompt
-        results = evaluate_prompt(current_prompt, output_format_prompt, eval_data, output_schema, log_dir=log_dir, iteration=i+1)
+        results = evaluate_prompt(full_prompt, eval_data, output_schema, log_dir=log_dir, iteration=i+1)
         
         # Display and log the results
         display_metrics(results, i+1)

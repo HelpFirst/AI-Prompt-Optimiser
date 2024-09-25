@@ -80,7 +80,9 @@ def _get_azure_openai_output(model_name: str, full_prompt: str, text: str) -> di
         messages=[
             {"role": "system", "content": full_prompt},
             {"role": "user", "content": text}
-        ]
+        ],
+        temperature=0.7,  # You can adjust this value as needed
+        response_format={"type": "json_object"}
     )
     return {'choices': [{'message': {'content': response.choices[0].message.content.strip()}}]}
 
@@ -136,4 +138,21 @@ def _get_ollama_analysis(model_name: str, analysis_prompt: str) -> str:
     ])
     return analysis_response['message']['content'].strip()
 
-# ... (similar helper functions for other providers)
+def _get_azure_openai_analysis(model_name: str, analysis_prompt: str) -> str:
+    """Helper function to get analysis from Azure OpenAI models."""
+    client = AzureOpenAI(
+        api_key=config.AZURE_OPENAI_API_KEY,  
+        api_version=config.AZURE_OPENAI_API_VERSION,
+        azure_endpoint=config.AZURE_OPENAI_API_BASE
+    )
+    deployment_name = config.get_azure_deployment_name(model_name)
+    response = client.chat.completions.create(
+        model=deployment_name,
+        messages=[
+            {"role": "user", "content": analysis_prompt},
+        ],
+        temperature=0.7,  # You can adjust this value as needed
+        response_format={"type": "json_object"}
+    )
+    return response.choices[0].message.content.strip()
+

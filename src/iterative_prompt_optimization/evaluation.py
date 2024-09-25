@@ -4,13 +4,12 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_sc
 from .model_interface import get_model_output
 from .utils import transform_and_compare_output, create_log_file_path, initialize_log_data, log_results
 
-def evaluate_prompt(prompt: str, output_format_prompt: str, eval_data: pd.DataFrame, output_schema: dict, log_dir: str = None, iteration: int = None) -> dict:
+def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: dict, log_dir: str = None, iteration: int = None) -> dict:
     """
     Evaluate the performance of a given prompt on the evaluation dataset.
 
     Args:
-        prompt (str): The prompt to be evaluated
-        output_format_prompt (str): Instructions for the desired output format
+        full_prompt (str): The full prompt to be evaluated (including output format instructions)
         eval_data (pd.DataFrame): Evaluation dataset
         output_schema (dict): Schema for transforming and comparing output
         log_dir (str, optional): Directory for storing logs
@@ -19,7 +18,6 @@ def evaluate_prompt(prompt: str, output_format_prompt: str, eval_data: pd.DataFr
     Returns:
         dict: Evaluation results including metrics and misclassifications
     """
-    full_prompt = create_full_prompt(prompt, output_format_prompt)
     predictions = []
     true_labels = []
     invalid_predictions = 0
