@@ -31,6 +31,9 @@ def estimate_token_usage(initial_prompt: str, output_format_prompt: str, eval_da
     tokenizer = _get_tokenizer()
 
     def count_tokens(text: str) -> int:
+        if not isinstance(text, str):  # Check if text is a string
+            print(f"Warning: Expected string but got {type(text)}. Skipping this entry.")
+            return 0  # Return 0 tokens for non-string entries
         return len(tokenizer.encode(text))
 
     initial_prompt_tokens = count_tokens(initial_prompt)
