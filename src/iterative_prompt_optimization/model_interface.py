@@ -74,8 +74,9 @@ def _get_azure_openai_output(model_name: str, full_prompt: str, text: str) -> di
         api_version=config.AZURE_OPENAI_API_VERSION,
         azure_endpoint=config.AZURE_OPENAI_API_BASE
     )
+    deployment_name = config.get_azure_deployment_name(model_name)
     response = client.chat.completions.create(
-        model=model_name,
+        model=deployment_name,
         messages=[
             {"role": "system", "content": full_prompt},
             {"role": "user", "content": text}

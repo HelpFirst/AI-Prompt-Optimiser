@@ -56,6 +56,19 @@ GOOGLE_AI_API_KEY = os.getenv('GOOGLE_AI_API_KEY')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama2')
 OLLAMA_ENDPOINT = os.getenv('OLLAMA_ENDPOINT', 'http://localhost:11434')
 
+# Add these new variables
+AZURE_OPENAI_GPT35_DEPLOYMENT_NAME = os.getenv('AZURE_OPENAI_GPT35_DEPLOYMENT_NAME')
+AZURE_OPENAI_GPT4_DEPLOYMENT_NAME = os.getenv('AZURE_OPENAI_GPT4_DEPLOYMENT_NAME')
+
+# Add this function to get the correct deployment name
+def get_azure_deployment_name(model_name):
+    if model_name == "gpt-35-turbo":
+        return AZURE_OPENAI_GPT35_DEPLOYMENT_NAME
+    elif model_name == "gpt-4":
+        return AZURE_OPENAI_GPT4_DEPLOYMENT_NAME
+    else:
+        raise ValueError(f"Unknown Azure OpenAI model: {model_name}")
+
 def set_model(provider: str, model: str) -> None:
     """
     Set the selected model provider and name.
