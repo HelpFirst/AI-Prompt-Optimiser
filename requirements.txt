@@ -1,0 +1,10 @@
+pandas
+numpy
+requests
+ollama
+openai
+anthropic
+google-generativeai
+scikit-learn
+tiktoken
+rich

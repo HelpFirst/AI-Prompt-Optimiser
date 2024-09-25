@@ -1,0 +1,102 @@
+{
+  "prompt": "Please look for the following risk factor: Is the client at risk of self-harm? For instance, do they mention suicidal thoughts or ideation? Do they imply they might do physical damage to themselves or to property? Do they reference wanting to 'end it all or say it's 'not worth living'? Please output: 1. risk_type: // suicidality, 2. risk_output: // 'risk present' : this means there is evidence this risk is present in the case 'risk not present' : there is evidence the risk is NOT present or there is no evidence whether the case contains that risk or not. (If in doubt, it is better to err on the side of caution and say 'risk present') 3. explanation: // State words/terms that indicate the reason the risk_output was chosen. Be brief in your explanation. State facts found in the text, do not infer. E.g. 'Client expressed suicidal ideation'. Leave blank for 'risk not present.'\n\nOutput should be STRICT JSON, containing: dictionary containing the type of risk with their output and explanation, formatted like this: {'risk_type': 'suicidality', 'risk_output': str, 'explanation': str}'",
+  "evaluations": [
+    {
+      "text": "Was this based on a comic-book? A video-game? A drawing by a 3 year-old?  There is nothing in this movie to be taken seriously at all; not the characters, not the dialog, not the plot, not the action. Nothing. We have high-tech international terrorists/criminals who bicker like pre-school kids, Stallone's man-of-steel-type resilience towards ice-cold weather, dialog so dumb that it's sometimes almost hilarious, and so on. Even the codename that the bad guys use is dumb (\"tango-tango\"). A film that entertains through some suspense, good action-sequences, and a nice snowy mountainous setting. Oh, yes: and the unintentional humour. The film opens with some truly bad and unconvincing gay banter between our go-lucky and happy characters who are obviously having a \"swell\" time. Then comes a sweat-inducing failed-rescue part, which should make anyone with fear-of-heights problems want to pull their hair out. And then we have some more bad dialog, and after that some more great action. This is the rhythm of the film in a nutshell.  Stallone's melodramatic exchange with Turner, when they meet after a long time, is so soapy, so clich\u00c3\u00a9d, so fake, and so bad that it should force a chuckle out of any self-respecting viewer. Soon after this display of awful dialog-writing, we are witnesses to a spectacular and excellently shot hijack of an airplane. The entire action is one big absurdity, but it's mindless fun at its best. Although the rest of the action is exciting and fun, the airplane scenes are truly the highlight of the film. After the landing, our master-criminals seek for a guide and end up with Stallone and Rooker. They send Stallone to fetch the first case of money, but somehow they do everything to make it as difficult as possible for him to reach it; they take most of his clothes off (so he can freeze) and they won't give him the equipment he needs (so he can fall off). DO THESE GANGSTERS WANT THEIR MONEY FETCHED OR NOT??? Very silly. Apparently they don't trust Stallone, but surely they know that they can always black-mail him by using Rooker as a hostage. Nevertheless, our gangsters make Stallone's climb difficult, if for no logical reasons then to at least show us how truly evil they are - lest there be any doubts. And for those who might still doubt how evil the bad guys are, they overact, brag, and snicker in a truly evil manner. Everyone convinced? Good. You'd better be. Otherwise the writers will throw in a mass execution of twenty school children, just to make sure that the evilness of the bad guys is crystal-clear to everyone. The old guy who flies the chopper... How the hell did he fall for the trap? Firstly, he must have been warned by the MTV airhead about the criminals, and secondly, he must have heard Stallone's and Rooker's voices on the walkie-talkies. A whole bunch of idiotic verbal exchanges take place, with Lithgow having the questionable honour of getting most of the silly lines. \"Get off my back!\" Lithgow: \"I haven't even started climbing on your back.\" Or, Lithgow to Stallone: \"We had a deal, but now we only have each other!\" And as for Lithgow's gang of murderers: these guys never seem to want to kill immediately. They are very creative about it; they philosophize, pretend that they are playing football with your body, and so on.  Stallone co-wrote this thing. I have no idea what drugs he was on when he did it. I'd hate to think the script is this bad because of a low I.Q.",
+      "label": 1,
+      "raw_output": "Here is the output in STRICT JSON format:\n\n```\n{\n  \"risk_type\": \"suicidality\",\n  \"risk_output\": \"not present\",\n  \"explanation\": \"\"\n}\n```",
+      "transformed_output": null,
+      "is_correct": false,
+      "is_valid": false,
+      "result": "\ud83d\udee0\ufe0f (Invalid Output Format)"
+    },
+    {
+      "text": "If you ask me the first one was really better one. Look at Sarah M. G., she is real, mean, cruel girl, look at Amy Adams she is just little fool hanging around. She is nothing! People don't adore her! Second, Sebastian was cute and hot in first movie, now he is \"baby face\". Story is not that good, and i do not understand. Why didn't they make this one first, it is the beginning. Loosy actors, nothing with story. This is not cruel, this is playing. First one has better actors, better story, and its mean. I think that the music is better in cruel intentions 1 and the music is better in cruel intentions 3. It is not the worst movie I saw, but in compaer with first one its one big, big, big nothing.",
+      "label": 0,
+      "raw_output": "Here's the output for the risk factor \"Is the client at risk of self-harm?\":\n\n{\n  'risk_type': 'suicidality',\n  'risk_output': 'risk not present',\n  'explanation': ''\n}",
+      "transformed_output": null,
+      "is_correct": false,
+      "is_valid": false,
+      "result": "\ud83d\udee0\ufe0f (Invalid Output Format)"
+    },
+    {
+      "text": "When I was a kid, I loved \"Tiny Toons\". I especially loved \"Tiny Toons: How I spent my Summer Vacation\". I thought it was laughs on the floor funny. A few years later, my friend had the video. And I figured I'd watch it for the good old days. I was still on the floors laughing. My opinion, the Plucky and Hampton skit is the best. They decide to go to \"Happy World Land\". And they end up having a crazy adventure to get there. All the skits are funny. I'm still looking for the video. So, if anyone has any tips. Please write me.  This is one of the funniest cartoons I have ever seen. 10/10",
+      "label": 1,
+      "raw_output": "Based on your text, here's the output as per your request:\n\n{\n\"risk_type\": \"\",\n\"risk_output\": \"risk not present\",\n\"explanation\": \"\"\n}",
+      "transformed_output": 0,
+      "is_correct": false,
+      "is_valid": true,
+      "result": "\u274c (FN)"
+    },
+    {
+      "text": "I hate guns and have never murdered anyone, but when even half of the events that take place in 'Shuttle' happen to you or close ones and you find a gun, YOU SHOOT YOUR ATTACKER. THREE TIMES. FIVE TIMES. Whatever makes the pulse stop on them and increase on you. I think even God would say, \"Good call.\" In a very 'Hostel'-type film, but more realistic \u00c2? as this really could happen to anyone, well, if you're a pretty young woman, that is \u00c2? 'Shuttle' was a decent film, though on the long side. A few good shocks (always call AAA even just to change a tire), basically just one surprise but for the most part, you could see things coming. And aside from the typical \"tie him up\" instead of the previously mentioned shooting him, the most annoying part was the revelation towards the closing from one best friend to the other. Getting past those, it's enjoyable for what it is. Basically, we have two unsuspecting females traveling alone from Mexico home (wow, that's original) and one lost her luggage preventing them from leaving the airport until late. And after an obvious foreshadowed sign-language scene, they enter a \"too-good-to-be-true\" half-price shuttle ride. Clich\u00c3\u00a9d jocks, previously introduced, con their way on the shuttle, to join what appears to be Alan Ruck's stunt double from 'Speed.' From here, it's obvious what happens (I did mention it was a 'Hostel' knock off) but still, I didn't find too much horrible, yet nothing spectacular. Though, it would've served the audience better with roughly 15-20 minutes deleted, I would recommend if you have almost 2 hours to kill and are into sick horror.",
+      "label": 0,
+      "raw_output": "{\n  \"risk_type\": \"suicidality\",\n  \"risk_output\": \"risk not present\",\n  \"explanation\": \"\"\n}",
+      "transformed_output": 0,
+      "is_correct": true,
+      "is_valid": true,
+      "result": "\u2705 (TN)"
+    },
+    {
+      "text": "I do not have much to say than this is a great finish to the story. Most people have said that there is not enough plot and its just eye candy.But think about it, everything was explained in FFVII you cannot add more plot to such a grand story it would ruin it. They did the best that they could do and I think that this should be taken more as A Final FMV.. the last fight.  Graphics - 10/10, Absolutely amazing  Story 8.5/10 - don't think they could of expanded it that much more. And the stuff they could put in there was clever enough I thought.  Characters 9/10 - Well most of them have already been explained during the game but still could not fit it all into 90 mins.  Sound - 10/10, since i am a metal fan I loved the fight music.. and piano just reaches right in there..It is a great ST and I was not disappointed. Tilt/Replay 10/10 - Enjoyable every time.  Overall- 9/10 (FF Fan View 10/10) I personally think this is what was needed, a fight to end it all.. the plot was already in place. The action was necessary as much as people complained. I loved every second of this movie. It was a pleasure to visit the world of FFVII just one last time. Just remember this.. most movies that have been made form a game have been directed by movie directors i think this is pretty great for a team of game directors.. Don't think I've seen a better game to movie.. Thankyou Square, I think you did it right!",
+      "label": 1,
+      "raw_output": "Based on the provided text, there are no indicators that suggest the client (the person writing the review) is at risk of self-harm. The tone and language used are enthusiastic and positive, with no mention of suicidal thoughts or ideation.\n\nHowever, since you asked me to output a dictionary with a specific format, here it is:\n\n```\n{\n  \"risk_type\": \"\",\n  \"risk_output\": \"risk not present\",\n  \"explanation\": \"\"\n}\n```",
+      "transformed_output": 0,
+      "is_correct": false,
+      "is_valid": true,
+      "result": "\u274c (FN)"
+    },
+    {
+      "text": "I have seen this movie several times, it sure is one of the cheapest action flicks of the eighties. So, I think many viewers would definitely change the channel when they come across this one. But, if you are into great trash, \"Dragon Hunt\" is made for you. The main characters (the McNamara Twins) are sporting great moustaches and look so ridiculous in their camouflage dresses. One of the best scenes is when one of then gets shot in the leg and is still kicking his enemies into nirvana. This movie is really awful, but then again, it is a great party tape!",
+      "label": 0,
+      "raw_output": "There is no indication of self-harm or suicidal ideation in this text. Here is the output:\n\n{\n  \"risk_type\": \"suicidality\",\n  \"risk_output\": \"risk not present\",\n  \"explanation\": \"\"\n}",
+      "transformed_output": 0,
+      "is_correct": true,
+      "is_valid": true,
+      "result": "\u2705 (TN)"
+    },
+    {
+      "text": "Caution: May contain spoilers... I've seen this movie 3 times & I've liked it every time. Upon seeing it again, I'm always reminded of how good it is. An HBO TV movie- very well done like most of their movies are- this would've gotten Oscars for it's performances had it been released for general distribution instead of made for TV. As I'm sure anyone knows from reading other reviews here, this is the story of serial murderer, Andrei Chikatilo. He murdered 56 people over 8 years in the former Soviet Union. (3 victims were buried & couldn't be found so he was only convicted of 52 out of 53 of his murders.) The story actually focuses more on the forensic analyst, Victor Burakov played to perfection by Stephen Rea. A man that becomes tortured and obsessed with finding this killer despite the additional obstacles placed by party hacks, his part is essential to be sure. There is a very touching scene towards the end of the movie that mentions how in America, investigators are routinely taken off serial killer cases after 18 months whether they want to or not due to the mental strain & frustration. According to this acct, Burakov worked for over 5 years before getting his first break from it. He followed the case to its conclusion, 3 years later. In this scene, his superior, General Fetisov, played by Donald Sutherland, actually tells him he admires his dedication and apologizes for not knowing he should've given him a break sooner. Rea's performance is so well done, he doesn't overact, chew up the scenery or do anything that distracts from his portrayal of a man who is hell bent on finding his killer. He is a man with passion, but doesn't show it in the same manner as is so usually portrayed in detective movies. He only occasionally gives outbursts after quietly putting up with more than most could stand under such circumstances. Rea does so much with his face, his eyes, he doesn't need to overact. He just *is* - His character, so frustrated after so long, at one point, driven to frustration, he actually says he'd rather find 3 at one time than none in a year. Of course what he means is not that he wants more people to die, he just wants some clues to catch this man. Rea makes us feel for this man. He makes us understand but a glimpse of what it is to live with such horror and futility. A mutant to be sure, Chikatilo's childhood was one which produces such \"monsters.\" The character of Chikatilo is very well done by Jeffrey DeMunn. He somehow (impossible though it may seem) elicits some modicum of sympathy for himself. Perhaps he is the worst of us gone terribly wrong? Either way, his performance is very well done. Donald Sutherland as Colonel Fetisov (later promoted to General) also does a great job. He starts out seeming to be a cynical worldly official that doesn't seem much more interested in helping the investigation than anyone else blocking Burakov. But he eventually becomes more than just an assistant, he actually actively participates in helping Burakov. There is also a very nice turn by Max Von Sydow as the psychiatrist brought in to help profile and figure out what kind of deviant they are looking for. Although this movie deals with a morbid, grotesque and violent story, it really is more about what it takes to catch a killer than the killer himself. All around a very well done movie with fine performances and a great screenplay. The screenplay manages to do what the best of this type of movie does: give factual events & place them meaningfully inside a dramatic framework that makes you feel like you know the people *behind* the facts. 9 out of 10 stars",
+      "label": 1,
+      "raw_output": "Here is the output in JSON format:\n\n```json\n{\n  \"risk_type\": \"suicidality\",\n  \"risk_output\": \"risk not present\",\n  \"explanation\": \"\"\n}\n```\n\nThere are no indications in this text that the client (or anyone else) is at risk of self-harm or suicidal ideation. The text discusses a serial killer, but it does so in a factual and observational manner, without expressing any emotional distress or desperation on the part of the forensic analyst, Victor Burakov, played by Stephen Rea. The text also highlights the dedication and perseverance of Burakov, rather than any feelings of hopelessness or despair.",
+      "transformed_output": 0,
+      "is_correct": false,
+      "is_valid": true,
+      "result": "\u274c (FN)"
+    },
+    {
+      "text": "Greg Davis and Bryan Daly take some crazed statements by a terrorists, add some commentary by a bunch of uber-right reactionaries, ascribe the most extreme positions of the most fundamentalist Moslems on the planet to everyone who calls themselves a Moslem, and presents this as the theology of Islam. Maybe their next film will involve interviewing Fred Phelps and the congregation of the Westboro Baptist Church, adding commentary by some militant atheist \"scholars, and call their film \"What the World Needs to Know About Christianity.\" Ultimately, this film suffers from both poor production values and lack of attention to the most basic standards of journalism. Don't waste your time and money; just turn on your AM radio and listen to Rush Limbaugh for a couple of days for free and you'll get the same message with the same level of intellectual analysis.",
+      "label": 0,
+      "raw_output": "Based on the text, I did not find any indicators of risk factors such as self-harm or suicidal thoughts. Therefore, the output is:\n\n```\n{\n  \"risk_type\": \"suicidality\",\n  \"risk_output\": \"risk not present\",\n  \"explanation\": \"\"\n}\n```",
+      "transformed_output": 0,
+      "is_correct": true,
+      "is_valid": true,
+      "result": "\u2705 (TN)"
+    },
+    {
+      "text": "I just finished reading a book about Dillinger. This movie was horribly inaccurate. It's like they got a list of names and just made everything up. His robberies and getaways were well planned, down to the second - when the time was up, they left whether they had all of the money or not. They had notes of every road, where to turn, etc. Purvis never saw him at the restaurant, he was told that Dillinger paid for his meal after Dillinger left. Purvis never even SAW Dillinger before the night Dillinger was killed, only photos of him. The way his gang members died were fictitious. Dillinger never robbed a bank by himself, like he did in this movie. If I had never read the book, maybe I could have enjoyed the movie. The acting was a bit over the top in places. The action was overdone as well. On second thought, I doubt if I would have enjoyed it much even if I HADN'T read the book.",
+      "label": 0,
+      "raw_output": "Here is the output:\n\n{\n  \"risk_type\": \"\",\n  \"risk_output\": \"risk not present\",\n  \"explanation\": \"\"\n}",
+      "transformed_output": 0,
+      "is_correct": true,
+      "is_valid": true,
+      "result": "\u2705 (TN)"
+    },
+    {
+      "text": "The idea ia a very short film with a lot of information. Interesting, entertaining and leaves the viewer wanting more. The producer has produced a short film of excellent quality that cannot be compared to any other short film that I have seen. I have rated this film at the highest possible rating. I also recommend that it is shown to office managers and business people in any establishment. What comes out of it is the fact that people with ideas are never listened to, their voice is never heard. It is a lesson to be learned by any office that wants to go forward. I hope that the produced will produce a second part to this 'idea'. I look forward to viewing the sequence. Once again congrats to Halaqah media in producing a film of excellence and quality with a lesson in mind.",
+      "label": 1,
+      "raw_output": "Here is the output:\n\n```\n{\n  \"risk_type\": null,\n  \"risk_output\": \"risk not present\",\n  \"explanation\": \"\"\n}\n```\n\nThere are no indicators of suicidal thoughts or ideation, nor any implication of self-harm or wanting to end one's life. The text also does not mention wanting to 'end it all' or that living is 'not worth living'.",
+      "transformed_output": 0,
+      "is_correct": false,
+      "is_valid": true,
+      "result": "\u274c (FN)"
+    }
+  ],
+  "metrics": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "accuracy": 0.5,
+    "f1": 0.0,
+    "invalid_predictions": 2
+  }
+}

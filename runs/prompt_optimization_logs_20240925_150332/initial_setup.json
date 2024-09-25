@@ -1,0 +1,9 @@
+{
+  "initial_prompt": "Please look for the following risk factor: Is the client at risk of self-harm? For instance, do they mention suicidal thoughts or ideation? Do they imply they might do physical damage to themselves or to property? Do they reference wanting to 'end it all or say it's 'not worth living'? Please output: 1. risk_type: // suicidality, 2. risk_output: // 'risk present' : this means there is evidence this risk is present in the case 'risk not present' : there is evidence the risk is NOT present or there is no evidence whether the case contains that risk or not. (If in doubt, it is better to err on the side of caution and say 'risk present') 3. explanation: // State words/terms that indicate the reason the risk_output was chosen. Be brief in your explanation. State facts found in the text, do not infer. E.g. 'Client expressed suicidal ideation'. Leave blank for 'risk not present.'",
+  "output_format_prompt": "Output should be STRICT JSON, containing: dictionary containing the type of risk with their output and explanation, formatted like this: {'risk_type': 'suicidality', 'risk_output': str, 'explanation': str}'",
+  "iterations": 3,
+  "eval_data_shape": [
+    10,
+    2
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "initial_prompt": "You are a sentiment analysis classifier. Determine whether the provided text expresses a positive sentiment. Respond with '1' if it is positive, or '0' if it is negative.",
+  "analysis": "Unable to generate analysis due to API errors.",
+  "new_prompt": "Unable to generate analysis due to API errors."
+}
