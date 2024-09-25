@@ -1,26 +1,15 @@
+To-do:
 - Allow to pass the variable that wants to be optimised (e.g. f1 score, recall)
 - Include the metrics of the previous prompt into the prompt optimisation step
+- Integrate the code with promptfoo 
+- ask for a chain of thought prompt to solve the problem, e.g.
 
-1. add extract_answer function to optimize_prompt.py, to allow output the reasoning of the model as well as the answer
+    """Start by reasoning about the sentiment of the comment, thinking step by step inside of <thinking> tags.  
+        Then, output your final answer inside of <answer> tags. 
+        Inside the <answer> tags return just 1 or 0, where 1 means positive and 0 means negative."""
 
-    import re
-    def extract_answer(text):
-        pattern = r'<answer>(.*?)</answer>'
-        match = re.search(pattern, text)
-        if match:
-            return match.group(1)
-        else:
-            return None
-
-2. ask for a chain of thought prompt to solve the problem, e.g.
-
-"""Start by reasoning about the sentiment of the comment, thinking step by step inside of <thinking> tags.  
-    Then, output your final answer inside of <answer> tags. 
-    Inside the <answer> tags return just 1 or 0, where 1 means positive and 0 means negative."""
-
-3. Use different models to evaluate the performance of the prompt (e.g. gpt3.5) and for the prompt optimisation step (e.g. gpt4)
-
-4. Allow for different output formats. Think about EHU - risk_output = "present" or risk_output = "not present" is what we are evaluating against.
-
-5. Estimate number of tokens before starting the experiment - so we know the estimation costs. Ask to proceed when printing the cost?
+Done:
+- Use different models to evaluate the performance of the prompt (e.g. gpt3.5) and for the prompt optimisation step (e.g. gpt4)
+-Allow for different output formats. Think about EHU - risk_output = "present" or risk_output = "not present" is what we are evaluating against.
+-Estimate number of tokens before starting the experiment - so we know the estimation costs. Ask to proceed when printing the cost?
 
