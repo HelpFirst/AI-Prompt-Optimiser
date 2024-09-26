@@ -19,7 +19,7 @@ PRICING = {
         "gpt-4": 0.06,
     },
     "azure_openai": {
-        "gpt-35-turbo": 0.002,
+        "gpt-35-turbo": 0.0008,
         "gpt-4": 0.06,
     },
     "anthropic": {
@@ -123,37 +123,36 @@ def get_optim_model() -> tuple:
     """
     return OPTIM_PROVIDER, OPTIM_MODEL
 
-# Add these new variables for the prompts
+
 ANALYSIS_PROMPT = """
 You are an expert in refining LLMs prompts used in classification tasks. Below are two sets of texts that were misclassified by the LLM model:
 
     Negative (0) texts (incorrectly classified as positive):
     {fp_texts}
 
-    Positives (0) texts (incorrectly classified as negative):
+    Positives (1) texts (incorrectly classified as negative):
     {fn_texts}
 
-Your task is to analyze these misclassifications and provide insights into why these errors occurred. Identify specific examples from each set where the model made a mistake and highlight what elements of the text may have led to the incorrect classification. Additionally, specify what the correct classification should have been for each example.
+Your task is to analyze these misclassifications, with a special focus on improving recall. Pay particular attention to the false negatives (texts incorrectly classified as negative). Identify specific examples from the false negatives and highlight what elements of the text may have led to the incorrect classification.
 
-Based on your analysis, suggest strategies to improve the classification prompt, focusing on how it can better recognize the nuances that led to the errors. Your recommendations should include ways to reduce both false positives and false negatives by making the prompt more sensitive to subtle differences in the classification of text.
+Based on your analysis, suggest strategies to improve the classification prompt, focusing on how it can better recognize positive cases that were missed. Your recommendations should include ways to reduce false negatives by making the prompt more sensitive to subtle indicators of positive cases.
 """
 
+
 PROMPT_ENGINEER_INPUT = """
-You are an expert in crafting highly effective prompts. Your task is to help me improve a given prompt. I will give you the current prompt, an analysis showing where it failed to classify a piece of text correctly, and the metrics from the previous iteration. Your goal is to refine the prompt to be more precise and adaptable, ensuring that the AI can accurately classify similar texts going forward. The revised prompt should be written in the first person, guiding the AI to handle difficult or edge cases.
+You are an expert in crafting highly effective prompts. Your task is to help me improve a given prompt, with a specific focus on increasing recall. I will give you the current prompt, an analysis showing where it failed to classify a piece of text correctly (especially false negatives), and the metrics from the previous iteration. Your goal is to refine the prompt to be more precise and adaptable, ensuring that the AI can accurately classify similar texts going forward, with a particular emphasis on correctly identifying positive cases.
 
 Current prompt:
 {initial_prompt}
 
-Analysis of misclassifications:
+Analysis of misclassifications (focus on false negatives):
 {analysis}
 
 Metrics from the previous iteration:
 - Precision: {precision}
 - Recall: {recall}
 - Accuracy: {accuracy}
-- F1 Score: {f1_score}
+- F1: {f1}
 
-Your task is to provide a rewritten, production-ready version of the prompt that improves its accuracy. 
-
-IMPORTANT note: the prompt should not include any preamble or request for explanations, just the final prompt itself.
+Please provide an improved prompt that addresses the issues identified in the analysis, with a special focus on increasing recall. The revised prompt should be written in the first person, guiding the AI to handle difficult or edge cases, particularly those that were previously misclassified as negative.
 """
