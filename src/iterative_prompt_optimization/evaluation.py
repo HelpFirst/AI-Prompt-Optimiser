@@ -95,7 +95,8 @@ def process_output(output: int, ground_truth: int, is_valid: bool, index: int, t
         str: A string representation of the result
     """
     if not is_valid:
-        result = f"🛠️ (Invalid Output Format) - Raw output: {raw_output.replace('\n', '').replace('\r', '')}"
+        # Use string concatenation instead of f-string for the part with backslashes
+        result = "🛠️ (Invalid Output Format) - Raw output: " + raw_output.replace('\n', '').replace('\r', '')
     elif output == ground_truth:
         result = "✅ (TP)" if output == 1 else "✅ (TN)"
     else:
