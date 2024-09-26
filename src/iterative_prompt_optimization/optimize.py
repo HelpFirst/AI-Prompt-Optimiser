@@ -112,11 +112,18 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
         
         # Generate a new prompt for the next iteration, except for the last one
         if i < iterations - 1:
+            previous_metrics = {
+                'precision': results['precision'],
+                'recall': results['recall'],
+                'accuracy': results['accuracy'],
+                'f1': results['f1']
+            }
             current_prompt = generate_new_prompt(
                 current_prompt,
                 output_format_prompt,
                 results['false_positives'],
                 results['false_negatives'],
+                previous_metrics,
                 log_dir=log_dir,
                 iteration=i+1
             )

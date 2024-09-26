@@ -327,7 +327,7 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
     fn_texts = "\n".join(f"- {item['text']}" for item in false_negatives)
 
     analysis_prompt = f"""
-    You are an expert in refining LLMs prompts for binary classifications. Below are two sets of texts that were misclassified by the LLM model:
+    You are an expert in refining LLMs prompts used in classification tasks. Below are two sets of texts that were misclassified by the LLM model:
 
         Negative (0) texts (incorrectly classified as positive):
         {fp_texts}
@@ -407,7 +407,7 @@ def generate_improved_prompt(initial_prompt: str, analysis: str) -> str:
     """Generates an improved prompt based on the analysis."""
     print("\nGenerating new prompt...")
     prompt_engineer_input = f"""
-        You are an expert in crafting highly effective prompts. Your task is to help me improve a prompt for binary classification. I will give you the current prompt and an analysis showing where it failed to classify a piece of text correctly. Your goal is to refine the prompt to be more precise and adaptable, ensuring that the AI can accurately classify similar texts going forward. The revised prompt should be written in the first person, guiding the AI to handle difficult or edge cases.
+        You are an expert in crafting highly effective prompts. Your task is to help me improve a given prompt. I will give you the current prompt and an analysis showing where it failed to classify a piece of text correctly. Your goal is to refine the prompt to be more precise and adaptable, ensuring that the AI can accurately classify similar texts going forward. The revised prompt should be written in the first person, guiding the AI to handle difficult or edge cases.
 
         Current prompt:
         {initial_prompt}

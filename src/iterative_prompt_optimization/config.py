@@ -50,15 +50,14 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 AZURE_OPENAI_API_KEY = os.getenv('AZURE_OPENAI_API_KEY')
 AZURE_OPENAI_API_BASE = os.getenv('AZURE_OPENAI_API_BASE')
 AZURE_OPENAI_API_VERSION = os.getenv('AZURE_OPENAI_API_VERSION')
-AZURE_OPENAI_DEPLOYMENT_NAME = os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME')
+# AZURE_OPENAI_DEPLOYMENT_NAME = os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME')
+AZURE_OPENAI_GPT35_DEPLOYMENT_NAME = os.getenv('AZURE_OPENAI_GPT35_DEPLOYMENT_NAME')
+AZURE_OPENAI_GPT4_DEPLOYMENT_NAME = os.getenv('AZURE_OPENAI_GPT4_DEPLOYMENT_NAME')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 GOOGLE_AI_API_KEY = os.getenv('GOOGLE_AI_API_KEY')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama2')
 OLLAMA_ENDPOINT = os.getenv('OLLAMA_ENDPOINT', 'http://localhost:11434')
 
-# Add these new variables
-AZURE_OPENAI_GPT35_DEPLOYMENT_NAME = os.getenv('AZURE_OPENAI_GPT35_DEPLOYMENT_NAME')
-AZURE_OPENAI_GPT4_DEPLOYMENT_NAME = os.getenv('AZURE_OPENAI_GPT4_DEPLOYMENT_NAME')
 
 # Add this function to get the correct deployment name
 def get_azure_deployment_name(model_name):
@@ -123,3 +122,38 @@ def get_optim_model() -> tuple:
         tuple: (OPTIM_PROVIDER, OPTIM_MODEL)
     """
     return OPTIM_PROVIDER, OPTIM_MODEL
+
+# Add these new variables for the prompts
+ANALYSIS_PROMPT = """
+You are an expert in refining LLMs prompts used in classification tasks. Below are two sets of texts that were misclassified by the LLM model:
+
+    Negative (0) texts (incorrectly classified as positive):
+    {fp_texts}
+
+    Positives (0) texts (incorrectly classified as negative):
+    {fn_texts}
+
+Your task is to analyze these misclassifications and provide insights into why these errors occurred. Identify specific examples from each set where the model made a mistake and highlight what elements of the text may have led to the incorrect classification. Additionally, specify what the correct classification should have been for each example.
+
+Based on your analysis, suggest strategies to improve the classification prompt, focusing on how it can better recognize the nuances that led to the errors. Your recommendations should include ways to reduce both false positives and false negatives by making the prompt more sensitive to subtle differences in the classification of text.
+"""
+
+PROMPT_ENGINEER_INPUT = """
+You are an expert in crafting highly effective prompts. Your task is to help me improve a given prompt. I will give you the current prompt, an analysis showing where it failed to classify a piece of text correctly, and the metrics from the previous iteration. Your goal is to refine the prompt to be more precise and adaptable, ensuring that the AI can accurately classify similar texts going forward. The revised prompt should be written in the first person, guiding the AI to handle difficult or edge cases.
+
+Current prompt:
+{initial_prompt}
+
+Analysis of misclassifications:
+{analysis}
+
+Metrics from the previous iteration:
+- Precision: {precision}
+- Recall: {recall}
+- Accuracy: {accuracy}
+- F1 Score: {f1_score}
+
+Your task is to provide a rewritten, production-ready version of the prompt that improves its accuracy. 
+
+IMPORTANT note: the prompt should not include any preamble or request for explanations, just the final prompt itself.
+"""

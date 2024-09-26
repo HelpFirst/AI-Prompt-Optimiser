@@ -1,3 +1,13 @@
 .env
 runs/
 */__pycache__/*
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Existing entries (if any)
+# ...
+.DS_Store
+/src/iterative_prompt_optimization/__pycache__
