@@ -20,6 +20,8 @@ def generate_iteration_dashboard(log_dir: str, iteration: int, results: dict, cu
             .metrics { display: flex; justify-content: space-around; margin-bottom: 20px; }
             .metric { text-align: center; }
             .prompt { white-space: pre-wrap; background-color: #f0f0f0; padding: 10px; border-radius: 5px; }
+            .chart-container { display: flex; justify-content: space-between; margin-bottom: 20px; }
+            .chart { width: 48%; }
         </style>
     </head>
     <body>
@@ -51,22 +53,42 @@ def generate_iteration_dashboard(log_dir: str, iteration: int, results: dict, cu
                     <p>{{ results.invalid_predictions }}</p>
                 </div>
             </div>
-            <div id="metricsChart"></div>
+            <div class="chart-container">
+                <div id="metricsChart" class="chart"></div>
+                <div id="validityChart" class="chart"></div>
+            </div>
             <h2>Current Prompt</h2>
             <pre class="prompt">{{ current_prompt }}</pre>
             <h2>Output Format</h2>
             <pre class="prompt">{{ output_format_prompt }}</pre>
         </div>
         <script>
-            var data = [
+            var metricsData = [
                 {
-                    x: ['Precision', 'Recall', 'Accuracy', 'F1 Score', 'Valid Predictions', 'Invalid Predictions'],
-                    y: [{{ results.precision }}, {{ results.recall }}, {{ results.accuracy }}, {{ results.f1 }}, {{ results.valid_predictions }}, {{ results.invalid_predictions }}],
+                    x: ['Precision', 'Recall', 'Accuracy', 'F1 Score'],
+                    y: [{{ results.precision }}, {{ results.recall }}, {{ results.accuracy }}, {{ results.f1 }}],
                     type: 'bar'
                 }
             ];
-            var layout = {title: 'Metrics'};
-            Plotly.newPlot('metricsChart', data, layout);
+            var metricsLayout = {
+                title: 'Performance Metrics',
+                yaxis: {range: [0, 1]}
+            };
+            Plotly.newPlot('metricsChart', metricsData, metricsLayout);
+
+            var validityData = [
+                {
+                    values: [{{ results.valid_predictions }}, {{ results.invalid_predictions }}],
+                    labels: ['Valid', 'Invalid'],
+                    type: 'pie',
+                    textinfo: "label+percent",
+                    insidetextorientation: "radial"
+                }
+            ];
+            var validityLayout = {
+                title: 'Prediction Validity'
+            };
+            Plotly.newPlot('validityChart', validityData, validityLayout);
         </script>
     </body>
     </html>
