@@ -130,7 +130,8 @@ You are an expert in refining LLMs prompts used in classification tasks. You wil
 Base Prompt:
 {initial_prompt}
 
-Below are two sets of texts that were misclassified by the LLM model:
+Below are two sets of texts that were misclassified by the LLM model.
+You need to think and answer the questions of: why was this text misclassified? What led to be incorrectly inferred? What could be some instructions/rules to prevent this from been misclassified?
 
     Negative (0) texts (incorrectly classified as positive):
     {fp_texts}
@@ -138,7 +139,7 @@ Below are two sets of texts that were misclassified by the LLM model:
     Positives (1) texts (incorrectly classified as negative):
     {fn_texts}
 
-Your task is to analyze these misclassifications, with a special focus on improving recall while maintaining reasonable precision. Pay particular attention to the false negatives (texts incorrectly classified as negative), and identify specific examples where the model missed subtle indicators of positive cases.
+Your task is to analyze these misclassifications, with a special focus on improving recall while maintaining good precision. Pay particular attention to the false negatives (texts incorrectly classified as negative), and identify specific examples where the model missed subtle indicators of positive cases.
 
 Based on your analysis, suggest strategies to improve the classification prompt - and how to craft it - focusing on how it can better recognize positive cases that were missed, and false warnings (texts incorrectly classified as positive). Your recommendations should include ways to reduce true and false negatives. Try to analyze the instances where the LLM may have inferred a risk present when it was not explicitly stated - and potentially improve the prompt to avoid this false positives.
 
