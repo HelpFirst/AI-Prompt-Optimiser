@@ -8,3 +8,4 @@ google-generativeai
 scikit-learn
 tiktoken
 rich
+jinja2
