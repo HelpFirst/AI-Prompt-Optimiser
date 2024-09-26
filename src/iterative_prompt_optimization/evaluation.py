@@ -41,7 +41,7 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
         # Process and display output
         result = process_output(transformed_output, row['label'], is_valid, index, len(eval_data), raw_output)
         
-        if is_valid:
+        if is_valid and transformed_output is not None:
             valid_predictions += 1
             predictions.append(transformed_output)
             true_labels.append(row['label'])
