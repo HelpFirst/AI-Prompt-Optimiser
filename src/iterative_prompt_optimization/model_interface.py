@@ -5,10 +5,36 @@ from openai import AzureOpenAI
 import anthropic
 import google.generativeai as genai
 from . import config
+import json
+import hashlib
+from pathlib import Path
+
+# Add this at the top of the file, after imports
+CACHE_DIR = Path("model_cache")
+CACHE_DIR.mkdir(exist_ok=True)
 
 MAX_RETRIES = 3
 
-def get_model_output(full_prompt: str, text: str, index: int, total: int, use_json_mode: bool = False) -> dict:
+def get_cache_key(full_prompt: str, text: str, model: str) -> str:
+    """Generate a unique cache key based on the prompt, text, and model."""
+    combined = f"{full_prompt}|{text}|{model}"
+    return hashlib.md5(combined.encode()).hexdigest()
+
+def get_cached_output(cache_key: str) -> dict:
+    """Retrieve cached output if it exists."""
+    cache_file = CACHE_DIR / f"{cache_key}.json"
+    if cache_file.exists():
+        with cache_file.open('r') as f:
+            return json.load(f)
+    return None
+
+def cache_output(cache_key: str, output: dict):
+    """Cache the model output."""
+    cache_file = CACHE_DIR / f"{cache_key}.json"
+    with cache_file.open('w') as f:
+        json.dump(output, f)
+
+def get_model_output(full_prompt: str, text: str, index: int, total: int, use_json_mode: bool = False, use_cache: bool = True) -> dict:
     """
     Get the output from the selected AI model for evaluation.
 
@@ -18,6 +44,7 @@ def get_model_output(full_prompt: str, text: str, index: int, total: int, use_js
         index (int): Current index in the dataset
         total (int): Total number of samples
         use_json_mode (bool): Whether to use JSON mode for output
+        use_cache (bool): Whether to use cached results
 
     Returns:
         dict: Model output containing the generated content
@@ -25,18 +52,29 @@ def get_model_output(full_prompt: str, text: str, index: int, total: int, use_js
     EVAL_PROVIDER, EVAL_MODEL = config.get_eval_model()
     print(f"Processing text {index + 1}/{total}")
     
+    if use_cache:
+        cache_key = get_cache_key(full_prompt, text, EVAL_MODEL)
+        cached_output = get_cached_output(cache_key)
+        if cached_output:
+            print(f"Using cached output for text {index + 1}/{total}")
+            return cached_output
+
     for retry in range(MAX_RETRIES):
         try:
             if EVAL_PROVIDER == "ollama":
-                return _get_ollama_output(EVAL_MODEL, full_prompt, text)
+                output = _get_ollama_output(EVAL_MODEL, full_prompt, text)
             elif EVAL_PROVIDER == "openai":
-                return _get_openai_output(EVAL_MODEL, full_prompt, text)
+                output = _get_openai_output(EVAL_MODEL, full_prompt, text)
             elif EVAL_PROVIDER == "azure_openai":
-                return _get_azure_openai_output(EVAL_MODEL, full_prompt, text, use_json_mode)
+                output = _get_azure_openai_output(EVAL_MODEL, full_prompt, text, use_json_mode)
             elif EVAL_PROVIDER == "anthropic":
-                return _get_anthropic_output(EVAL_MODEL, full_prompt, text)
+                output = _get_anthropic_output(EVAL_MODEL, full_prompt, text)
             elif EVAL_PROVIDER == "google":
-                return _get_google_output(EVAL_MODEL, full_prompt, text)
+                output = _get_google_output(EVAL_MODEL, full_prompt, text)
+            
+            if use_cache:
+                cache_output(cache_key, output)
+            return output
         except Exception as e:
             print(f"API error for text at index {index}: {str(e)}. Retrying... (Attempt {retry + 1}/{MAX_RETRIES})")
     print(f"Max retries reached. Using default prediction.")

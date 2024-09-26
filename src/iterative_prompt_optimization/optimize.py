@@ -13,7 +13,7 @@ from .dashboard_generator import generate_iteration_dashboard, generate_experime
 def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: pd.DataFrame, iterations: int,
                     eval_provider: str = None, eval_model: str = None,
                     optim_provider: str = None, optim_model: str = None,
-                    output_schema: dict = None) -> tuple:
+                    output_schema: dict = None, use_cache: bool = True) -> tuple:
     """
     Optimize a prompt through iterative refinement and evaluation.
 
@@ -33,6 +33,7 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
         optim_provider (str, optional): Provider for the optimization model
         optim_model (str, optional): Name of the optimization model
         output_schema (dict, optional): Schema for transforming and comparing output
+        use_cache (bool, optional): Whether to use cached model outputs. Defaults to True.
 
     Returns:
         tuple: The best performing prompt and its associated metrics
@@ -102,7 +103,7 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
         rprint(Panel(full_prompt, title="Current Full Prompt", expand=False, border_style="blue"))
         
         # Evaluate the current prompt
-        results = evaluate_prompt(full_prompt, eval_data, output_schema, log_dir=log_dir, iteration=i+1)
+        results = evaluate_prompt(full_prompt, eval_data, output_schema, log_dir=log_dir, iteration=i+1, use_cache=use_cache)
         
         # Display and log the results
         display_metrics(results, i+1)

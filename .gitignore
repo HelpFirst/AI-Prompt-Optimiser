@@ -11,3 +11,4 @@ __pycache__/
 # ...
 .DS_Store
 /src/iterative_prompt_optimization/__pycache__
+/examples/model_cache
