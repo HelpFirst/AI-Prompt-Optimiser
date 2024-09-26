@@ -16,6 +16,7 @@ import openai
 from openai import AzureOpenAI
 import anthropic
 import google.generativeai as genai
+import config  # Assuming you have a config.py file with the prompts
 
 # Constants
 MAX_RETRIES = 3
@@ -326,19 +327,11 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
     fp_texts = "\n".join(f"- {item['text']}" for item in false_positives)
     fn_texts = "\n".join(f"- {item['text']}" for item in false_negatives)
 
-    analysis_prompt = f"""
-    You are an expert in refining LLMs prompts used in classification tasks. Below are two sets of texts that were misclassified by the LLM model:
-
-        Negative (0) texts (incorrectly classified as positive):
-        {fp_texts}
-
-        Positives (0) texts (incorrectly classified as negative):
-        {fn_texts}
-
-    Your task is to analyze these misclassifications and provide insights into why these errors occurred. Identify specific examples from each set where the model made a mistake and highlight what elements of the text may have led to the incorrect classification. Additionally, specify what the correct classification should have been for each example.
-
-    Based on your analysis, suggest strategies to improve the classification prompt, focusing on how it can better recognize the nuances that led to the errors. Your recommendations should include ways to reduce both false positives and false negatives by making the prompt more sensitive to subtle differences in the classification of text.
-    """
+    # Use the analysis prompt from the config file
+    analysis_prompt = config.ANALYSIS_PROMPT.format(
+        false_positives=fp_texts,
+        false_negatives=fn_texts
+    )
 
     analysis = get_analysis(analysis_prompt)
     display_analysis(analysis)
@@ -406,19 +399,10 @@ def display_analysis(analysis: str) -> None:
 def generate_improved_prompt(initial_prompt: str, analysis: str) -> str:
     """Generates an improved prompt based on the analysis."""
     print("\nGenerating new prompt...")
-    prompt_engineer_input = f"""
-        You are an expert in crafting highly effective prompts. Your task is to help me improve a given prompt. I will give you the current prompt and an analysis showing where it failed to classify a piece of text correctly. Your goal is to refine the prompt to be more precise and adaptable, ensuring that the AI can accurately classify similar texts going forward. The revised prompt should be written in the first person, guiding the AI to handle difficult or edge cases.
-
-        Current prompt:
-        {initial_prompt}
-
-        Analysis of misclassifications:
-        {analysis}
-
-        Your task is to provide a rewritten, production-ready version of the prompt that improves its accuracy. 
-        
-        IMPORTANT note: the prompt should not include any preamble or request for explanations, just the final prompt itself.
-        """
+    prompt_engineer_input = config.PROMPT_ENGINEER_INPUT.format(
+        initial_prompt=initial_prompt,
+        analysis=analysis
+    )
 
     prompt_engineer_panel = Panel(
         prompt_engineer_input,

@@ -7,7 +7,7 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
     Generates a new prompt by incorporating false positives and false negatives.
 
     Args:
-        initial_prompt (str): The initial classification prompt
+        initial_prompt (str): The current classification prompt
         output_format_prompt (str): The output format instructions
         false_positives (list): Texts incorrectly classified as positive
         false_negatives (list): Texts incorrectly classified as negative
@@ -23,26 +23,36 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
     fp_texts = "\n".join(f"- {item['text']}" for item in false_positives)
     fn_texts = "\n".join(f"- {item['text']}" for item in false_negatives)
 
-    analysis_prompt = config.ANALYSIS_PROMPT.format(fp_texts=fp_texts, fn_texts=fn_texts)
+    invalid_output_message = previous_metrics.get('invalid_output_message', '')
+    
+    analysis_prompt = config.ANALYSIS_PROMPT.format(
+        initial_prompt=initial_prompt,
+        fp_texts=fp_texts,
+        fn_texts=fn_texts,
+        invalid_output_message=invalid_output_message,
+        output_format=output_format_prompt  
+    )
 
     analysis = get_analysis(analysis_prompt)
     display_analysis(analysis)
 
-    new_prompt = generate_improved_prompt(initial_prompt, analysis, previous_metrics)
+    new_prompt = generate_improved_prompt(initial_prompt, output_format_prompt, analysis, previous_metrics)
     log_prompt_generation(log_dir, iteration, initial_prompt, analysis, new_prompt)
 
     return new_prompt
 
-def generate_improved_prompt(initial_prompt: str, analysis: str, previous_metrics: dict) -> str:
+def generate_improved_prompt(initial_prompt: str, output_format_prompt: str, analysis: str, previous_metrics: dict) -> str:
     """Generates an improved prompt based on the analysis and previous metrics."""
     print("\nGenerating new prompt...")
     prompt_engineer_input = config.PROMPT_ENGINEER_INPUT.format(
         initial_prompt=initial_prompt,
+        output_format_prompt=output_format_prompt,
         analysis=analysis,
         precision=previous_metrics['precision'],
         recall=previous_metrics['recall'],
         accuracy=previous_metrics['accuracy'],
-        f1_score=previous_metrics['f1']
+        f1=previous_metrics['f1']
     )
-
-    return get_analysis(prompt_engineer_input)
+    
+    new_prompt = get_analysis(prompt_engineer_input)
+    return new_prompt

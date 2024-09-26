@@ -7,6 +7,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from .config import PRICING, MODEL_OPTIONS, SELECTED_PROVIDER, MODEL_NAME
+from pathlib import Path
 
 def estimate_token_usage(initial_prompt: str, output_format_prompt: str, eval_data, iterations: int):
     """
@@ -116,6 +117,7 @@ def log_results(log_file_path: str, log_data: dict, metrics: dict):
         "recall": metrics['recall'],
         "accuracy": metrics['accuracy'],
         "f1": metrics['f1'],
+        "valid_predictions": metrics['valid_predictions'],
         "invalid_predictions": metrics['invalid_predictions']
     }
     
@@ -161,6 +163,7 @@ def display_comparison_table(all_metrics: list):
     comparison_table.add_column("Recall", justify="right")
     comparison_table.add_column("Accuracy", justify="right")
     comparison_table.add_column("F1-score", justify="right")
+    comparison_table.add_column("Valid Predictions", justify="right")
     comparison_table.add_column("Invalid Predictions", justify="right")
 
     max_values = get_max_values(all_metrics)
@@ -172,6 +175,7 @@ def display_comparison_table(all_metrics: list):
             format_metric(metrics['recall'], max_values['recall']),
             format_metric(metrics['accuracy'], max_values['accuracy']),
             format_metric(metrics['f1'], max_values['f1']),
+            format_metric(metrics['valid_predictions'], max_values['valid_predictions']),
             format_metric(metrics['invalid_predictions'], max_values['invalid_predictions'], is_min=True)
         )
 
@@ -184,6 +188,7 @@ def get_max_values(all_metrics: list):
         'recall': max(m['recall'] for m in all_metrics),
         'accuracy': max(m['accuracy'] for m in all_metrics),
         'f1': max(m['f1'] for m in all_metrics),
+        'valid_predictions': max(m['valid_predictions'] for m in all_metrics),
         'invalid_predictions': min(m['invalid_predictions'] for m in all_metrics)
     }
 
@@ -209,26 +214,25 @@ def create_log_directory():
     Create a directory for logging with a timestamp within a 'runs' folder.
     
     This function:
-    1. Creates a 'runs' folder in the project root if it doesn't exist
+    1. Creates a 'runs' folder in the current working directory if it doesn't exist
     2. Creates a timestamped folder within 'runs' for the current optimization run
     
     Returns:
         str: Path to the newly created log directory
     """
-    # Get the project root directory (assuming utils.py is in src/iterative_prompt_optimization/)
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    # Get the current working directory
+    current_dir = Path.cwd()
     
     # Create the 'runs' folder if it doesn't exist
-    runs_folder = os.path.join(project_root, "runs")
-    if not os.path.exists(runs_folder):
-        os.makedirs(runs_folder)
+    runs_folder = current_dir / "runs"
+    runs_folder.mkdir(exist_ok=True)
     
     # Create a timestamped folder for the current run
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_dir = os.path.join(runs_folder, f"prompt_optimization_logs_{timestamp}")
-    os.makedirs(log_dir)
+    log_dir = runs_folder / f"prompt_optimization_logs_{timestamp}"
+    log_dir.mkdir()
     
-    return log_dir
+    return str(log_dir)
 
 def log_initial_setup(log_dir: str, initial_prompt: str, output_format_prompt: str, iterations: int, eval_data):
     """Log the initial setup of the optimization process."""
@@ -271,6 +275,7 @@ def display_metrics(results: dict, iteration: int):
     metrics_table.add_row("Recall", f"{results['recall']:.4f}")
     metrics_table.add_row("Accuracy", f"{results['accuracy']:.4f}")
     metrics_table.add_row("F1-score", f"{results['f1']:.4f}")
+    metrics_table.add_row("Valid Predictions", str(results['valid_predictions']))
     metrics_table.add_row("Invalid Predictions", str(results['invalid_predictions']))
     
     console.print(metrics_table)
@@ -283,6 +288,7 @@ def create_metric_entry(iteration: int, results: dict):
         'recall': results['recall'],
         'accuracy': results['accuracy'],
         'f1': results['f1'],
+        'valid_predictions': results['valid_predictions'],
         'invalid_predictions': results['invalid_predictions']
     }
 
@@ -364,6 +370,7 @@ def log_evaluation_results(log_dir: str, iteration: int, results: dict, eval_dat
             "recall": results['recall'],
             "accuracy": results['accuracy'],
             "f1": results['f1'],
+            "valid_predictions": results['valid_predictions'],
             "invalid_predictions": results['invalid_predictions']
         },
         "false_positives": [fp['text'] for fp in results['false_positives']],

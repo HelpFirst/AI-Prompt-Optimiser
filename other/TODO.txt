@@ -1,4 +1,5 @@
 To-do:
+- Make sure not to include the wrong formatted outputs into the anlaysis of FP and FN, if included, then included as invalid output formatting, with a prompt mention to make sure that the output format is correct and accoring to the prompt output format instruction.
 - Allow to pass the variable that wants to be optimised (e.g. f1 score, recall)
 - Include the metrics of the previous prompt into the prompt optimisation step
 - Integrate the code with promptfoo 

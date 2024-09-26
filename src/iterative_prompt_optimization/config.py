@@ -125,7 +125,12 @@ def get_optim_model() -> tuple:
 
 
 ANALYSIS_PROMPT = """
-You are an expert in refining LLMs prompts used in classification tasks. Below are two sets of texts that were misclassified by the LLM model:
+You are an expert in refining LLMs prompts used in classification tasks. You will be analyzing misclassifications for the following base prompt:
+
+Base Prompt:
+{initial_prompt}
+
+Below are two sets of texts that were misclassified by the LLM model:
 
     Negative (0) texts (incorrectly classified as positive):
     {fp_texts}
@@ -133,14 +138,25 @@ You are an expert in refining LLMs prompts used in classification tasks. Below a
     Positives (1) texts (incorrectly classified as negative):
     {fn_texts}
 
-Your task is to analyze these misclassifications, with a special focus on improving recall. Pay particular attention to the false negatives (texts incorrectly classified as negative). Identify specific examples from the false negatives and highlight what elements of the text may have led to the incorrect classification.
+Your task is to analyze these misclassifications, with a special focus on improving recall while maintaining reasonable precision. Pay particular attention to the false negatives (texts incorrectly classified as negative), and identify specific examples where the model missed subtle indicators of positive cases.
 
-Based on your analysis, suggest strategies to improve the classification prompt, focusing on how it can better recognize positive cases that were missed. Your recommendations should include ways to reduce false negatives by making the prompt more sensitive to subtle indicators of positive cases.
+Based on your analysis, suggest strategies to improve the classification prompt, focusing on how it can better recognize positive cases that were missed. Your recommendations should include ways to reduce false negatives by making the prompt more sensitive to subtle indicators of positive cases. Try to analyze the instances where the LLM may have inferred a risk present when it was not explicitly stated.
+
+-----
+
+If there were invalid outputs, also suggest ways to improve the prompt to ensure the model follows the output format instructions more consistently.
+
+Invalid output messages:
+{invalid_output_message}
+
+Expected output format:
+{output_format}
+
+Note: The output should strictly adhere to the format specified above. Any deviation from this format will be considered an invalid output.
 """
 
-
 PROMPT_ENGINEER_INPUT = """
-You are an expert in crafting highly effective prompts. Your task is to help me improve a given prompt, with a specific focus on increasing recall. I will give you the current prompt, an analysis showing where it failed to classify a piece of text correctly (especially false negatives), and the metrics from the previous iteration. Your goal is to refine the prompt to be more precise and adaptable, ensuring that the AI can accurately classify similar texts going forward, with a particular emphasis on correctly identifying positive cases.
+You are an expert in crafting highly effective prompts. Your task is to help me improve a given prompt, with a specific focus on increasing recall. I will give you the current prompt, output format, an analysis showing where it failed to classify a piece of text correctly (especially false negatives), and the metrics from the previous iteration. Your goal is to refine the prompt to be more precise and adaptable, ensuring that the AI can accurately classify similar texts going forward, with a particular emphasis on correctly identifying positive cases.
 
 Current prompt:
 {initial_prompt}
@@ -154,5 +170,5 @@ Metrics from the previous iteration:
 - Accuracy: {accuracy}
 - F1: {f1}
 
-Please provide an improved prompt that addresses the issues identified in the analysis, with a special focus on increasing recall. The revised prompt should be written in the first person, guiding the AI to handle difficult or edge cases, particularly those that were previously misclassified as negative.
+Please provide an improved prompt that addresses the issues identified in the analysis, with a special focus on increasing recall. The revised prompt should be written in the first person, guiding the AI to handle difficult or edge cases, particularly those that were previously misclassified as negative. Ensure that the new prompt is compatible with the given output format.
 """

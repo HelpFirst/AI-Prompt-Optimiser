@@ -21,8 +21,10 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
     predictions = []
     true_labels = []
     invalid_predictions = 0
+    valid_predictions = 0
     false_positives = []
     false_negatives = []
+    invalid_outputs = []
     
     log_data = initialize_log_data(full_prompt) if log_dir else None
 
@@ -37,9 +39,10 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
         transformed_output, is_correct, is_valid = transform_and_compare_output(raw_output, row['label'], output_schema)
         
         # Process and display output
-        result = process_output(transformed_output, row['label'], is_valid, index, len(eval_data))
+        result = process_output(transformed_output, row['label'], is_valid, index, len(eval_data), raw_output)
         
         if is_valid:
+            valid_predictions += 1
             predictions.append(transformed_output)
             true_labels.append(row['label'])
             if not is_correct:
@@ -49,6 +52,7 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
                     false_negatives.append({'text': row['text'], 'label': row['label']})
         else:
             invalid_predictions += 1
+            invalid_outputs.append({'text': row['text'], 'label': row['label'], 'raw_output': raw_output})
         
         if log_data:
             log_data["evaluations"].append({
@@ -62,7 +66,7 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
             })
 
     # Calculate metrics
-    results = calculate_metrics(predictions, true_labels, invalid_predictions, false_positives, false_negatives)
+    results = calculate_metrics(predictions, true_labels, invalid_predictions, valid_predictions, false_positives, false_negatives, invalid_outputs)
 
     # Log results if log_dir is provided
     if log_dir and iteration:
@@ -75,7 +79,7 @@ def create_full_prompt(prompt: str, output_format_prompt: str) -> str:
     """Combine the main prompt and output format prompt."""
     return f"{prompt}\n\n{output_format_prompt}"
 
-def process_output(output: int, ground_truth: int, is_valid: bool, index: int, total: int) -> str:
+def process_output(output: int, ground_truth: int, is_valid: bool, index: int, total: int, raw_output: str) -> str:
     """
     Process the model output and compare it with the ground truth.
 
@@ -85,12 +89,13 @@ def process_output(output: int, ground_truth: int, is_valid: bool, index: int, t
         is_valid (bool): Whether the output is valid
         index (int): Current index in the dataset
         total (int): Total number of samples
+        raw_output (str): Raw output from the model
 
     Returns:
         str: A string representation of the result
     """
     if not is_valid:
-        result = "🛠️ (Invalid Output Format)"
+        result = f"🛠️ (Invalid Output Format) - Raw output: {raw_output.replace('\n', '').replace('\r', '')}"
     elif output == ground_truth:
         result = "✅ (TP)" if output == 1 else "✅ (TN)"
     else:
@@ -99,7 +104,7 @@ def process_output(output: int, ground_truth: int, is_valid: bool, index: int, t
     print(f"Prediction {index + 1}/{total}: {output} | Ground Truth: {ground_truth} {result}")
     return result
 
-def calculate_metrics(predictions: list, true_labels: list, invalid_predictions: int, false_positives: list, false_negatives: list) -> dict:
+def calculate_metrics(predictions: list, true_labels: list, invalid_predictions: int, valid_predictions: int, false_positives: list, false_negatives: list, invalid_outputs: list) -> dict:
     """
     Calculate evaluation metrics.
 
@@ -107,8 +112,10 @@ def calculate_metrics(predictions: list, true_labels: list, invalid_predictions:
         predictions (list): List of model predictions
         true_labels (list): List of true labels
         invalid_predictions (int): Number of invalid predictions
+        valid_predictions (int): Number of valid predictions
         false_positives (list): List of false positive samples
         false_negatives (list): List of false negative samples
+        invalid_outputs (list): List of invalid output samples
 
     Returns:
         dict: Dictionary containing calculated metrics
@@ -121,6 +128,12 @@ def calculate_metrics(predictions: list, true_labels: list, invalid_predictions:
     else:
         precision = recall = accuracy = f1 = 0
 
+    invalid_output_message = (
+        "Note: There were invalid output formats detected. Please ensure that the output format "
+        "is correct and follows the instructions provided in the prompt. Invalid outputs are not "
+        "included in the FP and FN analysis."
+    )
+
     return {
         'precision': precision,
         'recall': recall,
@@ -129,5 +142,8 @@ def calculate_metrics(predictions: list, true_labels: list, invalid_predictions:
         'predictions': predictions,
         'false_positives': false_positives,
         'false_negatives': false_negatives,
-        'invalid_predictions': invalid_predictions
+        'invalid_predictions': invalid_predictions,
+        'valid_predictions': valid_predictions,
+        'invalid_outputs': invalid_outputs,
+        'invalid_output_message': invalid_output_message if invalid_predictions > 0 else None
     }
