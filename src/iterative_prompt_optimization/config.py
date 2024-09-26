@@ -140,11 +140,11 @@ Below are two sets of texts that were misclassified by the LLM model:
 
 Your task is to analyze these misclassifications, with a special focus on improving recall while maintaining reasonable precision. Pay particular attention to the false negatives (texts incorrectly classified as negative), and identify specific examples where the model missed subtle indicators of positive cases.
 
-Based on your analysis, suggest strategies to improve the classification prompt, focusing on how it can better recognize positive cases that were missed. Your recommendations should include ways to reduce false negatives by making the prompt more sensitive to subtle indicators of positive cases. Try to analyze the instances where the LLM may have inferred a risk present when it was not explicitly stated.
+Based on your analysis, suggest strategies to improve the classification prompt - and how to craft it - focusing on how it can better recognize positive cases that were missed, and false warnings (texts incorrectly classified as positive). Your recommendations should include ways to reduce true and false negatives. Try to analyze the instances where the LLM may have inferred a risk present when it was not explicitly stated - and potentially improve the prompt to avoid this false positives.
 
 -----
 
-If there were invalid outputs, also suggest ways to improve the prompt to ensure the model follows the output format instructions more consistently.
+If there were invalid outputs, also suggest ways to improve the prompt to ensure the model follows the output format instructions more consistently. If 'Invalid output messages:' is empty, please ignore this subtask.
 
 Invalid output messages:
 {invalid_output_message}
@@ -156,12 +156,12 @@ Note: The output should strictly adhere to the format specified above. Any devia
 """
 
 PROMPT_ENGINEER_INPUT = """
-You are an expert in crafting highly effective prompts. Your task is to help me improve a given prompt, with a specific focus on increasing recall. I will give you the current prompt, output format, an analysis showing where it failed to classify a piece of text correctly (especially false negatives), and the metrics from the previous iteration. Your goal is to refine the prompt to be more precise and adaptable, ensuring that the AI can accurately classify similar texts going forward, with a particular emphasis on correctly identifying positive cases.
+You are an expert in crafting highly effective prompts. Your task is to help me improve a given prompt, with a specific focus on reducing false and false positives. I will give you the current prompt, output format, an analysis showing where it failed to classify a piece of text correctly (especially false negatives), and the metrics from the previous iteration. Your goal is to refine the prompt to be more precise and adaptable, ensuring that the AI can accurately classify similar texts going forward, with a particular emphasis on correctly identifying positive cases.
 
 Current prompt:
 {initial_prompt}
 
-Analysis of misclassifications (focus on false negatives):
+Analysis of misclassifications:
 {analysis}
 
 Metrics from the previous iteration:
@@ -170,5 +170,7 @@ Metrics from the previous iteration:
 - Accuracy: {accuracy}
 - F1: {f1}
 
-Please provide an improved prompt that addresses the issues identified in the analysis, with a special focus on increasing recall. The revised prompt should be written in the first person, guiding the AI to handle difficult or edge cases, particularly those that were previously misclassified as negative. Ensure that the new prompt is compatible with the given output format.
+If precision is low, please focus on reducing false positives. If recall is low, please focus on strategies for reducing false negatives.
+
+Please provide an improved prompt that addresses the issues identified in the analysis. The revised prompt should be written in the first person, guiding the AI to handle difficult or edge cases. Ensure that the new prompt is compatible with the given output format. Please output the final 'production-ready' prompt only, with no headers or other text.
 """

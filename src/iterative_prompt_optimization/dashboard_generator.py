@@ -57,7 +57,7 @@ def generate_iteration_dashboard(log_dir: str, iteration: int, results: dict, cu
                 <div id="metricsChart" class="chart"></div>
                 <div id="validityChart" class="chart"></div>
             </div>
-            <h2>Current Prompt</h2>
+            <h2>Prompt</h2>
             <pre class="prompt">{{ current_prompt }}</pre>
             <h2>Output Format</h2>
             <pre class="prompt">{{ output_format_prompt }}</pre>
