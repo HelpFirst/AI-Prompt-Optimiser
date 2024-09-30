@@ -53,3 +53,87 @@ def evaluate_prompts(prompts: list, data: list, model: str) -> list:
         results.append(prompt_results)
     
     return results
+
+def analyze_errors(model, prompt, fp_examples, fn_examples):
+    fp_analysis = ""
+    fn_analysis = ""
+    
+    if fp_examples:
+        fp_prompt = f"""Analyze the following false positive examples for the given prompt:
+
+Prompt: {prompt}
+
+False Positive Examples:
+{json.dumps(fp_examples, indent=2)}
+
+Provide a detailed analysis of why these examples were incorrectly classified as positive. Include a step-by-step explanation for each example.
+
+Output your analysis as a JSON object with the following structure:
+{{
+    "fp_text": "Your overall analysis text here",
+    "step_by_step": [
+        {{
+            "example": "The specific example text",
+            "explanation": "Step-by-step explanation for this example"
+        }},
+        ...
+    ]
+}}
+"""
+        fp_response = model.generate(fp_prompt)
+        fp_analysis = json.loads(fp_response)
+
+    if fn_examples:
+        fn_prompt = f"""Analyze the following false negative examples for the given prompt:
+
+Prompt: {prompt}
+
+False Negative Examples:
+{json.dumps(fn_examples, indent=2)}
+
+Provide a detailed analysis of why these examples were incorrectly classified as negative. Include a step-by-step explanation for each example.
+
+Output your analysis as a JSON object with the following structure:
+{{
+    "fn_text": "Your overall analysis text here",
+    "step_by_step": [
+        {{
+            "example": "The specific example text",
+            "explanation": "Step-by-step explanation for this example"
+        }},
+        ...
+    ]
+}}
+"""
+        fn_response = model.generate(fn_prompt)
+        fn_analysis = json.loads(fn_response)
+
+    combined_analysis = {
+        "false_positives": fp_analysis,
+        "false_negatives": fn_analysis
+    }
+
+    analysis_prompt = f"""Based on the following analyses of false positives and false negatives:
+
+False Positives Analysis:
+{json.dumps(fp_analysis, indent=2)}
+
+False Negatives Analysis:
+{json.dumps(fn_analysis, indent=2)}
+
+Provide a comprehensive analysis of the prompt's performance, including:
+1. Common patterns or issues in false positives and false negatives
+2. Potential improvements to the prompt
+3. Any other relevant observations
+
+Output your analysis as a JSON object with the following structure:
+{{
+    "overall_analysis": "Your comprehensive analysis text here",
+    "common_patterns": ["List of common patterns or issues"],
+    "potential_improvements": ["List of potential improvements"],
+    "additional_observations": ["List of any other relevant observations"]
+}}
+"""
+
+    final_analysis = model.generate(analysis_prompt)
+    return json.loads(final_analysis)

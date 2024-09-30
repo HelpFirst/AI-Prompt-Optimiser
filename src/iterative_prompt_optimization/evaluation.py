@@ -25,6 +25,7 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
     valid_predictions = 0
     false_positives = []
     false_negatives = []
+    true_positives = []  # Add this line
     invalid_outputs = []
     
     log_data = initialize_log_data(full_prompt) if log_dir else None
@@ -51,6 +52,9 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
                     false_positives.append({'text': row['text'], 'label': row['label']})
                 elif transformed_output == 0 and row['label'] == 1:
                     false_negatives.append({'text': row['text'], 'label': row['label']})
+            else:
+                if transformed_output == 1 and row['label'] == 1:
+                    true_positives.append({'text': row['text'], 'label': row['label']})  # Add this block
         else:
             invalid_predictions += 1
             invalid_outputs.append({'text': row['text'], 'label': row['label'], 'raw_output': raw_output})
@@ -67,7 +71,7 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
             })
 
     # Calculate metrics
-    results = calculate_metrics(predictions, true_labels, invalid_predictions, valid_predictions, false_positives, false_negatives, invalid_outputs)
+    results = calculate_metrics(predictions, true_labels, invalid_predictions, valid_predictions, false_positives, false_negatives, true_positives, invalid_outputs)
 
     # Log results if log_dir is provided
     if log_dir and iteration:
@@ -106,7 +110,7 @@ def process_output(output: int, ground_truth: int, is_valid: bool, index: int, t
     print(f"Prediction {index + 1}/{total}: {output} | Ground Truth: {ground_truth} {result}")
     return result
 
-def calculate_metrics(predictions: list, true_labels: list, invalid_predictions: int, valid_predictions: int, false_positives: list, false_negatives: list, invalid_outputs: list) -> dict:
+def calculate_metrics(predictions: list, true_labels: list, invalid_predictions: int, valid_predictions: int, false_positives: list, false_negatives: list, true_positives: list, invalid_outputs: list) -> dict:
     """
     Calculate evaluation metrics.
 
@@ -117,6 +121,7 @@ def calculate_metrics(predictions: list, true_labels: list, invalid_predictions:
         valid_predictions (int): Number of valid predictions
         false_positives (list): List of false positive samples
         false_negatives (list): List of false negative samples
+        true_positives (list): List of true positive samples
         invalid_outputs (list): List of invalid output samples
 
     Returns:
@@ -144,6 +149,7 @@ def calculate_metrics(predictions: list, true_labels: list, invalid_predictions:
         'predictions': predictions,
         'false_positives': false_positives,
         'false_negatives': false_negatives,
+        'true_positives': true_positives,  # Add this line
         'invalid_predictions': invalid_predictions,
         'valid_predictions': valid_predictions,
         'invalid_outputs': invalid_outputs,

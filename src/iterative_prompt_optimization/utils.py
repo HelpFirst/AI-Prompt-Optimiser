@@ -9,6 +9,8 @@ from rich.table import Table
 from .config import PRICING, MODEL_OPTIONS, SELECTED_PROVIDER, MODEL_NAME
 from pathlib import Path
 
+console = Console()
+
 def estimate_token_usage(initial_prompt: str, output_format_prompt: str, eval_data, iterations: int):
     """
     Estimate the total token usage for the prompt optimization process.
@@ -87,17 +89,10 @@ def estimate_cost(total_tokens: int, provider: str, model: str):
     estimated_cost = (total_tokens / 1000) * cost_per_1k_tokens
     return f"${estimated_cost:.2f}"
 
-def display_prompt(full_prompt: str):
-    """Display the full prompt in a formatted panel."""
-    console = Console()
-    prompt_panel = Panel(
-        full_prompt,
-        title="System Prompt",
-        expand=False,
-        border_style="yellow",
-        padding=(1, 1)
-    )
-    console.print(prompt_panel)
+def display_prompt(prompt: str, title: str = "Prompt"):
+    """Display a prompt in a panel with a title."""
+    panel = Panel(prompt, title=title, expand=False)
+    console.print(panel)
 
 def create_log_file_path(log_dir: str, iteration: int):
     """Create the log file path for a specific iteration."""
@@ -124,23 +119,26 @@ def log_results(log_file_path: str, log_data: dict, metrics: dict):
     with open(log_file_path, 'w') as f:
         json.dump(log_data, f, indent=2)
 
-def display_analysis(analysis: str):
-    """Display the analysis of misclassifications in a formatted panel."""
+def display_analysis(analysis: str, title: str = "Analysis"):
+    """Display the analysis in a formatted panel."""
     analysis_panel = Panel(
         analysis,
-        title="Analysis of Misclassifications",
+        title=title,
         expand=False,
         border_style="bold",
         padding=(1, 1)
     )
     Console().print(analysis_panel)
 
-def log_prompt_generation(log_dir: str, iteration: int, initial_prompt: str, analysis: str, new_prompt: str):
+def log_prompt_generation(log_dir: str, iteration: int, initial_prompt: str, fp_analysis: str, fn_analysis: str, tp_analysis: str, invalid_analysis: str, new_prompt: str):
     """Log the prompt generation process for a specific iteration."""
     log_file_path = os.path.join(log_dir, f"iteration_{iteration}_prompt_generation.json")
     log_data = {
         "initial_prompt": initial_prompt,
-        "analysis": analysis,
+        "false_positives_analysis": fp_analysis,
+        "false_negatives_analysis": fn_analysis,
+        "true_positives_analysis": tp_analysis,
+        "invalid_outputs_analysis": invalid_analysis,
         "new_prompt": new_prompt
     }
     with open(log_file_path, 'w') as f:

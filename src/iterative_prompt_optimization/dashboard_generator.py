@@ -61,6 +61,13 @@ def generate_iteration_dashboard(log_dir: str, iteration: int, results: dict, cu
             <pre class="prompt">{{ current_prompt }}</pre>
             <h2>Output Format</h2>
             <pre class="prompt">{{ output_format_prompt }}</pre>
+            <h2>Analyses</h2>
+            <h3>False Positives Analysis</h3>
+            <pre class="analysis">{{ results.fp_analysis }}</pre>
+            <h3>False Negatives Analysis</h3>
+            <pre class="analysis">{{ results.fn_analysis }}</pre>
+            <h3>True Positives Analysis</h3>
+            <pre class="analysis">{{ results.tp_analysis }}</pre>
         </div>
         <script>
             var metricsData = [

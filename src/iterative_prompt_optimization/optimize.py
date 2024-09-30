@@ -125,6 +125,8 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                 output_format_prompt,
                 results['false_positives'],
                 results['false_negatives'],
+                results['true_positives'],
+                results['invalid_outputs'],  # Add this line
                 previous_metrics,
                 log_dir=log_dir,
                 iteration=i+1
