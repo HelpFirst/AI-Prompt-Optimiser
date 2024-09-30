@@ -25,7 +25,7 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
     valid_predictions = 0
     false_positives = []
     false_negatives = []
-    true_positives = []  # Add this line
+    true_positives = []
     invalid_outputs = []
     
     log_data = initialize_log_data(full_prompt) if log_dir else None
@@ -43,18 +43,18 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
         # Process and display output
         result = process_output(transformed_output, row['label'], is_valid, index, len(eval_data), raw_output)
         
-        if is_valid and transformed_output is not None:
+        if is_valid:
             valid_predictions += 1
             predictions.append(transformed_output)
             true_labels.append(row['label'])
-            if not is_correct:
+            if is_correct:
+                if transformed_output == 1:
+                    true_positives.append({'text': row['text'], 'label': row['label']})
+            else:
                 if transformed_output == 1 and row['label'] == 0:
                     false_positives.append({'text': row['text'], 'label': row['label']})
                 elif transformed_output == 0 and row['label'] == 1:
                     false_negatives.append({'text': row['text'], 'label': row['label']})
-            else:
-                if transformed_output == 1 and row['label'] == 1:
-                    true_positives.append({'text': row['text'], 'label': row['label']})  # Add this block
         else:
             invalid_predictions += 1
             invalid_outputs.append({'text': row['text'], 'label': row['label'], 'raw_output': raw_output})
@@ -149,7 +149,7 @@ def calculate_metrics(predictions: list, true_labels: list, invalid_predictions:
         'predictions': predictions,
         'false_positives': false_positives,
         'false_negatives': false_negatives,
-        'true_positives': true_positives,  # Add this line
+        'true_positives': true_positives,
         'invalid_predictions': invalid_predictions,
         'valid_predictions': valid_predictions,
         'invalid_outputs': invalid_outputs,

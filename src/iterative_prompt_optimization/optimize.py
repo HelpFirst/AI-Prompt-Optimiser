@@ -118,7 +118,10 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                 'precision': results['precision'],
                 'recall': results['recall'],
                 'accuracy': results['accuracy'],
-                'f1': results['f1']
+                'f1': results['f1'],
+                'valid_predictions': results['valid_predictions'],
+                'invalid_predictions': results['invalid_predictions'],
+                'total_predictions': results['valid_predictions'] + results['invalid_predictions']
             }
             current_prompt = generate_new_prompt(
                 current_prompt,
@@ -126,7 +129,7 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                 results['false_positives'],
                 results['false_negatives'],
                 results['true_positives'],
-                results['invalid_outputs'],  # Add this line
+                results['invalid_outputs'],
                 previous_metrics,
                 log_dir=log_dir,
                 iteration=i+1
