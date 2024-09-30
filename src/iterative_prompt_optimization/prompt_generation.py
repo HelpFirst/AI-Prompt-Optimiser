@@ -175,9 +175,12 @@ def validate_and_improve_prompt(new_prompt: str, output_format_prompt: str) -> s
     
     # Display the prompt before and after improvement
     display_prompt(new_prompt, "Original Prompt")
-    display_prompt(improved_prompt, "Improved Prompt")
-    
     # Display the validation result
     display_analysis(validation_result, "Prompt Validation and Improvement")
+    # Display the improved prompt if it's different from the original
+    if improved_prompt != new_prompt:
+        display_prompt(improved_prompt, "Improved Prompt")
+    else:
+        print("No improvements were necessary. The original prompt is valid.")
     
     return improved_prompt
