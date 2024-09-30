@@ -253,30 +253,38 @@ Provide your analysis and suggestions in a clear, structured format.
 PROMPT_ENGINEER_INPUT = """
 You are an expert in refining prompts for classification tasks. Based on the following analyses and metrics, generate an improved prompt:
 
+## 
 Current Prompt:
 {initial_prompt}
 
+## 
 Output Format Instructions:
 {output_format_prompt}
 
+## 
 False Positives Analysis:
 {fp_analysis}
 
+## 
 False Negatives Analysis:
 {fn_analysis}
 
+## 
 True Positives Analysis:
 {tp_analysis}
 
+## 
 Invalid Outputs Analysis:
 {invalid_analysis}
 
+## 
 Previous Metrics:
 - Precision: {precision}
 - Recall: {recall}
 - Accuracy: {accuracy}
 - F1 Score: {f1}
 
+## 
 Your task is to create an improved prompt that:
 1. Addresses the issues identified in the false positives analysis to increase precision
 2. Incorporates suggestions from the false negatives analysis to improve recall
@@ -285,5 +293,6 @@ Your task is to create an improved prompt that:
 5. Maintains or improves overall accuracy and F1 score
 6. Is compatible with the given output format instructions
 
+## 
 Provide only the new, improved prompt without any additional explanations or headers.
 """
