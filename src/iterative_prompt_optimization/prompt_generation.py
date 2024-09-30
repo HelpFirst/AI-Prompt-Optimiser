@@ -120,3 +120,60 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
         log_prompt_generation(log_dir, iteration, initial_prompt, fp_analysis, fn_analysis, tp_analysis, invalid_analysis, new_prompt)
 
     return new_prompt
+
+def validate_and_improve_prompt(new_prompt: str, output_format_prompt: str) -> str:
+    """
+    Validates the new prompt against best practices and improves it if necessary.
+
+    Args:
+        new_prompt (str): The newly generated prompt
+        output_format_prompt (str): The output format instructions
+
+    Returns:
+        str: The validated and potentially improved prompt
+    """
+    print("\nValidating and improving the new prompt...")
+
+    validation_prompt = f"""
+    As an expert in prompt engineering, your task is to validate and improve the following prompt:
+
+    Current Prompt:
+    {new_prompt}
+
+    Output Format Instructions:
+    {output_format_prompt}
+
+    Please evaluate this prompt based on the following best practices:
+    1. Clarity and specificity: Ensure the prompt is clear and specific about the task.
+    2. Contextual information: Check if the prompt provides necessary context.
+    3. Explicit instructions: Verify that the prompt gives explicit instructions on how to approach the task.
+    4. Examples: If applicable, check if the prompt includes relevant examples.
+    5. Output format: Confirm that the prompt clearly specifies the desired output format.
+    6. Avoiding biases: Ensure the prompt doesn't introduce unintended biases.
+    7. Appropriate length: Check if the prompt is concise yet comprehensive.
+    8. Task-specific considerations: Ensure the prompt addresses any specific requirements of the classification task.
+
+    If the prompt adheres to these best practices, please confirm its validity. If improvements are needed, please provide an enhanced version of the prompt that addresses any shortcomings while maintaining its original intent and compatibility with the output format instructions.
+
+    Your response should be in the following format:
+    Validation: [VALID/NEEDS IMPROVEMENT]
+    Improved Prompt: [If NEEDS IMPROVEMENT, provide the improved prompt here. If VALID, repeat the original prompt.]
+    Explanation: [Brief explanation of your assessment and any changes made]
+    """
+
+    validation_result = get_analysis(validation_prompt)
+    
+    # Parse the validation result
+    validation_status = "VALID" if "Validation: VALID" in validation_result else "NEEDS IMPROVEMENT"
+    improved_prompt = new_prompt  # Default to the original prompt
+    
+    if validation_status == "NEEDS IMPROVEMENT":
+        # Extract the improved prompt from the validation result
+        start_index = validation_result.find("Improved Prompt:") + len("Improved Prompt:")
+        end_index = validation_result.find("Explanation:")
+        improved_prompt = validation_result[start_index:end_index].strip()
+    
+    # Display the validation result
+    display_analysis(validation_result, "Prompt Validation and Improvement")
+    
+    return improved_prompt
