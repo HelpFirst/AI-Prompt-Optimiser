@@ -157,23 +157,51 @@ Note: The output should strictly adhere to the format specified above. Any devia
 """
 
 PROMPT_ENGINEER_INPUT = """
-You are an expert in crafting highly effective prompts. Your task is to help me improve a given prompt, with a specific focus on reducing false and false positives. I will give you the current prompt, output format, an analysis showing where it failed to classify a piece of text correctly (especially false negatives), and the metrics from the previous iteration. Your goal is to refine the prompt to be more precise and adaptable, ensuring that the AI can accurately classify similar texts going forward, with a particular emphasis on correctly identifying positive cases.
+You are an expert in refining prompts for classification tasks. Based on the following analyses and metrics, generate an improved prompt:
 
-Current prompt:
+## 
+Current Prompt:
 {initial_prompt}
 
-Analysis of misclassifications:
-{analysis}
+## 
+Output Format Instructions:
+{output_format_prompt}
 
-Metrics from the previous iteration:
+## 
+False Positives Analysis:
+{fp_analysis}
+
+## 
+False Negatives Analysis:
+{fn_analysis}
+
+## 
+True Positives Analysis:
+{tp_analysis}
+
+## 
+Invalid Outputs Analysis:
+{invalid_analysis}
+
+## 
+Previous Metrics:
 - Precision: {precision}
 - Recall: {recall}
 - Accuracy: {accuracy}
-- F1: {f1}
+- F1 Score: {f1}
 
-If precision is low, please focus on reducing false positives. If recall is low, please focus on strategies for reducing false negatives.
+## 
+Your task is to create an improved prompt that:
+1. Addresses the issues identified in the false positives analysis to increase precision (if any false positives were found)
+2. Incorporates suggestions from the false negatives analysis to improve recall (if any false negatives were found)
+3. Reinforces the patterns identified in the true positives analysis (if any true positives were found)
+4. Addresses the formatting issues identified in the invalid outputs analysis (if any invalid outputs were found)
+5. Maintains or improves overall accuracy and F1 score
+6. Is compatible with the given output format instructions
 
-Please provide an improved prompt that addresses the issues identified in the analysis. The revised prompt should be written in the first person, guiding the AI to handle difficult or edge cases. Ensure that the new prompt is compatible with the given output format. Please output the final 'production-ready' prompt only, with no headers or other text.
+If no issues were found in a particular category, focus on maintaining the current performance in that area.
+
+Provide only the new, improved prompt without any additional explanations or headers.
 """
 
 # Analysis prompts
@@ -247,52 +275,4 @@ Your task is to analyze these invalid outputs and suggest improvements to the pr
 3. Concrete suggestions to modify the prompt and output format instructions to reduce invalid outputs
 
 Provide your analysis and suggestions in a clear, structured format.
-"""
-
-# Update the PROMPT_ENGINEER_INPUT to include the invalid outputs analysis
-PROMPT_ENGINEER_INPUT = """
-You are an expert in refining prompts for classification tasks. Based on the following analyses and metrics, generate an improved prompt:
-
-## 
-Current Prompt:
-{initial_prompt}
-
-## 
-Output Format Instructions:
-{output_format_prompt}
-
-## 
-False Positives Analysis:
-{fp_analysis}
-
-## 
-False Negatives Analysis:
-{fn_analysis}
-
-## 
-True Positives Analysis:
-{tp_analysis}
-
-## 
-Invalid Outputs Analysis:
-{invalid_analysis}
-
-## 
-Previous Metrics:
-- Precision: {precision}
-- Recall: {recall}
-- Accuracy: {accuracy}
-- F1 Score: {f1}
-
-## 
-Your task is to create an improved prompt that:
-1. Addresses the issues identified in the false positives analysis to increase precision
-2. Incorporates suggestions from the false negatives analysis to improve recall
-3. Reinforces the patterns identified in the true positives analysis
-4. Addresses the formatting issues identified in the invalid outputs analysis
-5. Maintains or improves overall accuracy and F1 score
-6. Is compatible with the given output format instructions
-
-## 
-Provide only the new, improved prompt without any additional explanations or headers.
 """

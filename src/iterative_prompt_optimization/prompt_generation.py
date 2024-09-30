@@ -24,27 +24,39 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
     print("\nAnalyzing misclassifications, true positives, and invalid outputs...")
     
     # Analyze False Positives
-    fp_texts = "\n".join(f"- {item['text']}" for item in false_positives)
-    fp_analysis = get_analysis(config.FALSE_POSITIVES_ANALYSIS_PROMPT.format(initial_prompt=initial_prompt, fp_texts=fp_texts))
+    if false_positives:
+        fp_texts = "\n".join(f"- {item['text']}" for item in false_positives)
+        fp_analysis = get_analysis(config.FALSE_POSITIVES_ANALYSIS_PROMPT.format(initial_prompt=initial_prompt, fp_texts=fp_texts))
+    else:
+        fp_analysis = "No false positives found in this iteration."
     display_analysis(fp_analysis, "False Positives Analysis")
 
     # Analyze False Negatives
-    fn_texts = "\n".join(f"- {item['text']}" for item in false_negatives)
-    fn_analysis = get_analysis(config.FALSE_NEGATIVES_ANALYSIS_PROMPT.format(initial_prompt=initial_prompt, fn_texts=fn_texts))
+    if false_negatives:
+        fn_texts = "\n".join(f"- {item['text']}" for item in false_negatives)
+        fn_analysis = get_analysis(config.FALSE_NEGATIVES_ANALYSIS_PROMPT.format(initial_prompt=initial_prompt, fn_texts=fn_texts))
+    else:
+        fn_analysis = "No false negatives found in this iteration."
     display_analysis(fn_analysis, "False Negatives Analysis")
 
     # Analyze True Positives
-    tp_texts = "\n".join(f"- {item['text']}" for item in true_positives)
-    tp_analysis = get_analysis(config.TRUE_POSITIVES_ANALYSIS_PROMPT.format(initial_prompt=initial_prompt, tp_texts=tp_texts))
+    if true_positives:
+        tp_texts = "\n".join(f"- {item['text']}" for item in true_positives)
+        tp_analysis = get_analysis(config.TRUE_POSITIVES_ANALYSIS_PROMPT.format(initial_prompt=initial_prompt, tp_texts=tp_texts))
+    else:
+        tp_analysis = "No true positives found in this iteration."
     display_analysis(tp_analysis, "True Positives Analysis")
 
     # Analyze Invalid Outputs
-    invalid_texts = "\n".join(f"- Text: {item['text']}\n  Raw Output: {item['raw_output']}" for item in invalid_outputs)
-    invalid_analysis = get_analysis(config.INVALID_OUTPUTS_ANALYSIS_PROMPT.format(
-        initial_prompt=initial_prompt,
-        output_format_prompt=output_format_prompt,
-        invalid_texts=invalid_texts
-    ))
+    if invalid_outputs:
+        invalid_texts = "\n".join(f"- Text: {item['text']}\n  Raw Output: {item['raw_output']}" for item in invalid_outputs)
+        invalid_analysis = get_analysis(config.INVALID_OUTPUTS_ANALYSIS_PROMPT.format(
+            initial_prompt=initial_prompt,
+            output_format_prompt=output_format_prompt,
+            invalid_texts=invalid_texts
+        ))
+    else:
+        invalid_analysis = "No invalid outputs found in this iteration."
     display_analysis(invalid_analysis, "Invalid Outputs Analysis")
 
     # Generate improved prompt
