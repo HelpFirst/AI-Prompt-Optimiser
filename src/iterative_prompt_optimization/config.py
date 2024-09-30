@@ -278,7 +278,14 @@ Context:
 - Number of invalid outputs: {num_invalid}
 - Percentage of invalid outputs: {invalid_percentage:.2f}%
 
-Provide a concise analysis of these invalid outputs, focusing only on high-confidence observations. Suggest brief, impactful improvements to reduce formatting errors. Prioritize the most critical issues.
+Provide a concise analysis of these invalid outputs, focusing only on high-confidence observations. Suggest brief, impactful improvements to reduce formatting errors and ensure adherence to the specified output format.
 
-Limit your response to 3-5 key points.
+Important:
+1. Do NOT suggest changes to the output schema or format itself.
+2. Do NOT propose new keys, variables, or alterations to the existing dictionary structure.
+3. Focus solely on improving the prompt to achieve the current output format more consistently.
+
+Your suggestions should aim to guide the model to produce outputs that match the existing schema more accurately.
+
+Limit your response to 3-5 key points, prioritizing the most critical issues that lead to invalid outputs.
 """
