@@ -1,6 +1,6 @@
 import pandas as pd 
 from .evaluation import evaluate_prompt
-from .prompt_generation import generate_new_prompt
+from .prompt_generation import generate_new_prompt, validate_and_improve_prompt
 from .utils import (estimate_token_usage, estimate_cost, display_best_prompt,
                     display_comparison_table, log_final_results, select_model,
                     create_log_directory, log_initial_setup, display_metrics,
@@ -8,7 +8,7 @@ from .utils import (estimate_token_usage, estimate_cost, display_best_prompt,
 from . import config
 from rich import print as rprint
 from rich.panel import Panel
-from .dashboard_generator import generate_iteration_dashboard, generate_experiment_dashboard
+from .dashboard_generator import generate_iteration_dashboard, generate_experiment_dashboard, generate_combined_dashboard
 
 def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: pd.DataFrame, iterations: int,
                     eval_provider: str = None, eval_model: str = None,
@@ -123,7 +123,7 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                 'invalid_predictions': results['invalid_predictions'],
                 'total_predictions': results['valid_predictions'] + results['invalid_predictions']
             }
-            current_prompt = generate_new_prompt(
+            new_prompt = generate_new_prompt(
                 current_prompt,
                 output_format_prompt,
                 results['false_positives'],
@@ -134,12 +134,18 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                 log_dir=log_dir,
                 iteration=i+1
             )
+            
+            # Validate and improve the new prompt
+            current_prompt = validate_and_improve_prompt(new_prompt, output_format_prompt)
         
         # Generate and save iteration dashboard
         generate_iteration_dashboard(log_dir, i+1, results, current_prompt, output_format_prompt)
 
     # Generate and save experiment dashboard
     generate_experiment_dashboard(log_dir, all_metrics, best_prompt, output_format_prompt)
+
+    # Generate and save combined dashboard
+    generate_combined_dashboard(log_dir, all_metrics, best_prompt, output_format_prompt)
 
     # Display and log final results
     display_best_prompt(best_prompt, output_format_prompt)

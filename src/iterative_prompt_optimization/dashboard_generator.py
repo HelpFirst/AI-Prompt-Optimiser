@@ -165,3 +165,124 @@ def generate_experiment_dashboard(log_dir: str, all_metrics: list, best_prompt: 
     
     with open(os.path.join(log_dir, 'experiment_dashboard.html'), 'w') as f:
         f.write(html_content)
+
+def generate_combined_dashboard(log_dir: str, all_metrics: list, best_prompt: str, output_format_prompt: str):
+    """Generate and save a combined HTML dashboard for all iterations."""
+    template = Template('''
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Combined Experiment Dashboard</title>
+        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+            .container { max-width: 1200px; margin: 0 auto; }
+            .prompt { white-space: pre-wrap; background-color: #f0f0f0; padding: 10px; border-radius: 5px; }
+            .iteration { margin-bottom: 40px; border: 1px solid #ddd; padding: 20px; border-radius: 5px; }
+            .metrics { display: flex; flex-wrap: wrap; justify-content: space-between; }
+            .metric { width: 30%; margin-bottom: 10px; }
+            .analysis { margin-top: 20px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Combined Experiment Dashboard</h1>
+            <div id="metricsChart"></div>
+            <h2>Best Prompt</h2>
+            <pre class="prompt">{{ best_prompt }}</pre>
+            <h2>Output Format</h2>
+            <pre class="prompt">{{ output_format_prompt }}</pre>
+            <h2>Iterations</h2>
+            {% for iteration in iterations %}
+            <div class="iteration">
+                <h3>Iteration {{ iteration.number }}</h3>
+                <div class="metrics">
+                    <div class="metric"><strong>Precision:</strong> {{ "%.4f"|format(iteration.precision) }}</div>
+                    <div class="metric"><strong>Recall:</strong> {{ "%.4f"|format(iteration.recall) }}</div>
+                    <div class="metric"><strong>Accuracy:</strong> {{ "%.4f"|format(iteration.accuracy) }}</div>
+                    <div class="metric"><strong>F1 Score:</strong> {{ "%.4f"|format(iteration.f1) }}</div>
+                    <div class="metric"><strong>Valid Predictions:</strong> {{ iteration.valid_predictions }}</div>
+                    <div class="metric"><strong>Invalid Predictions:</strong> {{ iteration.invalid_predictions }}</div>
+                </div>
+                <h4>Prompt</h4>
+                <pre class="prompt">{{ iteration.prompt }}</pre>
+                <div class="analysis">
+                    <h4>False Positives Analysis</h4>
+                    <pre>{{ iteration.fp_analysis }}</pre>
+                    <h4>False Negatives Analysis</h4>
+                    <pre>{{ iteration.fn_analysis }}</pre>
+                    <h4>True Positives Analysis</h4>
+                    <pre>{{ iteration.tp_analysis }}</pre>
+                    <h4>Invalid Outputs Analysis</h4>
+                    <pre>{{ iteration.invalid_analysis }}</pre>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <script>
+            var data = {{ plotly_data|tojson }};
+            var layout = {
+                title: 'Metrics Across Iterations',
+                xaxis: {title: 'Iteration'},
+                yaxis: {title: 'Score', range: [0, 1]}
+            };
+            Plotly.newPlot('metricsChart', data, layout);
+        </script>
+    </body>
+    </html>
+    ''')
+    
+    # Prepare data for Plotly
+    metrics = ['precision', 'recall', 'accuracy', 'f1', 'valid_predictions', 'invalid_predictions']
+    colors = ['red', 'blue', 'green', 'purple', 'orange', 'brown']
+    plotly_data = []
+    
+    for i, metric in enumerate(metrics):
+        plotly_data.append({
+            'x': [m['iteration'] for m in all_metrics],
+            'y': [m[metric] for m in all_metrics],
+            'type': 'scatter',
+            'mode': 'lines+markers',
+            'name': metric.capitalize().replace('_', ' '),
+            'line': {'color': colors[i]}
+        })
+    
+    # Collect data for all iterations
+    iterations = []
+    for i, metrics in enumerate(all_metrics):
+        iteration_data = {
+            'number': i + 1,
+            'precision': metrics['precision'],
+            'recall': metrics['recall'],
+            'accuracy': metrics['accuracy'],
+            'f1': metrics['f1'],
+            'valid_predictions': metrics['valid_predictions'],
+            'invalid_predictions': metrics['invalid_predictions'],
+        }
+        
+        # Load additional data from iteration files
+        iteration_file = os.path.join(log_dir, f'iteration_{i+1}_prompt_generation.json')
+        if os.path.exists(iteration_file):
+            with open(iteration_file, 'r') as f:
+                iteration_json = json.load(f)
+                iteration_data.update({
+                    'prompt': iteration_json['initial_prompt'],
+                    'fp_analysis': iteration_json['false_positives_analysis'],
+                    'fn_analysis': iteration_json['false_negatives_analysis'],
+                    'tp_analysis': iteration_json['true_positives_analysis'],
+                    'invalid_analysis': iteration_json['invalid_outputs_analysis'],
+                })
+        
+        iterations.append(iteration_data)
+    
+    html_content = template.render(
+        plotly_data=plotly_data,
+        best_prompt=best_prompt,
+        output_format_prompt=output_format_prompt,
+        iterations=iterations
+    )
+    
+    with open(os.path.join(log_dir, 'combined_dashboard.html'), 'w') as f:
+        f.write(html_content)
