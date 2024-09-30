@@ -173,6 +173,10 @@ def validate_and_improve_prompt(new_prompt: str, output_format_prompt: str) -> s
         end_index = validation_result.find("Explanation:")
         improved_prompt = validation_result[start_index:end_index].strip()
     
+    # Display the prompt before and after improvement
+    display_prompt(new_prompt, "Original Prompt")
+    display_prompt(improved_prompt, "Improved Prompt")
+    
     # Display the validation result
     display_analysis(validation_result, "Prompt Validation and Improvement")
     

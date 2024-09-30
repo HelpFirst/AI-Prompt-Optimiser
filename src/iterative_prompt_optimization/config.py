@@ -157,7 +157,7 @@ Note: The output should strictly adhere to the format specified above. Any devia
 """
 
 PROMPT_ENGINEER_INPUT = """
-You are an expert in refining prompts for classification tasks. Based on the following analyses and metrics, generate an improved prompt:
+You are an expert in refining prompts for classification tasks. Your goal is to optimize a zero-shot prompt consisting of four parts. Based on the following analyses and metrics, generate an improved prompt:
 
 Current Prompt:
 {initial_prompt}
@@ -186,15 +186,14 @@ Previous Metrics:
 - Valid Predictions: {valid_predictions}
 - Invalid Predictions: {invalid_predictions}
 
-Your task is to create an improved prompt that:
-1. Addresses the issues identified in the false positives analysis to increase precision (if any false positives were found)
-2. Incorporates suggestions from the false negatives analysis to improve recall (if any false negatives were found)
-3. Reinforces the patterns identified in the true positives analysis (if any true positives were found)
-4. Addresses the formatting issues identified in the invalid outputs analysis (if any invalid outputs were found)
-5. Maintains or improves overall accuracy and F1 score
-6. Is compatible with the given output format instructions
+Create a concise, improved prompt that addresses the most critical issues identified in the analyses. Focus on:
+1. Increasing precision and recall
+2. Maintaining or improving overall accuracy and F1 score
+3. Reducing invalid outputs
+4. Adhering to the output format instructions
 
-Consider the relative importance of each issue based on the provided metrics and analyses. If no issues were found in a particular category, focus on maintaining the current performance in that area.
+Keep the prompt short and focused. Maintain the structure of a zero-shot prompt with four parts. 
+Prioritize clarity and effectiveness over length.
 
 Provide only the new, improved prompt without any additional explanations or headers.
 """
@@ -215,14 +214,9 @@ Context:
 - Percentage of false positives: {fp_percentage:.2f}%
 - False positive to false negative ratio: {fp_fn_ratio:.2f}
 
-Your task is to analyze these false positives and suggest improvements to the prompt that would increase precision and reduce false warnings. Focus on:
-1. Common patterns or characteristics in these false positives
-2. Specific elements of the current prompt that might be causing these misclassifications
-3. Concrete suggestions to modify the prompt to reduce false positives while maintaining overall accuracy
+Provide a concise analysis of these false positives, focusing only on high-confidence observations. Suggest brief, impactful improvements to increase precision. Prioritize the most critical issues.
 
-Consider the context provided above in your analysis. If the false positive rate is low compared to false negatives, consider this in the weight of your suggestions.
-
-Provide your analysis and suggestions in a clear, structured format.
+Limit your response to 3-5 key points.
 """
 
 FALSE_NEGATIVES_ANALYSIS_PROMPT = """
@@ -240,14 +234,9 @@ Context:
 - Percentage of false negatives: {fn_percentage:.2f}%
 - False negative to false positive ratio: {fn_fp_ratio:.2f}
 
-Your task is to analyze these false negatives and suggest improvements to the prompt that would increase recall and reduce missed positives. Focus on:
-1. Common patterns or characteristics in these false negatives
-2. Subtle indicators of positive cases that the current prompt might be missing
-3. Concrete suggestions to modify the prompt to capture these missed positives while maintaining overall accuracy
+Provide a concise analysis of these false negatives, focusing only on high-confidence observations. Suggest brief, impactful improvements to increase recall. Prioritize the most critical issues.
 
-Consider the context provided above in your analysis. If the false negative rate is high compared to false positives, prioritize addressing these issues in your suggestions.
-
-Provide your analysis and suggestions in a clear, structured format.
+Limit your response to 3-5 key points.
 """
 
 TRUE_POSITIVES_ANALYSIS_PROMPT = """
@@ -266,14 +255,9 @@ Context:
 - True positive to false positive ratio: {tp_fp_ratio:.2f}
 - True positive to false negative ratio: {tp_fn_ratio:.2f}
 
-Your task is to analyze these true positives and identify what makes them successful classifications. Focus on:
-1. Common patterns or characteristics in these true positives
-2. Key elements of the current prompt that effectively capture these positive cases
-3. Suggestions on how to reinforce these successful patterns in the prompt
+Provide a concise analysis of these true positives, focusing only on high-confidence observations. Identify key elements that lead to successful classifications. Suggest brief ways to reinforce these patterns.
 
-Consider the context provided above in your analysis. Use the ratios to understand how well the model is performing on positive cases compared to misclassifications.
-
-Provide your analysis and suggestions in a clear, structured format.
+Limit your response to 3-5 key points.
 """
 
 # Add this new prompt for analyzing invalid outputs
@@ -294,12 +278,7 @@ Context:
 - Number of invalid outputs: {num_invalid}
 - Percentage of invalid outputs: {invalid_percentage:.2f}%
 
-Your task is to analyze these invalid outputs and suggest improvements to the prompt and output format instructions that would reduce formatting errors. Focus on:
-1. Common patterns or characteristics in these invalid outputs
-2. Specific elements of the current prompt or output format instructions that might be causing these formatting errors
-3. Concrete suggestions to modify the prompt and output format instructions to reduce invalid outputs
+Provide a concise analysis of these invalid outputs, focusing only on high-confidence observations. Suggest brief, impactful improvements to reduce formatting errors. Prioritize the most critical issues.
 
-Consider the context provided above in your analysis. If the invalid output rate is high, prioritize addressing these issues in your suggestions.
-
-Provide your analysis and suggestions in a clear, structured format.
+Limit your response to 3-5 key points.
 """

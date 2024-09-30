@@ -1,12 +1,7 @@
 To-do:
 - Always include Chain of thought as part of the prompt, and include that into the error analysis - make it a requirement
-- Make sure not to include the wrong formatted outputs into the anlaysis of FP and FN, if included, then included as invalid output formatting, with a prompt mention to make sure that the output format is correct and accoring to the prompt output format instruction.
 - Allow to pass the variable that wants to be optimised (e.g. f1 score, recall)
 - Variable to optimise based on precision/recall into the prompt optimisation step, and also threshold values (e.g. if precision>X, then focus on increasing recall)
-- Individual risk analysis of each FP and FN
-- Break down the analysis into subcategories: FP, FN and TP
-- Add formatting categories of the anlaysis
-- Add also true positives into the analysis.
 - Integrate the code with promptfoo 
 - ask for a chain of thought prompt to solve the problem, e.g.
 
@@ -20,3 +15,8 @@ Done:
 -Allow for different output formats. Think about EHU - risk_output = "present" or risk_output = "not present" is what we are evaluating against.
 -Estimate number of tokens before starting the experiment - so we know the estimation costs. Ask to proceed when printing the cost?
 - Include the metrics of the previous prompt into the prompt optimisation step
+- Make sure not to include the wrong formatted outputs into the anlaysis of FP and FN, if included, then included as invalid output formatting, with a prompt mention to make sure that the output format is correct and accoring to the prompt output format instruction.
+- Individual risk analysis of each FP and FN
+- Break down the analysis into subcategories: FP, FN and TP
+- Add formatting categories of the anlaysis
+- Add also true positives into the analysis.
