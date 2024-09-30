@@ -12,7 +12,7 @@ MODEL_OPTIONS = {
     "google": ["gemini-pro"]
 }
 
-# Pricing per 1000 tokens (approximate as of 2023, may need updating)
+# Pricing per 1000 tokens
 PRICING = {
     "openai": {
         "gpt-3.5-turbo": 0.002,
