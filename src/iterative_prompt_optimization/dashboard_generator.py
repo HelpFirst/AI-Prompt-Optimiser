@@ -190,10 +190,21 @@ def generate_combined_dashboard(log_dir: str, all_metrics: list, best_prompt: st
         <div class="container">
             <h1>Combined Experiment Dashboard</h1>
             <div id="metricsChart"></div>
-            <h2>Best Prompt</h2>
+            <div id="validityChart"></div>
+            <h2>Best Prompt - F1 Score: {{ best_metrics.f1|round(4) }}</h2>
             <pre class="prompt">{{ best_prompt }}</pre>
             <h2>Output Format</h2>
             <pre class="prompt">{{ output_format_prompt }}</pre>
+            <h2>Summary of Best Metrics</h2>
+            <table>
+                <tr><th>Metric</th><th>Value</th></tr>
+                <tr><td>Precision</td><td>{{ best_metrics.precision|round(4) }}</td></tr>
+                <tr><td>Recall</td><td>{{ best_metrics.recall|round(4) }}</td></tr>
+                <tr><td>Accuracy</td><td>{{ best_metrics.accuracy|round(4) }}</td></tr>
+                <tr><td>F1 Score</td><td>{{ best_metrics.f1|round(4) }}</td></tr>
+                <tr><td>Valid Predictions</td><td>{{ best_metrics.valid_predictions }}</td></tr>
+                <tr><td>Invalid Predictions</td><td>{{ best_metrics.invalid_predictions }}</td></tr>
+            </table>
             <h2>Iterations</h2>
             {% for iteration in iterations %}
             <div class="iteration">
@@ -210,44 +221,69 @@ def generate_combined_dashboard(log_dir: str, all_metrics: list, best_prompt: st
                 <pre class="prompt">{{ iteration.prompt }}</pre>
                 <div class="analysis">
                     <h4>False Positives Analysis</h4>
-                    <pre>{{ iteration.fp_analysis }}</pre>
+                    <pre class="prompt">{{ iteration.fp_analysis }}</pre>
                     <h4>False Negatives Analysis</h4>
-                    <pre>{{ iteration.fn_analysis }}</pre>
+                    <pre class="prompt">{{ iteration.fn_analysis }}</pre>
                     <h4>True Positives Analysis</h4>
-                    <pre>{{ iteration.tp_analysis }}</pre>
+                    <pre class="prompt">{{ iteration.tp_analysis }}</pre>
                     <h4>Invalid Outputs Analysis</h4>
-                    <pre>{{ iteration.invalid_analysis }}</pre>
+                    <pre class="prompt">{{ iteration.invalid_analysis }}</pre>
                 </div>
             </div>
             {% endfor %}
         </div>
         <script>
-            var data = {{ plotly_data|tojson }};
-            var layout = {
+            var metricsData = {{ metrics_data|tojson }};
+            var metricsLayout = {
                 title: 'Metrics Across Iterations',
                 xaxis: {title: 'Iteration'},
                 yaxis: {title: 'Score', range: [0, 1]}
             };
-            Plotly.newPlot('metricsChart', data, layout);
+            Plotly.newPlot('metricsChart', metricsData, metricsLayout);
+
+            var validityData = {{ validity_data|tojson }};
+            var validityLayout = {
+                title: 'Valid vs Invalid Predictions Across Iterations',
+                xaxis: {title: 'Iteration'},
+                yaxis: {title: 'Number of Predictions'}
+            };
+            Plotly.newPlot('validityChart', validityData, validityLayout);
         </script>
     </body>
     </html>
     ''')
     
     # Prepare data for Plotly
-    metrics = ['precision', 'recall', 'accuracy', 'f1', 'valid_predictions', 'invalid_predictions']
-    colors = ['red', 'blue', 'green', 'purple', 'orange', 'brown']
-    plotly_data = []
+    metrics = ['precision', 'recall', 'accuracy', 'f1']
+    colors = ['red', 'blue', 'green', 'purple']
+    metrics_data = []
     
     for i, metric in enumerate(metrics):
-        plotly_data.append({
+        metrics_data.append({
             'x': [m['iteration'] for m in all_metrics],
             'y': [m[metric] for m in all_metrics],
             'type': 'scatter',
             'mode': 'lines+markers',
-            'name': metric.capitalize().replace('_', ' '),
+            'name': metric.capitalize(),
             'line': {'color': colors[i]}
         })
+    
+    validity_data = [
+        {
+            'x': [m['iteration'] for m in all_metrics],
+            'y': [m['valid_predictions'] for m in all_metrics],
+            'type': 'bar',
+            'name': 'Valid Predictions',
+            'marker': {'color': 'green'}
+        },
+        {
+            'x': [m['iteration'] for m in all_metrics],
+            'y': [m['invalid_predictions'] for m in all_metrics],
+            'type': 'bar',
+            'name': 'Invalid Predictions',
+            'marker': {'color': 'red'}
+        }
+    ]
     
     # Collect data for all iterations
     iterations = []
@@ -277,11 +313,16 @@ def generate_combined_dashboard(log_dir: str, all_metrics: list, best_prompt: st
         
         iterations.append(iteration_data)
     
+    # Get the best metrics (assuming the last iteration has the best F1 score)
+    best_metrics = all_metrics[-1]
+    
     html_content = template.render(
-        plotly_data=plotly_data,
+        metrics_data=metrics_data,
+        validity_data=validity_data,
         best_prompt=best_prompt,
         output_format_prompt=output_format_prompt,
-        iterations=iterations
+        iterations=iterations,
+        best_metrics=best_metrics
     )
     
     with open(os.path.join(log_dir, 'combined_dashboard.html'), 'w') as f:
