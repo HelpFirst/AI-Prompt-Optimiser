@@ -9,6 +9,7 @@ To-do:
         Then, output your final answer inside of <answer> tags. 
         Inside the <answer> tags return just 1 or 0, where 1 means positive and 0 means negative."""
 - Agentic behaviour
+- add something in the prompt about making sure it writes thing in British English
 
 Done:
 - Use different models to evaluate the performance of the prompt (e.g. gpt3.5) and for the prompt optimisation step (e.g. gpt4)
