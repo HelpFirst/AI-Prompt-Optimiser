@@ -26,10 +26,9 @@ import pandas as pd
 
 # Prepare your evaluation data
 eval_data = pd.DataFrame({
-    'text': ['Sample text 1', 'Sample text 2'],
-    'label': [0, 1]
+    'text': ['I am happy!', 'excited about the trip', 'I am sad!', ' i am not sure how i feel'],
+    'label': [1, 1, 0, 1]
     })
-
 # Define your initial prompt and output format
 initial_prompt = "Classify the following text as either positive (1) or negative (0):"
 output_format_prompt = "Output your classification as a single digit: 0 or 1"
@@ -88,71 +87,71 @@ The evaluation and prompt optimization process follows these steps:
 6. Iteration: Repeat steps 2-5 for the specified number of iterations.
 7. Results: Select the best-performing prompt based on F1 score.
 
-
-+-------------------+
-|   Initial Setup   |
-| (Load prompt and  |
-|   eval data)      |
-+--------+----------+
-         |
-         v
-+-------------------+
-|    Evaluation     |
-| (Test prompt on   |
-|    eval data)     |
-+--------+----------+
-         |
-         v
-+-------------------+
-|     Metrics       |
-|   Calculation     |
-+--------+----------+
-         |
-         v
-+-------------------+
-|     Analysis      |
-| (FP, FN, Invalid) |
-+--------+----------+
-         |
-         v
-+-------------------+
-| Prompt Generation |
-| (Create new prompt|
-|  based on analysis)|
-+--------+----------+
-         |
-         v
-+-------------------+
-|    Iteration      |
-| (Repeat process   |
-|  for N iterations)|
-+--------+----------+
-         |
-         v
-+-------------------+
-|     Results       |
-| (Select best      |
-|  performing prompt)|
-+-------------------+
-
+```
+        +-------------------+               
+        | 1. Initial Setup  |               
+        | (Initial prompt   |               
+        |   & eval data)    |               
+        +--------+----------+               
+                |                            
+                v                            
+        +-------------------+               
+        | 2. Evaluation     |<--------------+
+        | (Test prompt on   |               |
+        |    eval data)     |               |
+        +--------+----------+               |
+                |                           |
+                v                           |
+        +-------------------+               |
+        | 3. Metrics        |               |
+        |   Calculation     |               |
+        +--------+----------+               |
+                |                   +-------------------+
+                |                   |    Iteration      |
+                |                   | (Repeat process   |
+                |                   |  for N iterations)|
+                |                   +--------+----------+
+                v                           |
+        +-------------------+               |
+        | 4. Analysis       |               |
+        |  (FP, FN, TP,     |               |
+        |  Formatting)      |               |
+        +--------+----------+               |
+                |                           |
+                v                           |
+        +-------------------+               |
+        | 5. Prompt         |               |
+        |    Generation     |               |
+        | (Create new prompt|               |
+        | based on analysis)|               |
+        +--------+----------+               |
+                |                           |
+                +---------------------------+
+                |
+                v
+        +-------------------+
+        | 7. Results        |
+        | (Select best      |
+        | performing prompt)|
+        +-------------------+
+```
 
 
 ## Configuration
 
 The library uses environment variables for API keys and other configuration settings. Create a `.env` file in your project root with the following structure:
 
-OPENAI_API_KEY=your_openai_api_key
--
-AZURE_OPENAI_API_KEY=your_azure_openai_api_key
-AZURE_OPENAI_API_BASE=your_azure_openai_api_base
-AZURE_OPENAI_API_VERSION=your_azure_openai_api_version
--
-OLLAMA_MODEL=your_preferred_ollama_model
-OLLAMA_ENDPOINT=http://localhost:11434
--
-ANTHROPIC_API_KEY=your_anthropic_api_key
--
-GOOGLE_AI_API_KEY=your_google_ai_api_key
+    OPENAI_API_KEY=your_openai_api_key
+    -
+    AZURE_OPENAI_API_KEY=your_azure_openai_api_key
+    AZURE_OPENAI_API_BASE=your_azure_openai_api_base
+    AZURE_OPENAI_API_VERSION=your_azure_openai_api_version
+    -
+    OLLAMA_MODEL=your_preferred_ollama_model
+    -
+    ANTHROPIC_API_KEY=your_anthropic_api_key
+    -
+    GOOGLE_AI_API_KEY=your_google_ai_api_key
 
 
 ## License
