@@ -39,7 +39,8 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
 
     for index, row in eval_data.iterrows():
         # Get model output for the current text
-        model_output = get_model_output(provider, model, temperature, full_prompt, row['text'], index, len(eval_data), use_json_mode, use_cache)
+        model_output = get_model_output(provider, model, temperature, full_prompt, row['text'], 
+                                        index, len(eval_data), use_json_mode, use_cache)
         raw_output = model_output['choices'][0]['message']['content']
         
         # Transform and compare the model output with the true label

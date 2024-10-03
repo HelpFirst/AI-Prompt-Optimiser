@@ -16,9 +16,9 @@ CACHE_DIR.mkdir(exist_ok=True)
 
 MAX_RETRIES = 3
 
-def get_model_output(provider: str, model: str, temperature: float, full_prompt: str, text: str, index: int, total: int, use_json_mode: bool = False, use_cache: bool = True) -> dict:
+def get_model_output(provider: str, model: str, temperature: float, full_prompt: str, text: str, index: int = None, total: int = None, use_json_mode: bool = False, use_cache: bool = True) -> dict:
     """
-    Get the output from the selected AI model for evaluation.
+    Get the output from the selected AI model for evaluation or analysis.
 
     Args:
         provider (str): The AI provider (e.g., "ollama", "openai")
@@ -26,31 +26,33 @@ def get_model_output(provider: str, model: str, temperature: float, full_prompt:
         temperature (float): The temperature setting for the model
         full_prompt (str): The complete prompt including instructions
         text (str): The input text to be evaluated
-        index (int): Current index in the dataset
-        total (int): Total number of samples
-        use_json_mode (bool): Whether to use JSON mode for output
+        index (int, optional): Current index in the dataset (for evaluation)
+        total (int, optional): Total number of samples (for evaluation)
+        use_json_mode (bool): Whether to use JSON mode for output (only for OpenAI and AzureOpenAI during evaluation)
         use_cache (bool): Whether to use cached results
 
     Returns:
         dict: Model output containing the generated content
     """
-    print(f"Processing text {index + 1}/{total}")
+    if index is not None and total is not None:
+        print(f"Processing text {index + 1}/{total}")
     
     if use_cache:
         cache_key = get_cache_key(full_prompt, text, model)
         cached_output = get_cached_output(cache_key)
         if cached_output:
-            print(f"Using cached output for text {index + 1}/{total}")
+            if index is not None and total is not None:
+                print(f"Using cached output for text {index + 1}/{total}")
             return cached_output
 
     for retry in range(MAX_RETRIES):
         try:
-            if provider == "ollama":
+            if provider == "azure_openai":
+                output = _get_azure_openai_output(model, full_prompt, text, use_json_mode, temperature)
+            elif provider == "ollama":
                 output = _get_ollama_output(model, full_prompt, text, temperature)
             elif provider == "openai":
-                output = _get_openai_output(model, full_prompt, text, temperature)
-            elif provider == "azure_openai":
-                output = _get_azure_openai_output(model, full_prompt, text, use_json_mode, temperature)
+                output = _get_openai_output(model, full_prompt, text, use_json_mode, temperature)
             elif provider == "anthropic":
                 output = _get_anthropic_output(model, full_prompt, text, temperature)
             elif provider == "google":
@@ -62,7 +64,7 @@ def get_model_output(provider: str, model: str, temperature: float, full_prompt:
                 cache_output(cache_key, output)
             return output
         except Exception as e:
-            print(f"API error for text at index {index}: {str(e)}. Retrying... (Attempt {retry + 1}/{MAX_RETRIES})")
+            print(f"API error: {str(e)}. Retrying... (Attempt {retry + 1}/{MAX_RETRIES})")
     print(f"Max retries reached. Using default prediction.")
     return {'choices': [{'message': {'content': '0'}}]}  # Default prediction
 
@@ -82,16 +84,21 @@ def _get_ollama_output(model: str, full_prompt: str, text: str, temperature: flo
     else:
         raise ValueError("Unexpected Ollama response format")
 
-def _get_openai_output(model: str, full_prompt: str, text: str, temperature: float) -> dict:
+def _get_openai_output(model: str, full_prompt: str, text: str, use_json_mode: bool, temperature: float) -> dict:
     """Helper function to get output from OpenAI models."""
-    response = openai.ChatCompletion.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": full_prompt},
-            {"role": "user", "content": text}
-        ],
-        temperature=temperature
-    )
+    messages = [
+        {"role": "system", "content": full_prompt},
+        {"role": "user", "content": text}
+    ]
+    completion_args = {
+        "model": model,
+        "messages": messages,
+        "temperature": temperature
+    }
+    if use_json_mode:
+        completion_args["response_format"] = {"type": "json_object"}
+    
+    response = openai.ChatCompletion.create(**completion_args)
     return {'choices': [{'message': {'content': response.choices[0].message['content'].strip()}}]}
 
 def _get_azure_openai_output(model: str, full_prompt: str, text: str, use_json_mode: bool, temperature: float) -> dict:
@@ -151,24 +158,16 @@ def _get_google_output(model: str, full_prompt: str, text: str, temperature: flo
 def get_analysis(provider: str, model: str, temperature: float, analysis_prompt: str) -> str:
     """
     Get an analysis from the selected AI model for optimization.
-
-    Args:
-        provider (str): The AI provider (e.g., "ollama", "openai")
-        model (str): The specific model being used
-        temperature (float): The temperature setting for the model
-        analysis_prompt (str): The prompt for generating analysis
-
-    Returns:
-        str: Generated analysis
+    This function does not use JSON mode.
     """
     for retry in range(MAX_RETRIES):
         try:
-            if provider == "ollama":
+            if provider == "azure_openai":
+                return _get_azure_openai_analysis(model, analysis_prompt, temperature)
+            elif provider == "ollama":
                 return _get_ollama_analysis(model, analysis_prompt, temperature)
             elif provider == "openai":
                 return _get_openai_analysis(model, analysis_prompt, temperature)
-            elif provider == "azure_openai":
-                return _get_azure_openai_analysis(model, analysis_prompt, temperature)
             elif provider == "anthropic":
                 return _get_anthropic_analysis(model, analysis_prompt, temperature)
             elif provider == "google":
@@ -190,7 +189,7 @@ def _get_ollama_analysis(model: str, analysis_prompt: str, temperature: float) -
     return analysis_response['message']['content'].strip()
 
 def _get_azure_openai_analysis(model: str, analysis_prompt: str, temperature: float) -> str:
-    """Helper function to get analysis from Azure OpenAI models."""
+    """Helper function to get analysis from Azure OpenAI models without JSON mode."""
     client = AzureOpenAI(
         api_key=config.AZURE_OPENAI_API_KEY,  
         api_version=config.AZURE_OPENAI_API_VERSION,
