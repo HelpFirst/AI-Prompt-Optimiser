@@ -36,8 +36,10 @@ SELECTED_PROVIDER = None
 MODEL_NAME = None
 EVAL_PROVIDER = None
 EVAL_MODEL = None
+EVAL_TEMPERATURE = 0.7
 OPTIM_PROVIDER = None
 OPTIM_MODEL = None
+OPTIM_TEMPERATURE = 0.9
 
 import os
 from dotenv import load_dotenv
@@ -89,39 +91,43 @@ def get_model() -> tuple:
     """
     return SELECTED_PROVIDER, MODEL_NAME
 
-def set_models(eval_provider: str, eval_model: str, optim_provider: str, optim_model: str) -> None:
+def set_models(eval_provider: str, eval_model: str, eval_temperature: float, optim_provider: str, optim_model: str, optim_temperature: float) -> None:
     """
-    Set the selected model providers and names for evaluation and optimization.
+    Set the selected model providers, names, and temperatures for evaluation and optimization.
 
     Args:
         eval_provider (str): The selected AI provider for evaluation
         eval_model (str): The selected model name for evaluation
+        eval_temperature (float): The temperature setting for evaluation
         optim_provider (str): The selected AI provider for optimization
         optim_model (str): The selected model name for optimization
+        optim_temperature (float): The temperature setting for optimization
     """
-    global EVAL_PROVIDER, EVAL_MODEL, OPTIM_PROVIDER, OPTIM_MODEL
+    global EVAL_PROVIDER, EVAL_MODEL, EVAL_TEMPERATURE, OPTIM_PROVIDER, OPTIM_MODEL, OPTIM_TEMPERATURE
     EVAL_PROVIDER = eval_provider
     EVAL_MODEL = eval_model
+    EVAL_TEMPERATURE = eval_temperature
     OPTIM_PROVIDER = optim_provider
     OPTIM_MODEL = optim_model
+    OPTIM_TEMPERATURE = optim_temperature
 
 def get_eval_model() -> tuple:
     """
-    Get the currently selected model provider and name for evaluation.
+    Get the currently selected model provider, name, and temperature for evaluation.
 
     Returns:
-        tuple: (EVAL_PROVIDER, EVAL_MODEL)
+        tuple: (EVAL_PROVIDER, EVAL_MODEL, EVAL_TEMPERATURE)
     """
-    return EVAL_PROVIDER, EVAL_MODEL
+    return EVAL_PROVIDER, EVAL_MODEL, EVAL_TEMPERATURE
 
 def get_optim_model() -> tuple:
     """
-    Get the currently selected model provider and name for optimization.
+    Get the currently selected model provider, name, and temperature for optimization.
 
     Returns:
-        tuple: (OPTIM_PROVIDER, OPTIM_MODEL)
+        tuple: (OPTIM_PROVIDER, OPTIM_MODEL, OPTIM_TEMPERATURE)
     """
-    return OPTIM_PROVIDER, OPTIM_MODEL
+    return OPTIM_PROVIDER, OPTIM_MODEL, OPTIM_TEMPERATURE
 
 
 ANALYSIS_PROMPT = """

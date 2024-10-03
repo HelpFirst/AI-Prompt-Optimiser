@@ -9,10 +9,11 @@ from . import config
 from rich import print as rprint
 from rich.panel import Panel
 from .dashboard_generator import generate_iteration_dashboard, generate_experiment_dashboard, generate_combined_dashboard
+from .model_interface import get_model_output, get_analysis
 
 def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: pd.DataFrame, iterations: int,
-                    eval_provider: str = None, eval_model: str = None,
-                    optim_provider: str = None, optim_model: str = None,
+                    eval_provider: str = None, eval_model: str = None, eval_temperature: float = 0.7,
+                    optim_provider: str = None, optim_model: str = None, optim_temperature: float = 0.9,
                     output_schema: dict = None, use_cache: bool = True) -> tuple:
     """
     Optimize a prompt through iterative refinement and evaluation.
@@ -30,9 +31,11 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
         iterations (int): Number of optimization iterations to perform
         eval_provider (str, optional): Provider for the evaluation model
         eval_model (str, optional): Name of the evaluation model
+        eval_temperature (float, optional): Temperature for the evaluation model. Defaults to 0.7.
         optim_provider (str, optional): Provider for the optimization model
         optim_model (str, optional): Name of the optimization model
-        output_schema (dict, optional): Schema for transforming and comparing output
+        optim_temperature (float, optional): Temperature for the optimization model. Defaults to 0.9.
+        output_schema (dict, optional): Schema for transforming and comparing output with the true label
         use_cache (bool, optional): Whether to use cached model outputs. Defaults to True.
 
     Returns:
@@ -44,16 +47,18 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
     if not optim_provider or not optim_model:
         optim_provider, optim_model = select_model("optimization")
     
-    config.set_models(eval_provider, eval_model, optim_provider, optim_model)
+    config.set_models(eval_provider, eval_model, eval_temperature, optim_provider, optim_model, optim_temperature)
 
     # Get the selected models from config
-    eval_provider, eval_model = config.get_eval_model()
-    optim_provider, optim_model = config.get_optim_model()
+    eval_provider, eval_model, eval_temperature = config.get_eval_model()
+    optim_provider, optim_model, optim_temperature = config.get_optim_model()
 
     print(f"Selected evaluation provider: {eval_provider}")
     print(f"Selected evaluation model: {eval_model}")
+    print(f"Evaluation temperature: {eval_temperature}")
     print(f"Selected optimization provider: {optim_provider}")
     print(f"Selected optimization model: {optim_model}")
+    print(f"Optimization temperature: {optim_temperature}")
 
     # Estimate token usage and cost
     total_tokens = estimate_token_usage(initial_prompt, output_format_prompt, eval_data, iterations)
@@ -80,6 +85,7 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
     # Log initial setup
     log_initial_setup(log_dir, initial_prompt, output_format_prompt, iterations, eval_data)
     
+
     # Main optimization loop
     for i in range(iterations):
         print(f"\nIteration {i+1}/{iterations}")
@@ -94,7 +100,8 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
         rprint(Panel(full_prompt, title="Current Full Prompt", expand=False, border_style="blue"))
         
         # Evaluate the current prompt
-        results = evaluate_prompt(full_prompt, eval_data, output_schema, log_dir=log_dir, iteration=i+1, use_cache=use_cache)
+        results = evaluate_prompt(full_prompt, eval_data, output_schema, log_dir=log_dir, iteration=i+1, use_cache=use_cache,
+                                  provider=eval_provider, model=eval_model, temperature=eval_temperature)
         
         # Display and log the results
         display_metrics(results, i+1)
@@ -123,11 +130,16 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                 results['invalid_outputs'],
                 previous_metrics,
                 log_dir=log_dir,
-                iteration=i+1
+                iteration=i+1,
+                provider=optim_provider,
+                model=optim_model,
+                temperature=optim_temperature
             )
             
             # Validate and improve the new prompt
-            current_prompt = validate_and_improve_prompt(new_prompt, output_format_prompt)
+            current_prompt = validate_and_improve_prompt(new_prompt, output_format_prompt, 
+                                                         provider=optim_provider, model=optim_model, 
+                                                         temperature=optim_temperature)
         
         # Generate and save iteration dashboard
         generate_iteration_dashboard(log_dir, i+1, results, current_prompt, output_format_prompt)

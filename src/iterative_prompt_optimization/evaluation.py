@@ -4,7 +4,9 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_sc
 from .model_interface import get_model_output
 from .utils import transform_and_compare_output, create_log_file_path, initialize_log_data, log_results
 
-def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: dict, log_dir: str = None, iteration: int = None, use_cache: bool = True) -> dict:
+def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: dict, log_dir: str = None, 
+                    iteration: int = None, use_cache: bool = True, provider: str = None, 
+                    model: str = None, temperature: float = 0.7) -> dict:
     """
     Evaluate the performance of a given prompt on the evaluation dataset.
 
@@ -15,6 +17,9 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
         log_dir (str, optional): Directory for storing logs
         iteration (int, optional): Current iteration number
         use_cache (bool, optional): Whether to use cached model outputs. Defaults to True.
+        provider (str, optional): The AI provider (e.g., "ollama", "openai")
+        model (str, optional): The specific model being used
+        temperature (float, optional): The temperature setting for the model. Defaults to 0.7.
 
     Returns:
         dict: Evaluation results including metrics and misclassifications
@@ -34,7 +39,7 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
 
     for index, row in eval_data.iterrows():
         # Get model output for the current text
-        model_output = get_model_output(full_prompt, row['text'], index, len(eval_data), use_json_mode, use_cache)
+        model_output = get_model_output(provider, model, temperature, full_prompt, row['text'], index, len(eval_data), use_json_mode, use_cache)
         raw_output = model_output['choices'][0]['message']['content']
         
         # Transform and compare the model output with the true label

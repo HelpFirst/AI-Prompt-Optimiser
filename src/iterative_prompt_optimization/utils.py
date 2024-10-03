@@ -312,54 +312,67 @@ def transform_and_compare_output(raw_output, label, output_schema):
     value_mapping = output_schema.get('value_mapping')
     regex_pattern = output_schema.get('regex_pattern')
 
-    if key_to_extract:
-        # Original case: extract from JSON or use regex for specific key
-        json_match = re.search(r'\{[^}]+\}', raw_output)
-        if json_match:
-            try:
-                parsed_output = json.loads(json_match.group())
-                extracted_value = parsed_output.get(key_to_extract)
-            except json.JSONDecodeError:
-                print(f"JSON Decode Error: Unable to parse extracted JSON")
-                return None, False, False
+    try:
+        if key_to_extract:
+            # Original case: extract from JSON or use regex for specific key
+            json_match = re.search(r'\{[^}]+\}', raw_output)
+            if json_match:
+                try:
+                    parsed_output = json.loads(json_match.group())
+                    extracted_value = parsed_output.get(key_to_extract)
+                except json.JSONDecodeError:
+                    print(f"JSON Decode Error: Unable to parse extracted JSON")
+                    return None, False, False
+            else:
+                # If JSON parsing fails, try to find the value directly
+                value_match = re.search(regex_pattern, raw_output)
+                if value_match:
+                    extracted_value = value_match.group(1)
+                else:
+                    print(f"Unable to find {key_to_extract} in the raw output")
+                    return None, False, False
         else:
-            # If JSON parsing fails, try to find the value directly
-            value_match = re.search(regex_pattern, raw_output)
+            # New case: direct binary classification
+            value_match = re.search(regex_pattern, raw_output.strip())
             if value_match:
                 extracted_value = value_match.group(1)
             else:
-                print(f"Unable to find {key_to_extract} in the raw output")
+                print(f"Unable to match the output pattern: {regex_pattern}")
                 return None, False, False
-    else:
-        # New case: direct binary classification
-        value_match = re.search(regex_pattern, raw_output.strip())
-        if value_match:
-            extracted_value = value_match.group(1)
+
+        if extracted_value is None:
+            print(f"Extracted value is None. Raw output: {raw_output}")
+            return None, False, False
+
+        if isinstance(extracted_value, list):
+            print(f"Unexpected list value: {extracted_value}. Using first element.")
+            extracted_value = extracted_value[0] if extracted_value else None
+
+        if value_mapping:
+            # Use value mapping if provided
+            if isinstance(extracted_value, str):
+                normalized_value = extracted_value.lower().replace(" ", "_")
+                transformed_output = value_mapping.get(normalized_value)
+            else:
+                print(f"Unexpected value type: {type(extracted_value)}. Value: {extracted_value}")
+                return None, False, False
         else:
-            print(f"Unable to match the output pattern: {regex_pattern}")
+            # Direct mapping for binary classification
+            try:
+                transformed_output = int(extracted_value)
+            except ValueError:
+                print(f"Invalid output: Unable to convert '{extracted_value}' to int")
+                return None, False, False
+
+        if transformed_output is not None:
+            is_correct = (transformed_output == label)
+            return transformed_output, is_correct, True
+        else:
+            print(f"Invalid output: Extracted value '{extracted_value}' not found in value_mapping")
             return None, False, False
 
-    if extracted_value is None:
-        print(f"Extracted value is None. Raw output: {raw_output}")
-        return None, False, False
-
-    if value_mapping:
-        # Use value mapping if provided
-        normalized_value = extracted_value.lower().replace(" ", "_")
-        transformed_output = value_mapping.get(normalized_value)
-    else:
-        # Direct mapping for binary classification
-        try:
-            transformed_output = int(extracted_value)
-        except ValueError:
-            print(f"Invalid output: Unable to convert '{extracted_value}' to int")
-            return None, False, False
-
-    if transformed_output is not None:
-        is_correct = (transformed_output == label)
-        return transformed_output, is_correct, True
-    else:
-        print(f"Invalid output: Extracted value '{extracted_value}' not found in value_mapping")
+    except Exception as e:
+        print(f"Unexpected error in transform_and_compare_output: {str(e)}")
         return None, False, False
 
 def log_evaluation_results(log_dir: str, iteration: int, results: dict, eval_data):
