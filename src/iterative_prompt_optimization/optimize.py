@@ -80,24 +80,15 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
     # Log initial setup
     log_initial_setup(log_dir, initial_prompt, output_format_prompt, iterations, eval_data)
     
-    # Define a default output schema if none is provided
-    if output_schema is None:
-        output_schema = {
-            'key_to_extract': 'risk_output',
-            'value_mapping': {
-                'risk present': 1,
-                'risk not present': 0
-            },
-            'regex_pattern': r"'risk_output':\s*'(.*?)'",
-            'use_json_mode': False  # Add this line
-        }
-
     # Main optimization loop
     for i in range(iterations):
         print(f"\nIteration {i+1}/{iterations}")
         
-        # Combine current prompt with output format prompt
-        full_prompt = f"{current_prompt}\n\n{output_format_prompt}"
+        # Combine current prompt with output format prompt only for the first iteration
+        if i == 0:
+            full_prompt = f"{current_prompt}\n\n{output_format_prompt}"
+        else:
+            full_prompt = current_prompt
         
         # Print the full prompt
         rprint(Panel(full_prompt, title="Current Full Prompt", expand=False, border_style="blue"))

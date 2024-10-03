@@ -12,6 +12,7 @@ To-do:
 - add something in the prompt about making sure it writes thing in British English
 
 Done:
+- DO not append the output after regenaring the prompt, make sure the iteration is done with the formatting instructions.
 - Use different models to evaluate the performance of the prompt (e.g. gpt3.5) and for the prompt optimisation step (e.g. gpt4)
 -Allow for different output formats. Think about EHU - risk_output = "present" or risk_output = "not present" is what we are evaluating against.
 -Estimate number of tokens before starting the experiment - so we know the estimation costs. Ask to proceed when printing the cost?
