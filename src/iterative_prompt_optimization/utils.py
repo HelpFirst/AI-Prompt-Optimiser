@@ -329,43 +329,51 @@ def transform_and_compare_output(raw_output, label, output_schema):
 
     try:
         # First, try to parse the raw_output as a JSON string
+        
         try:
             parsed_output = json.loads(raw_output)
         except json.JSONDecodeError:
-            # If that fails, try to parse it as a Python dictionary
+            print("Ouput received!: ", raw_output.replace('\n', '').replace('\r', ''))
+            print("JSON parsing failed...")
+            print("Trying Python literal evaluation...")
             try:
                 parsed_output = ast.literal_eval(raw_output)
-            except (ValueError, SyntaxError):
-                # If that also fails, try to find a JSON-like structure in the raw output
+            except Exception:
+                print("Trying JSON-like structure extraction...")
                 json_match = re.search(r'\{[^}]+\}', raw_output)
                 if json_match:
                     try:
                         parsed_output = json.loads(json_match.group())
-                    except json.JSONDecodeError:
-                        print(f"JSON Decode Error: Unable to parse extracted JSON")
-                        return None, False, False, "N/A"
-                else:
-                    # If JSON parsing fails, try to find the value directly using regex
-                    value_match = re.search(regex_pattern, raw_output)
-                    cot_match = re.search(chain_of_thought_regex, raw_output)
-                    if value_match:
-                        extracted_value = value_match.group(1)
-                        chain_of_thought = cot_match.group(1) if cot_match else "N/A"
-                    else:
-                        print(f"Unable to find {key_to_extract} in the raw output")
-                        return None, False, False, "N/A"
-                    
-                    if value_mapping:
-                        transformed_output = value_mapping.get(extracted_value.lower().replace(" ", "_"))
-                    else:
                         try:
-                            transformed_output = int(extracted_value)
-                        except ValueError:
-                            print(f"Invalid output: Unable to convert '{extracted_value}' to int")
-                            return None, False, False, chain_of_thought
-                    
-                    is_correct = (transformed_output == label)
-                    return transformed_output, is_correct, True, chain_of_thought
+                            parsed_output = ast.literal_eval(json_match.group())
+                        except (ValueError, SyntaxError):
+                            print("Failed to parse JSON-like structure")
+                            parsed_output = None
+                    except json.JSONDecodeError:
+                        print("Trying regex extraction...")
+                        value_match = re.search(regex_pattern, raw_output)
+                        cot_match = re.search(chain_of_thought_regex, raw_output)
+                        if value_match:
+                            extracted_value = value_match.group(1)
+                            chain_of_thought = cot_match.group(1) if cot_match else "N/A"
+                        else:
+                            print(f"Unable to find {key_to_extract}")
+                            return None, False, False, "N/A"
+                        
+                        if value_mapping:
+                            transformed_output = value_mapping.get(extracted_value.lower().replace(" ", "_"))
+                        else:
+                            try:
+                                transformed_output = int(extracted_value)
+                            except ValueError:
+                                print(f"Invalid output: '{extracted_value}'")
+                                return None, False, False, chain_of_thought
+                        
+                        is_correct = (transformed_output == label)
+                        return transformed_output, is_correct, True, chain_of_thought
+                else:
+                    print("All parsing methods failed!")
+                    return None, False, False, "N/A"
 
         # If we successfully parsed the output as a dictionary
         extracted_value = parsed_output.get(key_to_extract)
