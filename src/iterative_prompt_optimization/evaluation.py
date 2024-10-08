@@ -44,7 +44,7 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
         raw_output = model_output['choices'][0]['message']['content']
         
         # Transform and compare the model output with the true label
-        transformed_output, is_correct, is_valid = transform_and_compare_output(raw_output, row['label'], output_schema)
+        transformed_output, is_correct, is_valid, chain_of_thought = transform_and_compare_output(raw_output, row['label'], output_schema)
         
         # Process and display output
         result = process_output(transformed_output, row['label'], is_valid, index, len(eval_data), raw_output)
@@ -55,12 +55,12 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
             true_labels.append(row['label'])
             if is_correct:
                 if transformed_output == 1:
-                    true_positives.append({'text': row['text'], 'label': row['label']})
+                    true_positives.append({'text': row['text'], 'label': row['label'], 'chain_of_thought': chain_of_thought})
             else:
                 if transformed_output == 1 and row['label'] == 0:
-                    false_positives.append({'text': row['text'], 'label': row['label']})
+                    false_positives.append({'text': row['text'], 'label': row['label'], 'chain_of_thought': chain_of_thought})
                 elif transformed_output == 0 and row['label'] == 1:
-                    false_negatives.append({'text': row['text'], 'label': row['label']})
+                    false_negatives.append({'text': row['text'], 'label': row['label'], 'chain_of_thought': chain_of_thought})
         else:
             invalid_predictions += 1
             invalid_outputs.append({'text': row['text'], 'label': row['label'], 'raw_output': raw_output})
@@ -73,6 +73,7 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
                 "transformed_output": transformed_output,
                 "is_correct": is_correct,
                 "is_valid": is_valid,
+                "chain_of_thought": chain_of_thought,
                 "result": result
             })
 

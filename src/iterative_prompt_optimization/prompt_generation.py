@@ -35,12 +35,12 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
     # Analyze False Positives
     num_fp = len(false_positives)
     if num_fp > 0:
-        fp_texts = "\n".join(f"- {item['text']}" for item in false_positives)
+        fp_texts_and_cot = "\n".join(f"Text: {item['text']}\nChain of Thought: {item.get('chain_of_thought', 'N/A')}" for item in false_positives)
         fp_percentage = (num_fp / total_predictions) * 100
         fp_fn_ratio = num_fp / len(false_negatives) if len(false_negatives) > 0 else float('inf')
         fp_analysis = get_analysis(provider, model, temperature, config.FALSE_POSITIVES_ANALYSIS_PROMPT.format(
             initial_prompt=initial_prompt,
-            fp_texts=fp_texts,
+            fp_texts_and_cot=fp_texts_and_cot,
             total_predictions=total_predictions,
             num_fp=num_fp,
             fp_percentage=fp_percentage,
@@ -54,12 +54,12 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
     # Analyze False Negatives
     num_fn = len(false_negatives)
     if num_fn > 0:
-        fn_texts = "\n".join(f"- {item['text']}" for item in false_negatives)
+        fn_texts_and_cot = "\n".join(f"Text: {item['text']}\nChain of Thought: {item.get('chain_of_thought', 'N/A')}" for item in false_negatives)
         fn_percentage = (num_fn / total_predictions) * 100
         fn_fp_ratio = num_fn / num_fp if num_fp > 0 else float('inf')
         fn_analysis = get_analysis(provider, model, temperature, config.FALSE_NEGATIVES_ANALYSIS_PROMPT.format(
             initial_prompt=initial_prompt,
-            fn_texts=fn_texts,
+            fn_texts_and_cot=fn_texts_and_cot,
             total_predictions=total_predictions,
             num_fn=num_fn,
             fn_percentage=fn_percentage,
@@ -73,13 +73,13 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
     # Analyze True Positives
     num_tp = len(true_positives)
     if num_tp > 0:
-        tp_texts = "\n".join(f"- {item['text']}" for item in true_positives)
+        tp_texts_and_cot = "\n".join(f"Text: {item['text']}\nChain of Thought: {item.get('chain_of_thought', 'N/A')}" for item in true_positives)
         tp_percentage = (num_tp / total_predictions) * 100
         tp_fp_ratio = num_tp / num_fp if num_fp > 0 else float('inf')
         tp_fn_ratio = num_tp / num_fn if num_fn > 0 else float('inf')
         tp_analysis = get_analysis(provider, model, temperature, config.TRUE_POSITIVES_ANALYSIS_PROMPT.format(
             initial_prompt=initial_prompt,
-            tp_texts=tp_texts,
+            tp_texts_and_cot=tp_texts_and_cot,
             total_predictions=total_predictions,
             num_tp=num_tp,
             tp_percentage=tp_percentage,

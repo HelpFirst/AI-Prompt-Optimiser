@@ -212,7 +212,7 @@ Current Prompt:
 {initial_prompt}
 
 False Positive Examples:
-{fp_texts}
+{fp_texts_and_cot}
 
 Context:
 - Total number of predictions: {total_predictions}
@@ -223,7 +223,7 @@ Context:
 Additional Comments:
 {fp_comments}
 
-Provide a concise analysis of these false positives, focusing only on high-confidence observations. Suggest brief, impactful improvements to increase precision. Prioritize the most critical issues.
+Provide a concise analysis of these false positives, focusing only on high-confidence observations. Consider both the text and the chain of thought in your analysis. Suggest brief, impactful improvements to increase precision. Prioritize the most critical issues.
 
 Limit your response to 3-5 key points.
 """
@@ -235,7 +235,7 @@ Current Prompt:
 {initial_prompt}
 
 False Negative Examples:
-{fn_texts}
+{fn_texts_and_cot}
 
 Context:
 - Total number of predictions: {total_predictions}
@@ -246,7 +246,7 @@ Context:
 Additional Comments:
 {fn_comments}
 
-Provide a concise analysis of these false negatives, focusing only on high-confidence observations. Suggest brief, impactful improvements to increase recall. Prioritize the most critical issues.
+Provide a concise analysis of these false negatives, focusing only on high-confidence observations. Consider both the text and the chain of thought in your analysis. Suggest brief, impactful improvements to increase recall. Prioritize the most critical issues.
 
 Limit your response to 3-5 key points.
 """
@@ -258,7 +258,7 @@ Current Prompt:
 {initial_prompt}
 
 True Positive Examples:
-{tp_texts}
+{tp_texts_and_cot}
 
 Context:
 - Total number of predictions: {total_predictions}
@@ -270,7 +270,7 @@ Context:
 Additional Comments:
 {tp_comments}
 
-Provide a concise analysis of these true positives, focusing only on high-confidence observations. Identify key elements that lead to successful classifications. Suggest brief ways to reinforce these patterns.
+Provide a concise analysis of these true positives, focusing only on high-confidence observations. Consider both the text and the chain of thought in your analysis. Identify key elements that lead to successful classifications. Suggest brief ways to reinforce these patterns.
 
 Limit your response to 3-5 key points.
 """
@@ -338,3 +338,15 @@ Validation: [VALID/NEEDS IMPROVEMENT]
 Improved Prompt: [If NEEDS IMPROVEMENT, provide the improved prompt here. If VALID, repeat the original prompt.]
 Explanation: [Brief explanation of your assessment and any changes made]
 """
+
+# Example output schema structure
+OUTPUT_SCHEMA_EXAMPLE = {
+    'key_to_extract': 'risk_output',
+    'value_mapping': {
+        'risk_present': 1,
+        'risk_not_present': 0
+    },
+    'regex_pattern': r'"risk_output":\s*"(.*?)"',
+    'chain_of_thought_key': 'chain_of_thought',
+    'chain_of_thought_regex': r'"chain_of_thought":\s*"(.*?)"'
+}

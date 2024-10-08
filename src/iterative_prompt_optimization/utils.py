@@ -8,6 +8,7 @@ from rich.panel import Panel
 from rich.table import Table
 from .config import PRICING, MODEL_OPTIONS, SELECTED_PROVIDER, MODEL_NAME
 from pathlib import Path
+import ast
 
 console = Console()
 
@@ -318,47 +319,61 @@ def transform_and_compare_output(raw_output, label, output_schema):
         output_schema (dict): A schema defining how to transform the output
 
     Returns:
-        tuple: (transformed_output, is_correct, is_valid)
+        tuple: (transformed_output, is_correct, is_valid, chain_of_thought)
     """
     key_to_extract = output_schema.get('key_to_extract')
     value_mapping = output_schema.get('value_mapping')
     regex_pattern = output_schema.get('regex_pattern')
+    chain_of_thought_key = output_schema.get('chain_of_thought_key')
+    chain_of_thought_regex = output_schema.get('chain_of_thought_regex')
 
     try:
-        if key_to_extract:
-            # Original case: extract from JSON or use regex for specific key
-            json_match = re.search(r'\{[^}]+\}', raw_output)
-            if json_match:
-                try:
-                    parsed_output = json.loads(json_match.group())
-                    extracted_value = parsed_output.get(key_to_extract)
-                except json.JSONDecodeError:
-                    print(f"JSON Decode Error: Unable to parse extracted JSON")
-                    return None, False, False
-            else:
-                # If JSON parsing fails, try to find the value directly
-                value_match = re.search(regex_pattern, raw_output)
-                if value_match:
-                    extracted_value = value_match.group(1)
+        # First, try to parse the raw_output as a JSON string
+        try:
+            parsed_output = json.loads(raw_output)
+        except json.JSONDecodeError:
+            # If that fails, try to parse it as a Python dictionary
+            try:
+                parsed_output = ast.literal_eval(raw_output)
+            except (ValueError, SyntaxError):
+                # If that also fails, try to find a JSON-like structure in the raw output
+                json_match = re.search(r'\{[^}]+\}', raw_output)
+                if json_match:
+                    try:
+                        parsed_output = json.loads(json_match.group())
+                    except json.JSONDecodeError:
+                        print(f"JSON Decode Error: Unable to parse extracted JSON")
+                        return None, False, False, "N/A"
                 else:
-                    print(f"Unable to find {key_to_extract} in the raw output")
-                    return None, False, False
-        else:
-            # New case: direct binary classification
-            value_match = re.search(regex_pattern, raw_output.strip())
-            if value_match:
-                extracted_value = value_match.group(1)
-            else:
-                print(f"Unable to match the output pattern: {regex_pattern}")
-                return None, False, False
+                    # If JSON parsing fails, try to find the value directly using regex
+                    value_match = re.search(regex_pattern, raw_output)
+                    cot_match = re.search(chain_of_thought_regex, raw_output)
+                    if value_match:
+                        extracted_value = value_match.group(1)
+                        chain_of_thought = cot_match.group(1) if cot_match else "N/A"
+                    else:
+                        print(f"Unable to find {key_to_extract} in the raw output")
+                        return None, False, False, "N/A"
+                    
+                    if value_mapping:
+                        transformed_output = value_mapping.get(extracted_value.lower().replace(" ", "_"))
+                    else:
+                        try:
+                            transformed_output = int(extracted_value)
+                        except ValueError:
+                            print(f"Invalid output: Unable to convert '{extracted_value}' to int")
+                            return None, False, False, chain_of_thought
+                    
+                    is_correct = (transformed_output == label)
+                    return transformed_output, is_correct, True, chain_of_thought
+
+        # If we successfully parsed the output as a dictionary
+        extracted_value = parsed_output.get(key_to_extract)
+        chain_of_thought = parsed_output.get(chain_of_thought_key, "N/A")
 
         if extracted_value is None:
             print(f"Extracted value is None. Raw output: {raw_output}")
-            return None, False, False
-
-        if isinstance(extracted_value, list):
-            print(f"Unexpected list value: {extracted_value}. Using first element.")
-            extracted_value = extracted_value[0] if extracted_value else None
+            return None, False, False, chain_of_thought
 
         if value_mapping:
             # Use value mapping if provided
@@ -367,25 +382,25 @@ def transform_and_compare_output(raw_output, label, output_schema):
                 transformed_output = value_mapping.get(normalized_value)
             else:
                 print(f"Unexpected value type: {type(extracted_value)}. Value: {extracted_value}")
-                return None, False, False
+                return None, False, False, chain_of_thought
         else:
             # Direct mapping for binary classification
             try:
                 transformed_output = int(extracted_value)
             except ValueError:
                 print(f"Invalid output: Unable to convert '{extracted_value}' to int")
-                return None, False, False
+                return None, False, False, chain_of_thought
 
         if transformed_output is not None:
             is_correct = (transformed_output == label)
-            return transformed_output, is_correct, True
+            return transformed_output, is_correct, True, chain_of_thought
         else:
             print(f"Invalid output: Extracted value '{extracted_value}' not found in value_mapping")
-            return None, False, False
+            return None, False, False, chain_of_thought
 
     except Exception as e:
         print(f"Unexpected error in transform_and_compare_output: {str(e)}")
-        return None, False, False
+        return None, False, False, "N/A"
 
 def log_evaluation_results(log_dir: str, iteration: int, results: dict, eval_data):
     """Log the evaluation results for a specific iteration."""
