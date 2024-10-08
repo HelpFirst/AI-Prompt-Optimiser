@@ -90,7 +90,9 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
     log_dir = create_log_directory()
 
     # Log initial setup
-    log_initial_setup(log_dir, initial_prompt, output_format_prompt, iterations, eval_data)
+    log_initial_setup(log_dir, initial_prompt, output_format_prompt, iterations, eval_data,
+                      eval_provider, eval_model, eval_temperature,
+                      optim_provider, optim_model, optim_temperature)
     
 
     # Main optimization loop

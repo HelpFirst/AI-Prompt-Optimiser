@@ -232,14 +232,26 @@ def create_log_directory():
     
     return str(log_dir)
 
-def log_initial_setup(log_dir: str, initial_prompt: str, output_format_prompt: str, iterations: int, eval_data):
+def log_initial_setup(log_dir: str, initial_prompt: str, output_format_prompt: str, iterations: int, eval_data,
+                      eval_provider: str, eval_model: str, eval_temperature: float,
+                      optim_provider: str, optim_model: str, optim_temperature: float):
     """Log the initial setup of the optimization process."""
     with open(os.path.join(log_dir, "initial_setup.json"), 'w') as f:
         json.dump({
             "initial_prompt": initial_prompt,
             "output_format_prompt": output_format_prompt,
             "iterations": iterations,
-            "eval_data_shape": eval_data.shape
+            "eval_data_shape": eval_data.shape,
+            "evaluation_model": {
+                "provider": eval_provider,
+                "model": eval_model,
+                "temperature": eval_temperature
+            },
+            "optimization_model": {
+                "provider": optim_provider,
+                "model": optim_model,
+                "temperature": optim_temperature
+            }
         }, f, indent=2)
 
 def select_model():
