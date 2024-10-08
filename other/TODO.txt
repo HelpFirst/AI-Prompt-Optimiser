@@ -1,17 +1,22 @@
 To-do:
-- Always include Chain of thought as part of the prompt, and include that into the error analysis - make it a requirement
+- dashboard should display the table with all the results
+- calculate the total cost of the experiments, after finishng running through all the iterations, also display the costt per iteration (inmedialy after each iteration)
+- report number of false positives and false negatives into the analysis, and the true positives and the actual postives in teh labelled data
 - Allow to pass the variable that wants to be optimised (e.g. f1 score, recall)
 - Variable to optimise based on precision/recall into the prompt optimisation step, and also threshold values (e.g. if precision>X, then focus on increasing recall)
 - Integrate the code with promptfoo 
-- ask for a chain of thought prompt to solve the problem, e.g.
-
-    """Start by reasoning about the sentiment of the comment, thinking step by step inside of <thinking> tags.  
-        Then, output your final answer inside of <answer> tags. 
-        Inside the <answer> tags return just 1 or 0, where 1 means positive and 0 means negative."""
 - Agentic behaviour
 - add something in the prompt about making sure it writes thing in British English
 
 Done:
+- runs name should have the date and time in a human readable format, also allow to pass a name to the run (experiment name) to be included into the run name, as a prefix to the human readable date and time
+- Always include Chain of thought as part of the prompt, and include that into the error analysis - make it a requirement
+- log the information about the model and temperature and all the other initial paramaters that are used when calling optimise_prompt()
+- allows to pass specific comments on each of the steps:
+    - into the analysis of false positives
+    - into the analysis of false negatives
+    - into the analysis of true positives
+    - into the analysis of invalid outputs
 - DO not append the output after regenaring the prompt, make sure the iteration is done with the formatting instructions.
 - Use different models to evaluate the performance of the prompt (e.g. gpt3.5) and for the prompt optimisation step (e.g. gpt4)
 -Allow for different output formats. Think about EHU - risk_output = "present" or risk_output = "not present" is what we are evaluating against.
