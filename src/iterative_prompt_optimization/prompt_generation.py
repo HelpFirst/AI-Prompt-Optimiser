@@ -2,7 +2,7 @@ from . import config
 from .model_interface import get_analysis
 from .utils import display_analysis, log_prompt_generation, display_prompt
 
-def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_positives: list, false_negatives: list, true_positives: list, invalid_outputs: list, previous_metrics: dict, log_dir: str = None, iteration: int = None, provider: str = None, model: str = None, temperature: float = 0.9) -> str:
+def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_positives: list, false_negatives: list, true_positives: list, invalid_outputs: list, previous_metrics: dict, log_dir: str = None, iteration: int = None, provider: str = None, model: str = None, temperature: float = 0.9, fp_comments: str = "", fn_comments: str = "", tp_comments: str = "", invalid_comments: str = "") -> str:
     """
     Generates a new prompt by incorporating false positives, false negatives, true positives, and invalid outputs analyses.
 
@@ -19,6 +19,10 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
         provider (str): Provider for the model
         model (str): Model name
         temperature (float): Temperature for the model
+        fp_comments (str): Comments for false positives analysis
+        fn_comments (str): Comments for false negatives analysis
+        tp_comments (str): Comments for true positives analysis
+        invalid_comments (str): Comments for invalid outputs analysis
 
     Returns:
         str: The updated prompt
@@ -40,7 +44,8 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
             total_predictions=total_predictions,
             num_fp=num_fp,
             fp_percentage=fp_percentage,
-            fp_fn_ratio=fp_fn_ratio
+            fp_fn_ratio=fp_fn_ratio,
+            fp_comments=fp_comments
         ))
     else:
         fp_analysis = "No false positives found in this iteration."
@@ -58,7 +63,8 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
             total_predictions=total_predictions,
             num_fn=num_fn,
             fn_percentage=fn_percentage,
-            fn_fp_ratio=fn_fp_ratio
+            fn_fp_ratio=fn_fp_ratio,
+            fn_comments=fn_comments
         ))
     else:
         fn_analysis = "No false negatives found in this iteration."
@@ -78,7 +84,8 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
             num_tp=num_tp,
             tp_percentage=tp_percentage,
             tp_fp_ratio=tp_fp_ratio,
-            tp_fn_ratio=tp_fn_ratio
+            tp_fn_ratio=tp_fn_ratio,
+            tp_comments=tp_comments
         ))
     else:
         tp_analysis = "No true positives found in this iteration."
@@ -95,7 +102,8 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
             invalid_texts=invalid_texts,
             total_predictions=total_predictions,
             num_invalid=num_invalid,
-            invalid_percentage=invalid_percentage
+            invalid_percentage=invalid_percentage,
+            invalid_comments=invalid_comments
         ))
     else:
         invalid_analysis = "No invalid outputs found in this iteration."
@@ -124,7 +132,7 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
 
     return new_prompt
 
-def validate_and_improve_prompt(new_prompt: str, output_format_prompt: str, provider: str = None, model: str = None, temperature: float = 0.9) -> str:
+def validate_and_improve_prompt(new_prompt: str, output_format_prompt: str, provider: str = None, model: str = None, temperature: float = 0.9, validation_comments: str = "") -> str:
     """
     Validates the new prompt against best practices and improves it if necessary.
 
@@ -134,38 +142,18 @@ def validate_and_improve_prompt(new_prompt: str, output_format_prompt: str, prov
         provider (str): Provider for the model
         model (str): Model name
         temperature (float): Temperature for the model
+        validation_comments (str): Comments for validation and improvement
 
     Returns:
         str: The validated and potentially improved prompt
     """
     print("\nValidating and improving the new prompt...")
 
-    validation_prompt = f"""
-    As an expert in prompt engineering, your task is to validate and improve the following prompt:
-
-    Current Prompt:
-    {new_prompt}
-
-    Output Format Instructions:
-    {output_format_prompt}
-
-    Please evaluate this prompt based on the following best practices:
-    1. Clarity and specificity: Ensure the prompt is clear and specific about the task.
-    2. Contextual information: Check if the prompt provides necessary context.
-    3. Explicit instructions: Verify that the prompt gives explicit instructions on how to approach the task.
-    4. Examples: If applicable, check if the prompt includes relevant examples.
-    5. Output format: Confirm that the prompt clearly specifies the desired output format.
-    6. Avoiding biases: Ensure the prompt doesn't introduce unintended biases.
-    7. Appropriate length: Check if the prompt is concise yet comprehensive.
-    8. Task-specific considerations: Ensure the prompt addresses any specific requirements of the classification task.
-
-    If the prompt adheres to these best practices, please confirm its validity. If improvements are needed, please provide an enhanced version of the prompt that addresses any shortcomings while maintaining its original intent and compatibility with the output format instructions.
-
-    Your response should be in the following format:
-    Validation: [VALID/NEEDS IMPROVEMENT]
-    Improved Prompt: [If NEEDS IMPROVEMENT, provide the improved prompt here. If VALID, repeat the original prompt.]
-    Explanation: [Brief explanation of your assessment and any changes made]
-    """
+    validation_prompt = config.VALIDATION_AND_IMPROVEMENT_PROMPT.format(
+        new_prompt=new_prompt,
+        output_format_prompt=output_format_prompt,
+        validation_comments=validation_comments
+    )
 
     validation_result = get_analysis(provider, model, temperature, validation_prompt)
     

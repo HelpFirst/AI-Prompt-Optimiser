@@ -14,7 +14,9 @@ from .model_interface import get_model_output, get_analysis
 def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: pd.DataFrame, iterations: int,
                     eval_provider: str = None, eval_model: str = None, eval_temperature: float = 0.7,
                     optim_provider: str = None, optim_model: str = None, optim_temperature: float = 0.9,
-                    output_schema: dict = None, use_cache: bool = True) -> tuple:
+                    output_schema: dict = None, use_cache: bool = True,
+                    fp_comments: str = "", fn_comments: str = "", tp_comments: str = "",
+                    invalid_comments: str = "", validation_comments: str = "") -> tuple:
     """
     Optimize a prompt through iterative refinement and evaluation.
 
@@ -37,6 +39,11 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
         optim_temperature (float, optional): Temperature for the optimization model. Defaults to 0.9.
         output_schema (dict, optional): Schema for transforming and comparing output with the true label
         use_cache (bool, optional): Whether to use cached model outputs. Defaults to True.
+        fp_comments (str, optional): Comments for false positives. Defaults to "".
+        fn_comments (str, optional): Comments for false negatives. Defaults to "".
+        tp_comments (str, optional): Comments for true positives. Defaults to "".
+        invalid_comments (str, optional): Comments for invalid outputs. Defaults to "".
+        validation_comments (str, optional): Comments for validation. Defaults to "".
 
     Returns:
         tuple: The best performing prompt and its associated metrics
@@ -133,13 +140,18 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                 iteration=i+1,
                 provider=optim_provider,
                 model=optim_model,
-                temperature=optim_temperature
+                temperature=optim_temperature,
+                fp_comments=fp_comments,
+                fn_comments=fn_comments,
+                tp_comments=tp_comments,
+                invalid_comments=invalid_comments
             )
             
             # Validate and improve the new prompt
             current_prompt = validate_and_improve_prompt(new_prompt, output_format_prompt, 
                                                          provider=optim_provider, model=optim_model, 
-                                                         temperature=optim_temperature)
+                                                         temperature=optim_temperature,
+                                                         validation_comments=validation_comments)
         
         # Generate and save iteration dashboard
         generate_iteration_dashboard(log_dir, i+1, results, current_prompt, output_format_prompt)

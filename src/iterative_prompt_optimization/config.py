@@ -57,7 +57,7 @@ AZURE_OPENAI_GPT35_DEPLOYMENT_NAME = os.getenv('AZURE_OPENAI_GPT35_DEPLOYMENT_NA
 AZURE_OPENAI_GPT4_DEPLOYMENT_NAME = os.getenv('AZURE_OPENAI_GPT4_DEPLOYMENT_NAME')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 GOOGLE_AI_API_KEY = os.getenv('GOOGLE_AI_API_KEY')
-OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama2')
+OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.1')
 OLLAMA_ENDPOINT = os.getenv('OLLAMA_ENDPOINT', 'http://localhost:11434')
 
 
@@ -220,6 +220,9 @@ Context:
 - Percentage of false positives: {fp_percentage:.2f}%
 - False positive to false negative ratio: {fp_fn_ratio:.2f}
 
+Additional Comments:
+{fp_comments}
+
 Provide a concise analysis of these false positives, focusing only on high-confidence observations. Suggest brief, impactful improvements to increase precision. Prioritize the most critical issues.
 
 Limit your response to 3-5 key points.
@@ -239,6 +242,9 @@ Context:
 - Number of false negatives: {num_fn}
 - Percentage of false negatives: {fn_percentage:.2f}%
 - False negative to false positive ratio: {fn_fp_ratio:.2f}
+
+Additional Comments:
+{fn_comments}
 
 Provide a concise analysis of these false negatives, focusing only on high-confidence observations. Suggest brief, impactful improvements to increase recall. Prioritize the most critical issues.
 
@@ -260,6 +266,9 @@ Context:
 - Percentage of true positives: {tp_percentage:.2f}%
 - True positive to false positive ratio: {tp_fp_ratio:.2f}
 - True positive to false negative ratio: {tp_fn_ratio:.2f}
+
+Additional Comments:
+{tp_comments}
 
 Provide a concise analysis of these true positives, focusing only on high-confidence observations. Identify key elements that lead to successful classifications. Suggest brief ways to reinforce these patterns.
 
@@ -284,6 +293,9 @@ Context:
 - Number of invalid outputs: {num_invalid}
 - Percentage of invalid outputs: {invalid_percentage:.2f}%
 
+Additional Comments:
+{invalid_comments}
+
 Provide a concise analysis of these invalid outputs, focusing only on high-confidence observations. Suggest brief, impactful improvements to reduce formatting errors and ensure adherence to the specified output format.
 
 Important:
@@ -294,4 +306,35 @@ Important:
 Your suggestions should aim to guide the model to produce outputs that match the existing schema more accurately.
 
 Limit your response to 3-5 key points, prioritizing the most critical issues that lead to invalid outputs.
+"""
+
+# Add this new prompt for validation and improvement
+VALIDATION_AND_IMPROVEMENT_PROMPT = """
+As an expert in prompt engineering, your task is to validate and improve the following prompt:
+
+Current Prompt:
+{new_prompt}
+
+Output Format Instructions:
+{output_format_prompt}
+
+Additional Comments:
+{validation_comments}
+
+Please evaluate this prompt based on the following best practices:
+1. Clarity and specificity: Ensure the prompt is clear and specific about the task.
+2. Contextual information: Check if the prompt provides necessary context.
+3. Explicit instructions: Verify that the prompt gives explicit instructions on how to approach the task.
+4. Examples: If applicable, check if the prompt includes relevant examples.
+5. Output format: Confirm that the prompt clearly specifies the desired output format.
+6. Avoiding biases: Ensure the prompt doesn't introduce unintended biases.
+7. Appropriate length: Check if the prompt is concise yet comprehensive.
+8. Task-specific considerations: Ensure the prompt addresses any specific requirements of the classification task.
+
+If the prompt adheres to these best practices, please confirm its validity. If improvements are needed, please provide an enhanced version of the prompt that addresses any shortcomings while maintaining its original intent and compatibility with the output format instructions.
+
+Your response should be in the following format:
+Validation: [VALID/NEEDS IMPROVEMENT]
+Improved Prompt: [If NEEDS IMPROVEMENT, provide the improved prompt here. If VALID, repeat the original prompt.]
+Explanation: [Brief explanation of your assessment and any changes made]
 """
