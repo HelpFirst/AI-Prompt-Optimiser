@@ -130,38 +130,6 @@ def get_optim_model() -> tuple:
     return OPTIM_PROVIDER, OPTIM_MODEL, OPTIM_TEMPERATURE
 
 
-ANALYSIS_PROMPT = """
-You are an expert in refining LLMs prompts used in classification tasks. You will be analyzing misclassifications for the following base prompt:
-
-Base Prompt:
-{initial_prompt}
-
-Below are two sets of texts that were misclassified by the LLM model.
-You need to think and answer the questions of: why was this text misclassified? What led to be incorrectly inferred? What could be some instructions/rules to prevent this from been misclassified?
-
-    Negative (0) texts (incorrectly classified as positive):
-    {fp_texts}
-
-    Positives (1) texts (incorrectly classified as negative):
-    {fn_texts}
-
-Your task is to analyze these misclassifications, with a special focus on improving recall while maintaining good precision. Pay particular attention to the false negatives (texts incorrectly classified as negative), and identify specific examples where the model missed subtle indicators of positive cases.
-
-Based on your analysis, suggest strategies to improve the classification prompt - and how to craft it - focusing on how it can better recognize positive cases that were missed, and false warnings (texts incorrectly classified as positive). Your recommendations should include ways to reduce true and false negatives. Try to analyze the instances where the LLM may have inferred a risk present when it was not explicitly stated - and potentially improve the prompt to avoid this false positives.
-
------
-
-If there were invalid outputs, also suggest ways to improve the prompt to ensure the model follows the output format instructions more consistently. If 'Invalid output messages:' is empty, please ignore this subtask.
-
-Invalid output messages:
-{invalid_output_message}
-
-Expected output format:
-{output_format}
-
-Note: The output should strictly adhere to the format specified above. Any deviation from this format will be considered an invalid output.
-"""
-
 PROMPT_ENGINEER_INPUT = """
 You are an expert in refining prompts for classification tasks. Your goal is to optimize a zero-shot prompt consisting of four parts. Based on the following analyses and metrics, generate an improved prompt:
 
