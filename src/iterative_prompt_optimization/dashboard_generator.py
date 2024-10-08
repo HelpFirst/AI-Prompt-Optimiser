@@ -184,11 +184,38 @@ def generate_combined_dashboard(log_dir: str, all_metrics: list, best_prompt: st
             .metrics { display: flex; flex-wrap: wrap; justify-content: space-between; }
             .metric { width: 30%; margin-bottom: 10px; }
             .analysis { margin-top: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
+            th { background-color: #f2f2f2; }
+            .best-value { font-weight: bold; color: #007bff; }
         </style>
     </head>
     <body>
         <div class="container">
             <h1>Combined Experiment Dashboard</h1>
+            <h2>Summary of All Iterations</h2>
+            <table>
+                <tr>
+                    <th>Iteration</th>
+                    <th>Precision</th>
+                    <th>Recall</th>
+                    <th>Accuracy</th>
+                    <th>F1-score</th>
+                    <th>Valid Predictions</th>
+                    <th>Invalid Predictions</th>
+                </tr>
+                {% for metrics in all_metrics %}
+                <tr>
+                    <td>{{ metrics.iteration }}</td>
+                    <td{% if metrics.precision == max_values.precision %} class="best-value"{% endif %}>{{ "%.4f"|format(metrics.precision) }}</td>
+                    <td{% if metrics.recall == max_values.recall %} class="best-value"{% endif %}>{{ "%.4f"|format(metrics.recall) }}</td>
+                    <td{% if metrics.accuracy == max_values.accuracy %} class="best-value"{% endif %}>{{ "%.4f"|format(metrics.accuracy) }}</td>
+                    <td{% if metrics.f1 == max_values.f1 %} class="best-value"{% endif %}>{{ "%.4f"|format(metrics.f1) }}</td>
+                    <td{% if metrics.valid_predictions == max_values.valid_predictions %} class="best-value"{% endif %}>{{ metrics.valid_predictions }}</td>
+                    <td{% if metrics.invalid_predictions == min_values.invalid_predictions %} class="best-value"{% endif %}>{{ metrics.invalid_predictions }}</td>
+                </tr>
+                {% endfor %}
+            </table>
             <div id="metricsChart"></div>
             <div id="validityChart"></div>
             <h2>Best Prompt - F1 Score: {{ best_metrics.f1|round(4) }}</h2>
@@ -285,6 +312,18 @@ def generate_combined_dashboard(log_dir: str, all_metrics: list, best_prompt: st
         }
     ]
     
+    # Calculate max values for highlighting
+    max_values = {
+        'precision': max(m['precision'] for m in all_metrics),
+        'recall': max(m['recall'] for m in all_metrics),
+        'accuracy': max(m['accuracy'] for m in all_metrics),
+        'f1': max(m['f1'] for m in all_metrics),
+        'valid_predictions': max(m['valid_predictions'] for m in all_metrics),
+    }
+    min_values = {
+        'invalid_predictions': min(m['invalid_predictions'] for m in all_metrics)
+    }
+    
     # Collect data for all iterations
     iterations = []
     for i, metrics in enumerate(all_metrics):
@@ -322,7 +361,10 @@ def generate_combined_dashboard(log_dir: str, all_metrics: list, best_prompt: st
         best_prompt=best_prompt,
         output_format_prompt=output_format_prompt,
         iterations=iterations,
-        best_metrics=best_metrics
+        best_metrics=best_metrics,
+        all_metrics=all_metrics,
+        max_values=max_values,
+        min_values=min_values
     )
     
     with open(os.path.join(log_dir, 'combined_dashboard.html'), 'w') as f:
