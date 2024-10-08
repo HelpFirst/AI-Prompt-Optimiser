@@ -328,28 +328,23 @@ def transform_and_compare_output(raw_output, label, output_schema):
     chain_of_thought_regex = output_schema.get('chain_of_thought_regex')
 
     try:
-        # First, try to parse the raw_output as a JSON string
-        
+        # First, try to parse the raw_output using ast.literal_eval()
         try:
-            parsed_output = json.loads(raw_output)
-        except json.JSONDecodeError:
-            print("Ouput received!: ", raw_output.replace('\n', '').replace('\r', ''))
-            print("JSON parsing failed...")
-            print("Trying Python literal evaluation...")
+            parsed_output = ast.literal_eval(raw_output)
+        except (ValueError, SyntaxError):
+            print("Python literal evaluation failed...")
+            print("Trying JSON parsing...")
             try:
-                parsed_output = ast.literal_eval(raw_output)
-            except Exception:
+                parsed_output = json.loads(raw_output)
+            except json.JSONDecodeError:
+                print("JSON parsing failed...")
                 print("Trying JSON-like structure extraction...")
                 json_match = re.search(r'\{[^}]+\}', raw_output)
                 if json_match:
                     try:
                         parsed_output = json.loads(json_match.group())
-                        try:
-                            parsed_output = ast.literal_eval(json_match.group())
-                        except (ValueError, SyntaxError):
-                            print("Failed to parse JSON-like structure")
-                            parsed_output = None
                     except json.JSONDecodeError:
+                        print("Failed to parse JSON-like structure")
                         print("Trying regex extraction...")
                         value_match = re.search(regex_pattern, raw_output)
                         cot_match = re.search(chain_of_thought_regex, raw_output)
