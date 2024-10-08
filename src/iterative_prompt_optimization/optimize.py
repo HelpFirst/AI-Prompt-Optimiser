@@ -99,17 +99,11 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
     for i in range(iterations):
         print(f"\nIteration {i+1}/{iterations}")
         
-        # Combine current prompt with output format prompt only for the first iteration
-        if i == 0:
-            full_prompt = f"{current_prompt}\n\n{output_format_prompt}"
-        else:
-            full_prompt = current_prompt
-        
         # Print the full prompt
-        rprint(Panel(full_prompt, title="Current Full Prompt", expand=False, border_style="blue"))
+        rprint(Panel(current_prompt, title="Current Full Prompt", expand=False, border_style="blue"))
         
         # Evaluate the current prompt
-        results = evaluate_prompt(full_prompt, eval_data, output_schema, log_dir=log_dir, iteration=i+1, use_cache=use_cache,
+        results = evaluate_prompt(current_prompt, eval_data, output_schema, log_dir=log_dir, iteration=i+1, use_cache=use_cache,
                                   provider=eval_provider, model=eval_model, temperature=eval_temperature)
         
         # Display and log the results
