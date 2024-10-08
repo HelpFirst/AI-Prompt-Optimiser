@@ -17,6 +17,7 @@ from openai import AzureOpenAI
 import anthropic
 import google.generativeai as genai
 import config  # Assuming you have a config.py file with the prompts
+from pathlib import Path
 
 # Constants
 MAX_RETRIES = 3
@@ -466,7 +467,42 @@ def log_prompt_generation(log_dir: str, iteration: int, initial_prompt: str, ana
     with open(log_file_path, 'w') as f:
         json.dump(log_data, f, indent=2)
 
-def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: pd.DataFrame, iterations: int = 5) -> None:
+def create_log_directory(experiment_name: str = None):
+    """
+    Create a directory for logging with a human-readable timestamp within a 'runs' folder.
+    
+    This function:
+    1. Creates a 'runs' folder in the current working directory if it doesn't exist
+    2. Creates a timestamped folder within 'runs' for the current optimization run
+    
+    Args:
+        experiment_name (str, optional): Name of the experiment to be included in the run folder name
+
+    Returns:
+        str: Path to the newly created log directory
+    """
+    # Get the current working directory
+    current_dir = Path.cwd()
+    
+    # Create the 'runs' folder if it doesn't exist
+    runs_folder = current_dir / "runs"
+    runs_folder.mkdir(exist_ok=True)
+    
+    # Create a human-readable timestamp
+    timestamp = datetime.now().strftime("%a_%d-%b-%Y_%H-%M-%S")
+    
+    # Create the run folder name
+    if experiment_name:
+        run_folder_name = f"{experiment_name}_{timestamp}"
+    else:
+        run_folder_name = f"prompt_optimization_{timestamp}"
+    
+    log_dir = runs_folder / run_folder_name
+    log_dir.mkdir()
+    
+    return str(log_dir)
+
+def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: pd.DataFrame, iterations: int = 5, experiment_name: str = None):
     """
     Optimizes the prompt to maximize evaluation metrics over a number of iterations.
 
@@ -475,6 +511,7 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
         output_format_prompt (str): The output format instructions
         eval_data (pd.DataFrame): Contains 'text' and 'label' columns
         iterations (int): Number of optimization iterations
+        experiment_name (str, optional): Name of the experiment to be included in the run folder name
 
     Returns:
         None (prints out the best prompt and metrics)
@@ -498,10 +535,8 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
 
     console = Console()
 
-    # Create a directory for logging if it doesn't exist
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_dir = f"prompt_optimization_logs_{timestamp}"
-    os.makedirs(log_dir, exist_ok=True)
+    # Create a directory for logging
+    log_dir = create_log_directory(experiment_name)
 
     # Log initial setup
     log_initial_setup(log_dir, initial_prompt, output_format_prompt, iterations, eval_data)

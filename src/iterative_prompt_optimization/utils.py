@@ -208,14 +208,17 @@ def log_final_results(log_dir: str, best_prompt: str, output_format_prompt: str,
 
     print(f"\nAll logs saved in directory: {log_dir}")
 
-def create_log_directory():
+def create_log_directory(experiment_name: str = None):
     """
-    Create a directory for logging with a timestamp within a 'runs' folder.
+    Create a directory for logging with a human-readable timestamp within a 'runs' folder.
     
     This function:
     1. Creates a 'runs' folder in the current working directory if it doesn't exist
     2. Creates a timestamped folder within 'runs' for the current optimization run
     
+    Args:
+        experiment_name (str, optional): Name of the experiment to be included in the run folder name
+
     Returns:
         str: Path to the newly created log directory
     """
@@ -226,16 +229,26 @@ def create_log_directory():
     runs_folder = current_dir / "runs"
     runs_folder.mkdir(exist_ok=True)
     
-    # Create a timestamped folder for the current run
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_dir = runs_folder / f"prompt_optimization_logs_{timestamp}"
+    # Create a human-readable timestamp
+    timestamp = datetime.now().strftime("%a_%d-%b-%Y_%H-%M-%S")
+    
+    # Create the run folder name
+    if experiment_name:
+        run_folder_name = f"{experiment_name}_{timestamp}"
+    else:
+        run_folder_name = f"prompt_optimization_{timestamp}"
+    
+    log_dir = runs_folder / run_folder_name
     log_dir.mkdir()
     
     return str(log_dir)
 
 def log_initial_setup(log_dir: str, initial_prompt: str, output_format_prompt: str, iterations: int, eval_data,
                       eval_provider: str, eval_model: str, eval_temperature: float,
-                      optim_provider: str, optim_model: str, optim_temperature: float):
+                      optim_provider: str, optim_model: str, optim_temperature: float,
+                      output_schema: dict = None, use_cache: bool = True,
+                      fp_comments: str = "", fn_comments: str = "", tp_comments: str = "",
+                      invalid_comments: str = "", validation_comments: str = ""):
     """Log the initial setup of the optimization process."""
     with open(os.path.join(log_dir, "initial_setup.json"), 'w') as f:
         json.dump({
@@ -252,6 +265,15 @@ def log_initial_setup(log_dir: str, initial_prompt: str, output_format_prompt: s
                 "provider": optim_provider,
                 "model": optim_model,
                 "temperature": optim_temperature
+            },
+            "output_schema": output_schema,
+            "use_cache": use_cache,
+            "comments": {
+                "false_positives": fp_comments,
+                "false_negatives": fn_comments,
+                "true_positives": tp_comments,
+                "invalid_outputs": invalid_comments,
+                "validation": validation_comments
             }
         }, f, indent=2)
 

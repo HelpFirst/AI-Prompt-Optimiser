@@ -16,7 +16,8 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                     optim_provider: str = None, optim_model: str = None, optim_temperature: float = 0.9,
                     output_schema: dict = None, use_cache: bool = True,
                     fp_comments: str = "", fn_comments: str = "", tp_comments: str = "",
-                    invalid_comments: str = "", validation_comments: str = "") -> tuple:
+                    invalid_comments: str = "", validation_comments: str = "",
+                    experiment_name: str = None) -> tuple:
     """
     Optimize a prompt through iterative refinement and evaluation.
 
@@ -44,6 +45,7 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
         tp_comments (str, optional): Comments for true positives. Defaults to "".
         invalid_comments (str, optional): Comments for invalid outputs. Defaults to "".
         validation_comments (str, optional): Comments for validation. Defaults to "".
+        experiment_name (str, optional): Name of the experiment to be included in the run folder name
 
     Returns:
         tuple: The best performing prompt and its associated metrics
@@ -87,12 +89,15 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
     all_metrics = []
 
     # Create a directory for logging
-    log_dir = create_log_directory()
+    log_dir = create_log_directory(experiment_name)
 
     # Log initial setup
     log_initial_setup(log_dir, initial_prompt, output_format_prompt, iterations, eval_data,
                       eval_provider, eval_model, eval_temperature,
-                      optim_provider, optim_model, optim_temperature)
+                      optim_provider, optim_model, optim_temperature,
+                      output_schema, use_cache,
+                      fp_comments, fn_comments, tp_comments,
+                      invalid_comments, validation_comments)
     
 
     # Main optimization loop
