@@ -111,6 +111,9 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
         results = evaluate_prompt(current_prompt, eval_data, output_schema, log_dir=log_dir, iteration=i+1, use_cache=use_cache,
                                   provider=eval_provider, model=eval_model, temperature=eval_temperature)
         
+        # Initialize prompts_used in results
+        results['prompts_used'] = {}
+        
         # Display and log the results
         display_metrics(results, i+1)
         all_metrics.append(create_metric_entry(i+1, results))
@@ -129,7 +132,7 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                 'invalid_predictions': results['invalid_predictions'],
                 'total_predictions': results['valid_predictions'] + results['invalid_predictions']
             }
-            new_prompt = generate_new_prompt(
+            new_prompt, analyses, prompts_used = generate_new_prompt(
                 current_prompt,
                 output_format_prompt,
                 results['false_positives'],
@@ -148,14 +151,25 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                 invalid_comments=invalid_comments
             )
             
+            # Add analyses and prompts used to results
+            results.update(analyses)
+            results['prompts_used'] = prompts_used
+            
             # Validate and improve the new prompt
-            current_prompt = validate_and_improve_prompt(new_prompt, output_format_prompt, 
-                                                         provider=optim_provider, model=optim_model, 
-                                                         temperature=optim_temperature,
-                                                         validation_comments=validation_comments)
-        
+            improved_prompt, validation_result = validate_and_improve_prompt(new_prompt, output_format_prompt, 
+                                                                             provider=optim_provider, model=optim_model, 
+                                                                             temperature=optim_temperature,
+                                                                             validation_comments=validation_comments)
+            
+            # Add validation result to results
+            results['validation_result'] = validation_result
+            results['new_prompt'] = new_prompt
+            results['improved_prompt'] = improved_prompt
+
+            current_prompt = improved_prompt
+
         # Generate and save iteration dashboard
-        generate_iteration_dashboard(log_dir, i+1, results, current_prompt, output_format_prompt)
+        generate_iteration_dashboard(log_dir, i+1, results, current_prompt, output_format_prompt, initial_prompt)
 
     # Generate and save experiment dashboard
     generate_experiment_dashboard(log_dir, all_metrics, best_prompt, output_format_prompt)

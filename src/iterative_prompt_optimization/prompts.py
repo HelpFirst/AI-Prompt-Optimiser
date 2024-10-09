@@ -178,7 +178,7 @@ Additional Comments:
 {validation_comments}
 
 Please evaluate this prompt based on the following best practices:
-1. Clarity and specificity: Ensure the prompt is clear and specific about the task.
+1. Clarity and specificity: Ensure the prompt is clear and specific about the classification task.
 2. Contextual information: Check if the prompt provides necessary context.
 3. Explicit instructions: Verify that the prompt gives explicit instructions on how to approach the task.
 4. Examples: If applicable, check if the prompt includes relevant examples.
