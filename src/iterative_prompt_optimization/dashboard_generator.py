@@ -3,9 +3,131 @@ import json
 from jinja2 import Template
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
+import pandas as pd
+from ast import literal_eval
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
+import base64
+from io import BytesIO
+import numpy as np
+
+def generate_confusion_matrix(y_true, y_pred):
+    # Remove pairs where either y_true or y_pred is NaN
+    valid_indices = ~(np.isnan(y_true) | np.isnan(y_pred))
+    y_true_valid = np.array(y_true)[valid_indices]
+    y_pred_valid = np.array(y_pred)[valid_indices]
+    
+    if len(y_true_valid) == 0:
+        # If no valid pairs, return a placeholder image
+        plt.figure(figsize=(8, 6))
+        plt.text(0.5, 0.5, 'No valid predictions', ha='center', va='center')
+        plt.title('Confusion Matrix (No Valid Data)')
+        plt.axis('off')
+    else:
+        cm = confusion_matrix(y_true_valid, y_pred_valid)
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+        plt.title('Confusion Matrix')
+        plt.ylabel('True Label')
+        plt.xlabel('Predicted Label')
+    
+    # Save the plot to a base64 encoded string
+    buffer = BytesIO()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+    image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    plt.close()
+    
+    return image_base64
+
+import numpy as np
+
+def generate_confusion_matrix(y_true, y_pred):
+    # Remove pairs where either y_true or y_pred is NaN
+    valid_indices = ~(np.isnan(y_true) | np.isnan(y_pred))
+    y_true_valid = np.array(y_true)[valid_indices]
+    y_pred_valid = np.array(y_pred)[valid_indices]
+    
+    if len(y_true_valid) == 0:
+        # If no valid pairs, return a placeholder image
+        plt.figure(figsize=(8, 6))
+        plt.text(0.5, 0.5, 'No valid predictions', ha='center', va='center')
+        plt.title('Confusion Matrix (No Valid Data)')
+        plt.axis('off')
+    else:
+        cm = confusion_matrix(y_true_valid, y_pred_valid)
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+        plt.title('Confusion Matrix')
+        plt.ylabel('True Label')
+        plt.xlabel('Predicted Label')
+    
+    # Save the plot to a base64 encoded string
+    buffer = BytesIO()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+    image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    plt.close()
+    
+    return image_base64
 
 def generate_iteration_dashboard(log_dir: str, iteration: int, results: dict, current_prompt: str, output_format_prompt: str, initial_prompt: str):
     """Generate and save an HTML dashboard for a single iteration."""
+    
+    # Load evaluation results
+    evaluation_file = os.path.join(log_dir, f'iteration_{iteration}_evaluation.json')
+    with open(evaluation_file, 'r') as f:
+        evaluation_data = json.load(f)
+    
+    # Convert evaluation results to DataFrame
+    df = pd.DataFrame(evaluation_data['evaluations'])
+    
+    # Try to normalize the raw_output column
+    def parse_raw_output(raw_output):
+        try:
+            return json.loads(raw_output)
+        except json.JSONDecodeError:
+            try:
+                return literal_eval(raw_output)
+            except:
+                return raw_output
+
+    df['parsed_output'] = df['raw_output'].apply(parse_raw_output)
+    
+    # Try to normalize the parsed output
+    try:
+        normalized = pd.json_normalize(df['parsed_output'])
+        # Remove any columns that are already in the main DataFrame
+        normalized = normalized[[col for col in normalized.columns if col not in df.columns]]
+        # Combine the original DataFrame with the normalized data
+        df = pd.concat([df, normalized], axis=1)
+    except:
+        # If normalization fails, we'll just use the original DataFrame
+        pass
+    
+    # Reorder columns
+    ordered_columns = ['text', 'label', 'transformed_output', 'result'] + [col for col in df.columns if col not in ['text', 'label', 'transformed_output', 'result']]
+    df = df[ordered_columns]
+    
+    # Convert DataFrame back to list of dicts for Jinja template
+    evaluation_results = df.to_dict('records')
+    
+    # Get column names for the table header
+    table_headers = df.columns.tolist()
+    
+    # Generate confusion matrix
+    y_true = df['label'].tolist()
+    y_pred = df['transformed_output'].tolist()
+    
+    # Add debugging information
+    print(f"Number of samples: {len(y_true)}")
+    print(f"Number of NaN in y_true: {sum(np.isnan(y_true))}")
+    print(f"Number of NaN in y_pred: {sum(np.isnan(y_pred))}")
+    print(f"Sample of y_pred: {y_pred[:10]}")  # Print first 10 predictions
+    
+    confusion_matrix_image = generate_confusion_matrix(y_true, y_pred)
+    
     template = Template('''
     <!DOCTYPE html>
     <html lang="en">
@@ -14,6 +136,9 @@ def generate_iteration_dashboard(log_dir: str, iteration: int, results: dict, cu
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Iteration {{ iteration }} Dashboard</title>
         <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.24/css/jquery.dataTables.css">
+        <script type="text/javascript" charset="utf8" src="https://code.jquery.com/jquery-3.5.1.js"></script>
+        <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.js"></script>
         <style>
             body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
             .container { max-width: 1200px; margin: 0 auto; }
@@ -22,19 +147,111 @@ def generate_iteration_dashboard(log_dir: str, iteration: int, results: dict, cu
             .prompt, .analysis { white-space: pre-wrap; background-color: #f0f0f0; padding: 10px; border-radius: 5px; margin-bottom: 20px; }
             .chart-container { display: flex; justify-content: space-between; margin-bottom: 20px; }
             .chart { width: 48%; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: fixed; }
+            th, td { 
+                width: 150px; 
+                height: 50px; 
+                overflow: hidden; 
+                text-overflow: ellipsis; 
+                white-space: nowrap; 
+                border: 1px solid #ddd; padding: 8px; text-align: left; 
+            }
+            th { background-color: #f2f2f2; }
+            .truncate {
+                max-width: 200px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .modal {
+                display: none;
+                position: fixed;
+                z-index: 1;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                overflow: auto;
+                background-color: rgba(0,0,0,0.4);
+            }
+            .modal-content {
+                background-color: #fefefe;
+                margin: 15% auto;
+                padding: 20px;
+                border: 1px solid #888;
+                width: 80%;
+                max-height: 70vh;
+                overflow-y: auto;
+            }
+            #modalText {
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                max-width: 100%;
+            }
+            .close {
+                color: #aaa;
+                float: right;
+                font-size: 28px;
+                font-weight: bold;
+            }
+            .close:hover,
+            .close:focus {
+                color: black;
+                text-decoration: none;
+                cursor: pointer;
+            }
+            .confusion-matrix {
+                width: 50%;
+                margin: 20px auto;
+                text-align: center;
+            }
+            .confusion-matrix img {
+                max-width: 100%;
+                height: auto;
+            }
         </style>
     </head>
     <body>
         <div class="container">
             <h1>Iteration {{ iteration }} Dashboard</h1>
             
-            <!-- Metrics and charts (as before) -->
+            <h2>Evaluation Metrics</h2>
+            <div class="metrics">
+                <div class="metric"><strong>Precision:</strong> {{ "%.4f"|format(results.precision) }}</div>
+                <div class="metric"><strong>Recall:</strong> {{ "%.4f"|format(results.recall) }}</div>
+                <div class="metric"><strong>Accuracy:</strong> {{ "%.4f"|format(results.accuracy) }}</div>
+                <div class="metric"><strong>F1 Score:</strong> {{ "%.4f"|format(results.f1) }}</div>
+                <div class="metric"><strong>Valid Predictions:</strong> {{ results.valid_predictions }}</div>
+                <div class="metric"><strong>Invalid Predictions:</strong> {{ results.invalid_predictions }}</div>
+            </div>
+
+            <h2>Confusion Matrix</h2>
+            <div class="confusion-matrix">
+                <img src="data:image/png;base64,{{ confusion_matrix_image }}" alt="Confusion Matrix">
+            </div>
+
+            <h2>Evaluation Results</h2>
+            <table id="resultsTable" class="display">
+                <thead>
+                    <tr>
+                        {% for header in table_headers %}
+                        <th>{{ header }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for eval in evaluation_results %}
+                    <tr>
+                        {% for header in table_headers %}
+                        <td title="{{ eval[header] }}">{{ eval[header] }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
             
-            <h2>Initial Prompt</h2>
-            <pre class="prompt">{{ initial_prompt }}</pre>
-            
-            <h2>Output Format</h2>
-            <pre class="prompt">{{ output_format_prompt }}</pre>
+            <h2>Current Prompt</h2>
+            <pre class="prompt">{{ current_prompt }}</pre>
             
             <h2>Analyses and Prompts</h2>
             
@@ -76,8 +293,53 @@ def generate_iteration_dashboard(log_dir: str, iteration: int, results: dict, cu
             <pre class="prompt">{{ results.improved_prompt }}</pre>
         </div>
         
-        <!-- Plotly scripts (as before) -->
+        <div id="myModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <pre id="modalText"></pre>
+            </div>
+        </div>
         
+        <script>
+            $(document).ready(function() {
+                $('#resultsTable').DataTable({
+                    pageLength: 10,
+                    lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+                    order: [[4, 'desc'], [5, 'desc']],
+                    columnDefs: [
+                        {
+                            targets: '_all',
+                            render: function(data, type, row) {
+                                if (type === 'display') {
+                                    return '<div title="' + data + '">' + data + '</div>';
+                                }
+                                return data;
+                            }
+                        }
+                    ]
+                });
+
+                // Modal functionality
+                var modal = document.getElementById("myModal");
+                var span = document.getElementsByClassName("close")[0];
+
+                $('#resultsTable').on('dblclick', 'td', function() {
+                    var cellContent = $(this).text();
+                    $('#modalText').text(cellContent);
+                    modal.style.display = "block";
+                });
+
+                span.onclick = function() {
+                    modal.style.display = "none";
+                }
+
+                window.onclick = function(event) {
+                    if (event.target == modal) {
+                        modal.style.display = "none";
+                    }
+                }
+            });
+        </script>
     </body>
     </html>
     ''')
@@ -86,69 +348,12 @@ def generate_iteration_dashboard(log_dir: str, iteration: int, results: dict, cu
         iteration=iteration,
         results=results,
         current_prompt=current_prompt,
-        output_format_prompt=output_format_prompt,
-        initial_prompt=initial_prompt
+        evaluation_results=evaluation_results,
+        table_headers=table_headers,
+        confusion_matrix_image=confusion_matrix_image
     )
     
     with open(os.path.join(log_dir, f'iteration_{iteration}_dashboard.html'), 'w') as f:
-        f.write(html_content)
-
-def generate_experiment_dashboard(log_dir: str, all_metrics: list, best_prompt: str, output_format_prompt: str):
-    """Generate and save an HTML dashboard for the entire experiment."""
-    template = Template('''
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Experiment Dashboard</title>
-        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-            .container { max-width: 1200px; margin: 0 auto; }
-            .prompt { white-space: pre-wrap; background-color: #f0f0f0; padding: 10px; border-radius: 5px; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>Experiment Dashboard</h1>
-            <div id="metricsChart"></div>
-            <h2>Best Prompt</h2>
-            <pre class="prompt">{{ best_prompt }}</pre>
-            <h2>Output Format</h2>
-            <pre class="prompt">{{ output_format_prompt }}</pre>
-        </div>
-        <script>
-            var data = {{ plotly_data|tojson }};
-            var layout = {
-                title: 'Metrics Across Iterations',
-                xaxis: {title: 'Iteration'},
-                yaxis: {title: 'Score', range: [0, 1]}
-            };
-            Plotly.newPlot('metricsChart', data, layout);
-        </script>
-    </body>
-    </html>
-    ''')
-    
-    # Prepare data for Plotly
-    metrics = ['precision', 'recall', 'accuracy', 'f1', 'valid_predictions', 'invalid_predictions']
-    colors = ['red', 'blue', 'green', 'purple', 'orange', 'brown']
-    plotly_data = []
-    
-    for i, metric in enumerate(metrics):
-        plotly_data.append({
-            'x': [m['iteration'] for m in all_metrics],
-            'y': [m[metric] for m in all_metrics],
-            'type': 'scatter',
-            'mode': 'lines+markers',
-            'name': metric.capitalize().replace('_', ' '),
-            'line': {'color': colors[i]}
-        })
-    
-    html_content = template.render(plotly_data=plotly_data, best_prompt=best_prompt, output_format_prompt=output_format_prompt)
-    
-    with open(os.path.join(log_dir, 'experiment_dashboard.html'), 'w') as f:
         f.write(html_content)
 
 def generate_combined_dashboard(log_dir: str, all_metrics: list, best_prompt: str, output_format_prompt: str):

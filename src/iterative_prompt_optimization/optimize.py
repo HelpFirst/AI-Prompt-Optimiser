@@ -8,7 +8,7 @@ from .utils import (estimate_token_usage, estimate_cost, display_best_prompt,
 from . import config
 from rich import print as rprint
 from rich.panel import Panel
-from .dashboard_generator import generate_iteration_dashboard, generate_experiment_dashboard, generate_combined_dashboard
+from .dashboard_generator import generate_iteration_dashboard, generate_combined_dashboard
 from .model_interface import get_model_output, get_analysis
 
 def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: pd.DataFrame, iterations: int,
@@ -170,9 +170,6 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
 
         # Generate and save iteration dashboard
         generate_iteration_dashboard(log_dir, i+1, results, current_prompt, output_format_prompt, initial_prompt)
-
-    # Generate and save experiment dashboard
-    generate_experiment_dashboard(log_dir, all_metrics, best_prompt, output_format_prompt)
 
     # Generate and save combined dashboard
     generate_combined_dashboard(log_dir, all_metrics, best_prompt, output_format_prompt)
