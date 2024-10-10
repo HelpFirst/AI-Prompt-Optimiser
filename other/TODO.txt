@@ -1,6 +1,7 @@
 To-do:
+- create a tool for manually analysing the false positives and the false negatives manually, create  dashboard with a table with the false negatives and false negatives, and the full output of the prompt (including the chaing of though and the explanation)
 - add comments to the prompt_engineering (prompt crafting) process
-- fix the issues that the generated prompt is enclosed as a json object
+- fix the issues that the generated prompt is enclosed as a json object -- this is due to the VALIDATION_AND_IMPROVEMENT_PROMPT outputs 3 fields, change this to a JSON object?
 - calculate the total cost of the experiments, after finishng running through all the iterations, also display the costt per iteration (inmedialy after each iteration)
 - report number of false positives and false negatives into the analysis, and the true positives and the actual postives in teh labelled data
 - Allow to pass the variable that wants to be optimised (e.g. f1 score, recall)
