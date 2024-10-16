@@ -17,7 +17,7 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                     output_schema: dict = None, use_cache: bool = True,
                     fp_comments: str = "", fn_comments: str = "", tp_comments: str = "",
                     invalid_comments: str = "", validation_comments: str = "",
-                    experiment_name: str = None) -> tuple:
+                    prompt_engineering_comments: str = "", experiment_name: str = None) -> tuple:
     """
     Optimize a prompt through iterative refinement and evaluation.
 
@@ -29,7 +29,7 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
 
     Args:
         initial_prompt (str): The starting prompt to be optimized
-        output_format_prompt (str): Instructions for the desired output format
+        output_format_prompt (str): Instructions for the desired output format, aimed to be enforced in each of the iterations
         eval_data (pd.DataFrame): Dataset used for evaluating prompt performance
         iterations (int): Number of optimization iterations to perform
         eval_provider (str, optional): Provider for the evaluation model
@@ -40,11 +40,12 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
         optim_temperature (float, optional): Temperature for the optimization model. Defaults to 0.9.
         output_schema (dict, optional): Schema for transforming and comparing output with the true label
         use_cache (bool, optional): Whether to use cached model outputs. Defaults to True.
-        fp_comments (str, optional): Comments for false positives. Defaults to "".
-        fn_comments (str, optional): Comments for false negatives. Defaults to "".
-        tp_comments (str, optional): Comments for true positives. Defaults to "".
-        invalid_comments (str, optional): Comments for invalid outputs. Defaults to "".
-        validation_comments (str, optional): Comments for validation. Defaults to "".
+        fp_comments (str, optional): Comments for false positives analysis. Defaults to "".
+        fn_comments (str, optional): Comments for false negatives analysis. Defaults to "".
+        tp_comments (str, optional): Comments for true positives analysis. Defaults to "".
+        invalid_comments (str, optional): Comments for invalid outputs analysis. Defaults to "".
+        validation_comments (str, optional): Comments for validation and improvement step. Defaults to "".
+        prompt_engineering_comments (str, optional): Comments for prompt engineering. Defaults to "".
         experiment_name (str, optional): Name of the experiment to be included in the run folder name
 
     Returns:
@@ -148,7 +149,8 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                 fp_comments=fp_comments,
                 fn_comments=fn_comments,
                 tp_comments=tp_comments,
-                invalid_comments=invalid_comments
+                invalid_comments=invalid_comments,
+                prompt_engineering_comments=prompt_engineering_comments
             )
             
             # Add analyses and prompts used to results

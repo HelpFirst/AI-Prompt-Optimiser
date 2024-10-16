@@ -2,7 +2,7 @@ from . import config
 from .model_interface import get_analysis
 from .utils import display_analysis, log_prompt_generation, display_prompt
 
-def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_positives: list, false_negatives: list, true_positives: list, invalid_outputs: list, previous_metrics: dict, log_dir: str = None, iteration: int = None, provider: str = None, model: str = None, temperature: float = 0.9, fp_comments: str = "", fn_comments: str = "", tp_comments: str = "", invalid_comments: str = "") -> tuple:
+def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_positives: list, false_negatives: list, true_positives: list, invalid_outputs: list, previous_metrics: dict, log_dir: str = None, iteration: int = None, provider: str = None, model: str = None, temperature: float = 0.9, fp_comments: str = "", fn_comments: str = "", tp_comments: str = "", invalid_comments: str = "", prompt_engineering_comments: str = "") -> tuple:
     """
     Generates a new prompt by incorporating false positives, false negatives, true positives, and invalid outputs analyses.
 
@@ -23,6 +23,7 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
         fn_comments (str): Comments for false negatives analysis
         tp_comments (str): Comments for true positives analysis
         invalid_comments (str): Comments for invalid outputs analysis
+        prompt_engineering_comments (str): Additional comments for prompt engineering
 
     Returns:
         tuple: A tuple containing the updated prompt, analysis results, and prompts used
@@ -142,7 +143,8 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
         f1=previous_metrics['f1'],
         total_predictions=total_predictions,
         valid_predictions=previous_metrics['valid_predictions'],
-        invalid_predictions=previous_metrics['invalid_predictions']
+        invalid_predictions=previous_metrics['invalid_predictions'],
+        prompt_engineering_comments=prompt_engineering_comments
     )
     new_prompt = get_analysis(provider, model, temperature, prompt_engineer_input)
     prompts_used['prompt_engineer_input'] = prompt_engineer_input

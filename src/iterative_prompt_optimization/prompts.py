@@ -36,6 +36,9 @@ You are an expert in refining prompts for classification tasks.
 ## Output Format Instructions (to ensure that the improved prompt will generate outputs in the correct format):
 {output_format_prompt}
 
+---- ADDITIONAL COMMENTS ----
+{prompt_engineering_comments}
+
 ---- IMPROVED PROMPT ----
 
 ## GOAL: Create a concise, improved prompt that addresses the most critical issues identified in the analyses. Focus on:
