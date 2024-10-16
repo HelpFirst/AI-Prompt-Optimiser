@@ -38,7 +38,7 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
     # Analyze False Positives
     num_fp = len(false_positives)
     if num_fp > 0:
-        fp_texts_and_cot = "\n".join(f"Text: {item['text']}\nChain of Thought: {item.get('chain_of_thought', 'N/A')}" for item in false_positives)
+        fp_texts_and_cot = "\n\n".join(f"** Text {i+1}:\n{item['text']}\n\nChain of Thought:\n{item.get('chain_of_thought', 'N/A')}\n" for i, item in enumerate(false_positives))
         fp_percentage = (num_fp / total_predictions) * 100
         fp_fn_ratio = num_fp / len(false_negatives) if len(false_negatives) > 0 else float('inf')
         fp_prompt = config.FALSE_POSITIVES_ANALYSIS_PROMPT.format(
@@ -61,7 +61,7 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
     # Analyze False Negatives
     num_fn = len(false_negatives)
     if num_fn > 0:
-        fn_texts_and_cot = "\n".join(f"Text: {item['text']}\nChain of Thought: {item.get('chain_of_thought', 'N/A')}" for item in false_negatives)
+        fn_texts_and_cot = "\n\n".join(f"** Text {i+1}:\n{item['text']}\n\nChain of Thought:\n{item.get('chain_of_thought', 'N/A')}\n" for i, item in enumerate(false_negatives))
         fn_percentage = (num_fn / total_predictions) * 100
         fn_fp_ratio = num_fn / num_fp if num_fp > 0 else float('inf')
         fn_prompt = config.FALSE_NEGATIVES_ANALYSIS_PROMPT.format(
@@ -84,7 +84,7 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
     # Analyze True Positives
     num_tp = len(true_positives)
     if num_tp > 0:
-        tp_texts_and_cot = "\n".join(f"Text: {item['text']}\nChain of Thought: {item.get('chain_of_thought', 'N/A')}" for item in true_positives)
+        tp_texts_and_cot = "\n\n".join(f"** Text {i+1}:\n{item['text']}\n\nChain of Thought:\n{item.get('chain_of_thought', 'N/A')}\n" for i, item in enumerate(true_positives))
         tp_percentage = (num_tp / total_predictions) * 100
         tp_fp_ratio = num_tp / num_fp if num_fp > 0 else float('inf')
         tp_fn_ratio = num_tp / num_fn if num_fn > 0 else float('inf')
@@ -109,7 +109,7 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
     # Analyze Invalid Outputs
     num_invalid = len(invalid_outputs)
     if num_invalid > 0:
-        invalid_texts = "\n".join(f"- Text: {item['text']}\n  Raw Output: {item['raw_output']}" for item in invalid_outputs)
+        invalid_texts = "\n\n".join(f"** Text {i+1}:\n{item['text']}\n\nRaw Output:\n{item['raw_output']}\n" for i, item in enumerate(invalid_outputs))
         invalid_percentage = (num_invalid / total_predictions) * 100
         invalid_prompt = config.INVALID_OUTPUTS_ANALYSIS_PROMPT.format(
             initial_prompt=initial_prompt,
