@@ -35,7 +35,8 @@ def get_model_output(provider: str, model: str, temperature: float, full_prompt:
         dict: Model output containing the generated content
     """
     if index is not None and total is not None:
-        print(f"Processing text {index + 1}/{total}")
+        print("-----------------------------------")
+        print(f"Processing text {index + 1}/{total} .....")
     
     if use_cache:
         cache_key = get_cache_key(full_prompt, text, model)
