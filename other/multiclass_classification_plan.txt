@@ -1,18 +1,17 @@
 Summary of Changes:
-1. Add problem type detection function to optimize.py
-2. Modify evaluation metrics calculation in evaluation.py to support multiclass
-3. Update prompt generation process in prompt_generation.py
-4. Enhance dashboard generation in dashboard_generator.py for multiclass support
-5. Update main optimization loop in optimize.py to include problem_type
-6. Modify example notebook for multiclass classification
-7. Update configuration, utility functions, and HTML templates as needed
+1. Modify input handling and problem type detection in optimize.py
+2. Update evaluation metrics calculation in evaluation.py
+3. Adjust prompt generation process in prompt_generation.py
+4. Enhance dashboard generation in dashboard_generator.py
+5. Update main optimization loop in optimize.py
+6. Modify example notebooks for both binary and multiclass classification
+7. Update configuration, utility functions, and HTML templates
 8. Implement testing, documentation updates, and optional enhancements
 
-
-Step 1: Modify the input handling and problem type detection
+Step 1: Modify input handling and problem type detection
 File: src/iterative_prompt_optimization/optimize.py
 
-1.1. Add a function to detect if the problem is binary or multiclass:
+1.1. Add a function to detect the problem type:
 
 ```python
 def detect_problem_type(eval_data, output_schema):
@@ -25,22 +24,24 @@ def detect_problem_type(eval_data, output_schema):
         return 'binary'
 ```
 
-1.2. Modify the optimize_prompt function to include problem type detection:
+1.2. Update the optimize_prompt function signature and add problem type detection:
 
 ```python
-def optimize_prompt(initial_prompt, output_format_prompt, eval_data, iterations, ...):
+def optimize_prompt(initial_prompt, output_format_prompt, eval_data, iterations, ..., problem_type=None):
     # Existing code...
     
-    problem_type = detect_problem_type(eval_data, output_schema)
+    if problem_type is None:
+        problem_type = detect_problem_type(eval_data, output_schema)
+    print(f"Detected problem type: {problem_type}")
     
     # Pass problem_type to other functions
     # ...
 ```
 
-Step 2: Update the evaluation metrics calculation
+Step 2: Update evaluation metrics calculation
 File: src/iterative_prompt_optimization/evaluation.py
 
-2.1. Modify the calculate_metrics function to handle both binary and multiclass problems:
+2.1. Modify the calculate_metrics function:
 
 ```python
 def calculate_metrics(predictions, true_labels, invalid_predictions, valid_predictions, false_positives, false_negatives, true_positives, invalid_outputs, problem_type):
@@ -62,7 +63,7 @@ def calculate_metrics(predictions, true_labels, invalid_predictions, valid_predi
     # ...
 ```
 
-2.2. Update the evaluate_prompt function to pass the problem_type:
+2.2. Update the evaluate_prompt function:
 
 ```python
 def evaluate_prompt(full_prompt, eval_data, output_schema, log_dir=None, iteration=None, use_cache=True, provider=None, model=None, temperature=0.7, problem_type='binary'):
@@ -74,16 +75,15 @@ def evaluate_prompt(full_prompt, eval_data, output_schema, log_dir=None, iterati
     # ...
 ```
 
-Step 3: Modify the prompt generation process
+Step 3: Adjust prompt generation process
 File: src/iterative_prompt_optimization/prompt_generation.py
 
-3.1. Update the generate_new_prompt function to handle multiclass problems:
+3.1. Update the generate_new_prompt function:
 
 ```python
-def generate_new_prompt(initial_prompt, output_format_prompt, false_positives, false_negatives, true_positives, invalid_outputs, previous_metrics, log_dir=None, iteration=None, provider=None, model=None, temperature=0.9, fp_comments="", fn_comments="", tp_comments="", invalid_comments="", problem_type='binary'):
+def generate_new_prompt(initial_prompt, output_format_prompt, false_positives, false_negatives, true_positives, invalid_outputs, previous_metrics, log_dir=None, iteration=None, provider=None, model=None, temperature=0.9, fp_comments="", fn_comments="", tp_comments="", invalid_comments="", prompt_engineering_comments="", problem_type='binary'):
     # Existing code...
     
-    # Modify the prompt_engineer_input to include information about the problem type
     prompt_engineer_input = config.PROMPT_ENGINEER_INPUT.format(
         # Existing parameters...
         problem_type=problem_type
@@ -93,29 +93,27 @@ def generate_new_prompt(initial_prompt, output_format_prompt, false_positives, f
     # ...
 ```
 
-Step 4: Update the dashboard generation
+Step 4: Enhance dashboard generation
 File: src/iterative_prompt_optimization/dashboard_generator.py
 
-4.1. Modify the generate_confusion_matrix function to handle multiclass problems:
+4.1. Modify the generate_confusion_matrix function:
 
 ```python
 def generate_confusion_matrix(y_true, y_pred, problem_type):
-    # Existing code...
+    cm = confusion_matrix(y_true, y_pred)
     
     if problem_type == 'multiclass':
-        # Use a different color map for multiclass
         plt.figure(figsize=(10, 8))
         sns.heatmap(cm, annot=True, fmt='d', cmap='YlOrRd')
         plt.title('Multiclass Confusion Matrix')
     else:
         # Existing binary confusion matrix code
-        # ...
     
     # Rest of the function remains the same
     # ...
 ```
 
-4.2. Update the generate_combined_dashboard function to include problem type information:
+4.2. Update the generate_combined_dashboard function:
 
 ```python
 def generate_combined_dashboard(log_dir, all_metrics, best_prompt, output_format_prompt, problem_type):
@@ -130,10 +128,10 @@ def generate_combined_dashboard(log_dir, all_metrics, best_prompt, output_format
     # ...
 ```
 
-Step 5: Modify the main optimization loop
+Step 5: Update main optimization loop
 File: src/iterative_prompt_optimization/optimize.py
 
-5.1. Update the optimize_prompt function to pass the problem_type to all relevant functions:
+5.1. Modify the optimize_prompt function to pass problem_type:
 
 ```python
 def optimize_prompt(initial_prompt, output_format_prompt, eval_data, iterations, ...):
@@ -155,93 +153,25 @@ def optimize_prompt(initial_prompt, output_format_prompt, eval_data, iterations,
         
         # Existing code...
     
-    # Generate and save combined dashboard
     generate_combined_dashboard(log_dir, all_metrics, best_prompt, output_format_prompt, problem_type)
     
     # Rest of the function remains the same
     # ...
 ```
 
-Step 6: Update the example notebook
-File: examples/example_emotions.ipynb
+Step 6: Modify example notebooks
+6.1. Update existing binary classification example (e.g., example_sentiments.ipynb)
+6.2. Create or update multiclass classification example (e.g., example_emotions.ipynb)
 
-6.1. Modify the output schema to include all emotion classes:
+For the multiclass example, update the output schema, initial prompt, and evaluation data as shown in the previous plan.
 
-```python
-output_schema = {
-    'key_to_extract': 'classification',
-    'value_mapping': {
-        'sadness': 'sadness',
-        'anger': 'anger',
-        'love': 'love',
-        'surprise': 'surprise',
-        'fear': 'fear',
-        'happy': 'happy'
-    },
-    'regex_pattern': r'"classification":\s*"(\w+)"',
-    'chain_of_thought_key': 'chain_of_thought',
-    'chain_of_thought_regex': r'"chain_of_thought":\s*"(.*?)"',
-    'use_json_mode': True,
-}
-```
+Step 7: Update configuration and utility functions
+7.1. Review and update config.py to include any necessary changes for multiclass support
+7.2. Update utility functions in utils.py if needed
 
-6.2. Update the initial prompt and output format prompt:
+Step 8: Testing, Documentation, and Optional Enhancements
+8.1. Implement tests for both binary and multiclass scenarios
+8.2. Update README.md and other documentation
+8.3. Consider implementing optional enhancements like multiclass confusion matrix visualization and class-specific metrics
 
-```python
-initial_prompt = """Classify the following text into one of these emotions: sadness, anger, love, surprise, fear, or happy.
-Consider the context, tone, and specific words used in the text."""
-
-output_format_prompt = '''
-Provide your response as a JSON dictionary with the following structure:
-{
-    "chain_of_thought": "Your step-by-step reasoning here",
-    "classification": "emotion_name",
-}
-Ensure that "chain_of_thought" contains your detailed analysis, and "classification" is one of: sadness, anger, love, surprise, fear, or happy.
-'''
-```
-
-6.3. Update the evaluation data to include examples for all emotion classes:
-
-```python
-eval_data = pd.DataFrame({
-    'text': [
-        'I feel so down today',
-        'This makes me furious!',
-        'I adore you',
-        'Wow, I didn't expect that!',
-        'I'm terrified of spiders',
-        'This is the best day ever!'
-    ],
-    'label': ['sadness', 'anger', 'love', 'surprise', 'fear', 'happy']
-})
-```
-
-Step 7: Testing and Validation
-
-7.1. Run the updated example_emotions.ipynb notebook to ensure that the multiclass classification works correctly.
-
-7.2. Verify that the metrics (precision, recall, F1-score) are calculated correctly for the multiclass problem.
-
-7.3. Check the generated dashboard to ensure it displays the multiclass results accurately.
-
-Step 8: Documentation Update
-
-8.1. Update the README.md file to include information about multiclass classification support.
-
-8.2. Add examples of how to use the tool for different multiclass problems.
-
-Step 9: Code Refactoring (if necessary)
-
-9.1. Review the codebase to ensure that all functions support both binary and multiclass classification smoothly.
-
-9.2. Consider creating separate utility functions for binary and multiclass operations if the code becomes too complex.
-
-Step 10: Optional Enhancements
-
-10.1. Implement a confusion matrix visualization for multiclass results in the dashboard.
-
-10.2. Add support for class-specific metrics (e.g., per-class precision, recall) in the evaluation and dashboard.
-
-By following this plan, you should be able to successfully implement multiclass classification support in the AI Prompt Optimizer. Remember to test thoroughly at each step and handle any edge cases that may arise during the implementation.
-```
+By following this updated plan, the AI Prompt Optimizer will support both binary and multiclass classification problems effectively.
