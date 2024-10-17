@@ -365,7 +365,7 @@ def transform_and_compare_output(raw_output, label, output_schema):
                 if json_match:
                     try:
                         parsed_output = json.loads(json_match.group())
-                    except json.JSONDecodeError:
+                    except:
                         print("Failed to parse JSON-like structure")
                         print("Trying regex extraction...")
                         value_match = re.search(regex_pattern, raw_output)
