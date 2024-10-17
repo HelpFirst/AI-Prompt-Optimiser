@@ -1,5 +1,4 @@
 To-do:
-- create a tool for manually analysing the false positives and the false negatives manually, create  dashboard with a table with the false negatives and false negatives, and the full output of the prompt (including the chaing of though and the explanation)
 - add comments to the prompt_engineering (prompt crafting) process
 - fix the issues that the generated prompt is enclosed as a json object -- this is due to the VALIDATION_AND_IMPROVEMENT_PROMPT outputs 3 fields, change this to a JSON object?
 - calculate the total cost of the experiments, after finishng running through all the iterations, also display the costt per iteration (inmedialy after each iteration)
@@ -11,6 +10,7 @@ To-do:
 - add something in the prompt about making sure it writes thing in British English
 
 Done:
+- create a tool for manually analysing the false positives and the false negatives manually, create  dashboard with a table with the false negatives and false negatives, and the full output of the prompt (including the chaing of though and the explanation)
 - dashboard should display the table with all the results
 - check if the file evaluate_prompt.py is used in the codebase, if not remove it
 - runs name should have the date and time in a human readable format, also allow to pass a name to the run (experiment name) to be included into the run name, as a prefix to the human readable date and time
