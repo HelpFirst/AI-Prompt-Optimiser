@@ -17,7 +17,8 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                     output_schema: dict = None, use_cache: bool = True,
                     fp_comments: str = "", fn_comments: str = "", tp_comments: str = "",
                     invalid_comments: str = "", validation_comments: str = "",
-                    prompt_engineering_comments: str = "", experiment_name: str = None) -> tuple:
+                    prompt_engineering_comments: str = "", experiment_name: str = None,
+                    skip_prompt_validation: bool = False) -> tuple:
     """
     Optimize a prompt through iterative refinement and evaluation.
 
@@ -47,6 +48,7 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
         validation_comments (str, optional): Comments for validation and improvement step. Defaults to "".
         prompt_engineering_comments (str, optional): Comments for prompt engineering. Defaults to "".
         experiment_name (str, optional): Name of the experiment to be included in the run folder name
+        skip_prompt_validation (bool, optional): Whether to skip validation and improvement steps. Defaults to False.
 
     Returns:
         tuple: The best performing prompt and its associated metrics
@@ -157,18 +159,25 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
             results.update(analyses)
             results['prompts_used'] = prompts_used
             
-            # Validate and improve the new prompt
-            improved_prompt, validation_result = validate_and_improve_prompt(new_prompt, output_format_prompt, 
-                                                                             provider=optim_provider, model=optim_model, 
-                                                                             temperature=optim_temperature,
-                                                                             validation_comments=validation_comments)
-            
-            # Add validation result to results
-            results['validation_result'] = validation_result
-            results['new_prompt'] = new_prompt
-            results['improved_prompt'] = improved_prompt
+            # Validate and improve the new prompt if not skipped
+            if not skip_prompt_validation:
+                improved_prompt, validation_result = validate_and_improve_prompt(new_prompt, output_format_prompt, 
+                                                                                 provider=optim_provider, model=optim_model, 
+                                                                                 temperature=optim_temperature,
+                                                                                 validation_comments=validation_comments)
+                
+                # Add validation result to results
+                results['validation_result'] = validation_result
+                results['new_prompt'] = new_prompt
+                results['improved_prompt'] = improved_prompt
 
-            current_prompt = improved_prompt
+                current_prompt = improved_prompt
+            else:
+                # Skip validation and use the new prompt directly
+                current_prompt = new_prompt
+                results['validation_result'] = "Skipped"
+                results['new_prompt'] = new_prompt
+                results['improved_prompt'] = new_prompt
 
         # Generate and save iteration dashboard
         generate_iteration_dashboard(log_dir, i+1, results, current_prompt, output_format_prompt, initial_prompt)

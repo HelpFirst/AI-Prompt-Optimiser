@@ -287,7 +287,7 @@ def generate_iteration_dashboard(log_dir: str, iteration: int, results: dict, cu
             
             <h3>Validation and Improvement</h3>
             <h4>Validation Result:</h4>
-            <pre class="analysis">{{ results.validation_result }}</pre>
+            <pre class="analysis">{{ results.validation_result if results.validation_result != "Skipped" else "Validation was skipped for this iteration." }}</pre>
             
             <h3>Final Improved Prompt for Next Iteration</h3>
             <pre class="prompt">{{ results.improved_prompt }}</pre>
