@@ -11,4 +11,7 @@ __pycache__/
 # ...
 .DS_Store
 /src/iterative_prompt_optimization/__pycache__
-/examples/model_cache
+/examples/binary_classifier/model_cache
+/examples/multiclass_classifier/model_cache
+/examples/binary_classifier/runs
+/examples/multiclass_classifier/runs
