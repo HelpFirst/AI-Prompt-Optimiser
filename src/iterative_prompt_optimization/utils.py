@@ -552,3 +552,27 @@ def detect_problem_type(eval_data: pd.DataFrame, output_schema: dict) -> str:
     else:
         return 'binary'
 
+# Add this new function in utils.py
+def log_prompt_generation_multiclass(log_dir: str, iteration: int, initial_prompt: str, 
+                                   correct_analysis: str = None, incorrect_analysis: str = None, 
+                                   new_prompt: str = None) -> None:
+    """
+    Log the prompt generation process for multiclass classification.
+    
+    Args:
+        log_dir (str): Directory for storing logs
+        iteration (int): Current iteration number
+        initial_prompt (str): The initial prompt
+        correct_analysis (str): Analysis of correct predictions
+        incorrect_analysis (str): Analysis of incorrect predictions
+        new_prompt (str): The newly generated prompt
+    """
+    log_file_path = os.path.join(log_dir, f"iteration_{iteration}_prompt_generation.json")
+    log_data = {
+        "initial_prompt": initial_prompt,
+        "correct_analysis": correct_analysis,
+        "incorrect_analysis": incorrect_analysis,
+        "new_prompt": new_prompt
+    }
+    with open(log_file_path, 'w') as f:
+        json.dump(log_data, f, indent=2)

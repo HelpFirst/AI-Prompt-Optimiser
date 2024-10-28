@@ -207,6 +207,48 @@ def _get_azure_openai_analysis(model: str, analysis_prompt: str, temperature: fl
     )
     return response.choices[0].message.content.strip()
 
+def _get_openai_analysis(model: str, analysis_prompt: str, temperature: float) -> str:
+    """Helper function to get analysis from OpenAI models."""
+    client = OpenAI()
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "user", "content": analysis_prompt}
+        ],
+        temperature=temperature
+    )
+    return response.choices[0].message.content.strip()
+
+def _get_anthropic_analysis(model: str, analysis_prompt: str, temperature: float) -> str:
+    """Helper function to get analysis from Anthropic models."""
+    client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    response = client.completions.create(
+        model=model,
+        prompt=f"{anthropic.HUMAN_PROMPT} {analysis_prompt}{anthropic.AI_PROMPT}",
+        max_tokens_to_sample=1000,  # Increased for analysis
+        temperature=temperature
+    )
+    return response.completion.strip()
+
+def _get_google_analysis(model: str, analysis_prompt: str, temperature: float) -> str:
+    """Helper function to get analysis from Google models."""
+    genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+    model = genai.GenerativeModel(model)
+    
+    try:
+        response = model.generate_content(
+            analysis_prompt,
+            generation_config=genai.types.GenerationConfig(temperature=temperature)
+        )
+        return response.text.strip()
+    except ValueError as e:
+        if "Temperature must be" in str(e):
+            warnings.warn(f"Google AI doesn't support the provided temperature value. Using default temperature. Error: {e}")
+            response = model.generate_content(analysis_prompt)
+            return response.text.strip()
+        else:
+            raise
+
 # Keep the existing helper functions
 def get_cache_key(full_prompt: str, text: str, model: str) -> str:
     """Generate a unique cache key based on the prompt, text, and model."""

@@ -1,6 +1,7 @@
 import pandas as pd 
 from .evaluation import evaluate_prompt
 from .prompt_generation import generate_new_prompt, validate_and_improve_prompt
+from .prompt_generation_multiclass import generate_new_prompt_multiclass
 from .utils import (estimate_token_usage, estimate_cost, display_best_prompt,
                     display_comparison_table, log_final_results, select_model,
                     create_log_directory, log_initial_setup, display_metrics,
@@ -171,22 +172,19 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                 )
             else:  # problem_type == "multiclass"
                 print("************")
-                print("HERE: will generate new prompt for multiclass!")
+                print("Generating new prompt for multiclass classification...")
                 new_prompt, analyses, prompts_used = generate_new_prompt_multiclass(
-                    current_prompt,
-                    output_format_prompt,
-                    results,
-                    # ADD more?
-                    previous_metrics,
+                    initial_prompt=current_prompt,
+                    output_format_prompt=output_format_prompt,
+                    results=results,
+                    previous_metrics=previous_metrics,
                     log_dir=log_dir,
                     iteration=i+1,
                     provider=optim_provider,
                     model=optim_model,
                     temperature=optim_temperature,
-                    fp_comments=fp_comments,
-                    fn_comments=fn_comments,
-                    tp_comments=tp_comments,
-                    invalid_comments=invalid_comments,
+                    correct_comments="",
+                    incorrect_comments="",
                     prompt_engineering_comments=prompt_engineering_comments
                 )
             

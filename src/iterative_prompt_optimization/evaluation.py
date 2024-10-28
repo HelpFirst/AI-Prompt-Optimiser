@@ -21,7 +21,7 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
                    model: str = None, 
                    temperature: float = 0.7) -> dict:
     # Initialize lists
-    predictions = []  # Only declare this once
+    predictions = []  
     true_labels = []
     invalid_predictions = 0
     valid_predictions = 0
@@ -32,6 +32,7 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
     raw_outputs = []
     texts = []
     labels = []
+    chain_of_thought_list = [] 
     
     log_data = initialize_log_data(full_prompt) if log_dir else None
     use_json_mode = output_schema.get('use_json_mode', False)
@@ -44,13 +45,15 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
         # Transform and compare the model output with the true label
         transformed_output, is_correct, is_valid, chain_of_thought = transform_and_compare_output(raw_output, row['label'], output_schema)
         
-        # Process and display output
-        result = process_output(transformed_output, row['label'], is_valid, index, len(eval_data), raw_output)
+        # Process and display output - add problem_type parameter
+        result = process_output(transformed_output, row['label'], is_valid, index, 
+                              len(eval_data), raw_output, problem_type)
         
         # Store the additional information for every example
         raw_outputs.append(raw_output)
         texts.append(row['text'])
         labels.append(row['label'])
+        chain_of_thought_list.append(chain_of_thought)
         
         if is_valid:
             valid_predictions += 1
@@ -87,12 +90,13 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
         problem_type
     )
     
-    # Add the additional information to results
+    # Add the additional information to results, including chain of thought
     results.update({
         'raw_outputs': raw_outputs,
         'texts': texts,
         'labels': labels,
-        'predictions': predictions  # Use the same predictions list
+        'predictions': predictions,
+        'chain_of_thought': chain_of_thought_list  # Add this new field
     })
 
     if log_dir and iteration:
