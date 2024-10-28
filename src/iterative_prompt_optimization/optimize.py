@@ -11,6 +11,10 @@ from rich import print as rprint
 from rich.panel import Panel
 from .dashboard_generator import generate_iteration_dashboard, generate_combined_dashboard
 from .model_interface import get_model_output, get_analysis
+from .dashboard_generator_multiclass import (
+    generate_iteration_dashboard_multiclass,
+    generate_combined_dashboard_multiclass
+)
 
 def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: pd.DataFrame, iterations: int,
                     eval_provider: str = None, eval_model: str = None, eval_temperature: float = 0.7,
@@ -171,8 +175,6 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                     prompt_engineering_comments=prompt_engineering_comments
                 )
             else:  # problem_type == "multiclass"
-                print("************")
-                print("Generating new prompt for multiclass classification...")
                 new_prompt, analyses, prompts_used = generate_new_prompt_multiclass(
                     initial_prompt=current_prompt,
                     output_format_prompt=output_format_prompt,
@@ -212,11 +214,19 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                 results['new_prompt'] = new_prompt
                 results['improved_prompt'] = new_prompt
 
-        # Generate and save iteration dashboard
-        generate_iteration_dashboard(log_dir, i+1, results, current_prompt, output_format_prompt, initial_prompt)
+        # Generate and save iteration dashboard based on problem type
+        if problem_type == "binary":
+            generate_iteration_dashboard(log_dir, i+1, results, current_prompt, 
+                                      output_format_prompt, initial_prompt)
+        else:  # multiclass
+            generate_iteration_dashboard_multiclass(log_dir, i+1, results, current_prompt, 
+                                                 output_format_prompt, initial_prompt)
 
-    # Generate and save combined dashboard
-    generate_combined_dashboard(log_dir, all_metrics, best_prompt, output_format_prompt)
+    # Generate and save combined dashboard based on problem type
+    if problem_type == "binary":
+        generate_combined_dashboard(log_dir, all_metrics, best_prompt, output_format_prompt)
+    else:  # multiclass
+        generate_combined_dashboard_multiclass(log_dir, all_metrics, best_prompt, output_format_prompt)
 
     # Display and log final results
     display_best_prompt(best_prompt, output_format_prompt)
@@ -252,3 +262,4 @@ def select_model(purpose: str) -> tuple:
     selected_model = models[model_choice]
     
     return selected_provider, selected_model
+
