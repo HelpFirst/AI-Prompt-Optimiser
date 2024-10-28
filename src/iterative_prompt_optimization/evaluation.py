@@ -105,7 +105,7 @@ def create_full_prompt(prompt: str, output_format_prompt: str) -> str:
     """Combine the main prompt and output format prompt."""
     return f"{prompt}\n\n{output_format_prompt}"
 
-def process_output(output: int, ground_truth: int, is_valid: bool, index: int, total: int, raw_output: str) -> str:
+def process_output(output: int, ground_truth: int, is_valid: bool, index: int, total: int, raw_output: str, problem_type: str = "binary") -> str:
     """
     Process the model output and compare it with the ground truth.
 
@@ -116,17 +116,22 @@ def process_output(output: int, ground_truth: int, is_valid: bool, index: int, t
         index (int): Current index in the dataset
         total (int): Total number of samples
         raw_output (str): Raw output from the model
+        problem_type (str): Type of classification problem ("binary" or "multiclass")
 
     Returns:
         str: A string representation of the result
     """
     if not is_valid:
-        # Use string concatenation instead of f-string for the part with backslashes
         result = "🛠️ (Invalid Output Format) - Raw output: " + raw_output.replace('\n', '').replace('\r', '')
-    elif output == ground_truth:
-        result = "✅ (TP)" if output == 1 else "✅ (TN)"
+    elif problem_type == "binary":
+        # Binary classification specific output
+        if output == ground_truth:
+            result = "✅ (TP)" if output == 1 else "✅ (TN)"
+        else:
+            result = "❌ (FP)" if output == 1 else "❌ (FN)"
     else:
-        result = "❌ (FP)" if output == 1 else "❌ (FN)"
+        # Multiclass classification output
+        result = "✅ (Correct)" if output == ground_truth else "❌ (Incorrect)"
     
     print(f"Prediction {index + 1}/{total}: {output} | Ground Truth: {ground_truth} {result}")
     return result
