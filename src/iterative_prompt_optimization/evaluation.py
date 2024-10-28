@@ -13,32 +13,15 @@ from .model_interface import get_model_output
 from .utils import transform_and_compare_output, create_log_file_path, initialize_log_data, log_results
 
 def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: dict, 
-                   problem_type: str,  # Add problem_type parameter
+                   problem_type: str,
                    log_dir: str = None, 
                    iteration: int = None, 
                    use_cache: bool = True, 
                    provider: str = None, 
                    model: str = None, 
                    temperature: float = 0.7) -> dict:
-    """
-    Evaluate the performance of a given prompt on the evaluation dataset.
-
-    Args:
-        full_prompt (str): The full prompt to be evaluated
-        eval_data (pd.DataFrame): Evaluation dataset
-        output_schema (dict): Schema for transforming and comparing output
-        problem_type (str): Type of classification problem ('binary' or 'multiclass')
-        log_dir (str, optional): Directory for storing logs
-        iteration (int, optional): Current iteration number
-        use_cache (bool, optional): Whether to use cached model outputs. Defaults to True.
-        provider (str, optional): The AI provider (e.g., "ollama", "openai")
-        model (str, optional): The specific model being used
-        temperature (float, optional): The temperature setting for the model. Defaults to 0.7.
-
-    Returns:
-        dict: Evaluation results including metrics and misclassifications
-    """
-    predictions = []
+    # Initialize lists
+    predictions = []  # Only declare this once
     true_labels = []
     invalid_predictions = 0
     valid_predictions = 0
@@ -46,11 +29,13 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
     false_negatives = []
     true_positives = []
     invalid_outputs = []
+    raw_outputs = []
+    texts = []
+    labels = []
     
     log_data = initialize_log_data(full_prompt) if log_dir else None
-
     use_json_mode = output_schema.get('use_json_mode', False)
-
+    
     for index, row in eval_data.iterrows():
         # Get model output for the current text
         model_output = get_model_output(provider, model, temperature, full_prompt, row['text'], 
@@ -61,6 +46,11 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
         
         # Process and display output
         result = process_output(transformed_output, row['label'], is_valid, index, len(eval_data), raw_output)
+        
+        # Store the additional information for every example
+        raw_outputs.append(raw_output)
+        texts.append(row['text'])
+        labels.append(row['label'])
         
         if is_valid:
             valid_predictions += 1
@@ -96,8 +86,15 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
         false_positives, false_negatives, true_positives, invalid_outputs,
         problem_type
     )
+    
+    # Add the additional information to results
+    results.update({
+        'raw_outputs': raw_outputs,
+        'texts': texts,
+        'labels': labels,
+        'predictions': predictions  # Use the same predictions list
+    })
 
-    # Log results if log_dir is provided
     if log_dir and iteration:
         log_file_path = create_log_file_path(log_dir, iteration)
         log_results(log_file_path, log_data, results)

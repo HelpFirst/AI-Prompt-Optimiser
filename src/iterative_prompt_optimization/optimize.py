@@ -149,25 +149,46 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                 'invalid_predictions': results['invalid_predictions'],
                 'total_predictions': results['valid_predictions'] + results['invalid_predictions']
             }
-            new_prompt, analyses, prompts_used = generate_new_prompt(
-                current_prompt,
-                output_format_prompt,
-                results['false_positives'],
-                results['false_negatives'],
-                results['true_positives'],
-                results['invalid_outputs'],
-                previous_metrics,
-                log_dir=log_dir,
-                iteration=i+1,
-                provider=optim_provider,
-                model=optim_model,
-                temperature=optim_temperature,
-                fp_comments=fp_comments,
-                fn_comments=fn_comments,
-                tp_comments=tp_comments,
-                invalid_comments=invalid_comments,
-                prompt_engineering_comments=prompt_engineering_comments
-            )
+            if problem_type == "binary":
+                new_prompt, analyses, prompts_used = generate_new_prompt(
+                    current_prompt,
+                    output_format_prompt,
+                    results['false_positives'],
+                    results['false_negatives'],
+                    results['true_positives'],
+                    results['invalid_outputs'],
+                    previous_metrics,
+                    log_dir=log_dir,
+                    iteration=i+1,
+                    provider=optim_provider,
+                    model=optim_model,
+                    temperature=optim_temperature,
+                    fp_comments=fp_comments,
+                    fn_comments=fn_comments,
+                    tp_comments=tp_comments,
+                    invalid_comments=invalid_comments,
+                    prompt_engineering_comments=prompt_engineering_comments
+                )
+            else:  # problem_type == "multiclass"
+                print("************")
+                print("HERE: will generate new prompt for multiclass!")
+                new_prompt, analyses, prompts_used = generate_new_prompt_multiclass(
+                    current_prompt,
+                    output_format_prompt,
+                    results,
+                    # ADD more?
+                    previous_metrics,
+                    log_dir=log_dir,
+                    iteration=i+1,
+                    provider=optim_provider,
+                    model=optim_model,
+                    temperature=optim_temperature,
+                    fp_comments=fp_comments,
+                    fn_comments=fn_comments,
+                    tp_comments=tp_comments,
+                    invalid_comments=invalid_comments,
+                    prompt_engineering_comments=prompt_engineering_comments
+                )
             
             # Add analyses and prompts used to results
             results.update(analyses)
