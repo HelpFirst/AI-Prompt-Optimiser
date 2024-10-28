@@ -1,4 +1,6 @@
 To-do:
+- fix multiclass dashboard to correctly display the prompts
+- check dashboards
 - add comments to the prompt_engineering (prompt crafting) process
 - fix the issues that the generated prompt is enclosed as a json object -- this is due to the VALIDATION_AND_IMPROVEMENT_PROMPT outputs 3 fields, change this to a JSON object?
 - calculate the total cost of the experiments, after finishng running through all the iterations, also display the costt per iteration (inmedialy after each iteration)
