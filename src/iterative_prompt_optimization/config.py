@@ -21,6 +21,7 @@ PRICING = {
     "openai": {
         "gpt-3.5-turbo": 0.0008,
         "gpt-4": 0.06,
+        "gpt-4o-mini": 0.0012,
     },
     "anthropic": {
         "claude-2": 0.01,
