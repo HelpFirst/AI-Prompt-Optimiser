@@ -4,7 +4,7 @@ from .prompt_generation import generate_new_prompt, validate_and_improve_prompt
 from .utils import (estimate_token_usage, estimate_cost, display_best_prompt,
                     display_comparison_table, log_final_results, select_model,
                     create_log_directory, log_initial_setup, display_metrics,
-                    create_metric_entry, update_best_metrics)
+                    create_metric_entry, update_best_metrics, detect_problem_type)
 from . import config
 from rich import print as rprint
 from rich.panel import Panel
@@ -53,6 +53,10 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
     Returns:
         tuple: The best performing prompt and its associated metrics
     """
+    # Detect problem type
+    problem_type = detect_problem_type(eval_data, output_schema)
+    print(f"\nDetected problem type: {problem_type}")
+    
     # Select models for evaluation and optimization if not provided
     if not eval_provider or not eval_model:
         eval_provider, eval_model = select_model("evaluation")
@@ -110,9 +114,19 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
         # Print the full prompt
         rprint(Panel(current_prompt, title="Current Full Prompt", expand=False, border_style="blue"))
         
-        # Evaluate the current prompt
-        results = evaluate_prompt(current_prompt, eval_data, output_schema, log_dir=log_dir, iteration=i+1, use_cache=use_cache,
-                                  provider=eval_provider, model=eval_model, temperature=eval_temperature)
+        # Evaluate the current prompt with problem_type
+        results = evaluate_prompt(
+            current_prompt, 
+            eval_data, 
+            output_schema, 
+            problem_type=problem_type,  
+            log_dir=log_dir, 
+            iteration=i+1, 
+            use_cache=use_cache,
+            provider=eval_provider, 
+            model=eval_model, 
+            temperature=eval_temperature
+        )
         
         # Initialize prompts_used in results
         results['prompts_used'] = {}

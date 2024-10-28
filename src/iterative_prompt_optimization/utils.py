@@ -9,6 +9,7 @@ from rich.table import Table
 from .config import PRICING, MODEL_OPTIONS, SELECTED_PROVIDER, MODEL_NAME
 from pathlib import Path
 import ast
+import pandas as pd
 
 console = Console()
 
@@ -297,6 +298,39 @@ def select_model():
     
     return selected_provider, selected_model
 
+def display_confusion_matrix(conf_matrix: list):
+    """
+    Display a nicely formatted confusion matrix in the console with horizontal lines
+    and bold diagonal elements.
+    
+    Args:
+        conf_matrix (list): 2D list representing the confusion matrix
+    """
+    if not conf_matrix:
+        return
+
+    console = Console()
+    table = Table(title="Confusion Matrix", show_header=True, show_lines=True)
+    
+    # Add columns
+    table.add_column("True↓/Pred→", no_wrap=True)
+    for i in range(len(conf_matrix)):
+        table.add_column(str(i), justify="right")
+        
+    # Add rows
+    for i in range(len(conf_matrix)):
+        row = [str(i)]  # First column is the true label
+        for j in range(len(conf_matrix)):
+            # Bold the diagonal elements
+            if i == j:
+                row.append(f"[bold]{conf_matrix[i][j]}[/bold]")
+            else:
+                row.append(str(conf_matrix[i][j]))
+        table.add_row(*row)
+    
+    console.print(table)
+    print()
+
 def display_metrics(results: dict, iteration: int):
     """Display the evaluation metrics for a specific iteration."""
     console = Console()
@@ -308,10 +342,15 @@ def display_metrics(results: dict, iteration: int):
     metrics_table.add_row("Recall", f"{results['recall']:.4f}")
     metrics_table.add_row("Accuracy", f"{results['accuracy']:.4f}")
     metrics_table.add_row("F1-score", f"{results['f1']:.4f}")
+    metrics_table.add_row("", "", style="dim", end_section=True)  # Horizontal line separator
     metrics_table.add_row("Valid Predictions", str(results['valid_predictions']))
     metrics_table.add_row("Invalid Predictions", str(results['invalid_predictions']))
     
     console.print(metrics_table)
+    
+    # Display confusion matrix if available
+    if results.get('confusion_matrix'):
+        display_confusion_matrix(results['confusion_matrix'])
 
 def create_metric_entry(iteration: int, results: dict):
     """Create a metric entry for a specific iteration."""
@@ -488,4 +527,28 @@ def log_evaluation_results(log_dir: str, iteration: int, results: dict, eval_dat
     }
     with open(log_file_path, 'w') as f:
         json.dump(log_data, f, indent=2)
+
+def detect_problem_type(eval_data: pd.DataFrame, output_schema: dict) -> str:
+    """
+    Detect whether the classification problem is binary or multiclass.
+    
+    Args:
+        eval_data (pd.DataFrame): The evaluation dataset containing labels
+        output_schema (dict): Schema defining the output format and value mappings
+        
+    Returns:
+        str: 'binary' or 'multiclass'
+    """
+    # Check unique labels in the evaluation data
+    unique_labels = eval_data['label'].nunique()
+    
+    # Check value mapping length in the output schema
+    value_mapping = output_schema.get('value_mapping', {})
+    value_mapping_length = len(value_mapping)
+    
+    # If either the data or schema indicates more than 2 classes, it's multiclass
+    if unique_labels > 2 or value_mapping_length > 2:
+        return 'multiclass'
+    else:
+        return 'binary'
 

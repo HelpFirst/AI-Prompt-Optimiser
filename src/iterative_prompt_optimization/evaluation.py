@@ -1,19 +1,33 @@
 import pandas as pd
 import numpy as np
-from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score
+from sklearn.metrics import (
+    precision_score, 
+    recall_score, 
+    accuracy_score, 
+    f1_score,
+    confusion_matrix
+)
+import matplotlib.pyplot as plt
+import seaborn as sns
 from .model_interface import get_model_output
 from .utils import transform_and_compare_output, create_log_file_path, initialize_log_data, log_results
 
-def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: dict, log_dir: str = None, 
-                    iteration: int = None, use_cache: bool = True, provider: str = None, 
-                    model: str = None, temperature: float = 0.7) -> dict:
+def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: dict, 
+                   problem_type: str,  # Add problem_type parameter
+                   log_dir: str = None, 
+                   iteration: int = None, 
+                   use_cache: bool = True, 
+                   provider: str = None, 
+                   model: str = None, 
+                   temperature: float = 0.7) -> dict:
     """
     Evaluate the performance of a given prompt on the evaluation dataset.
 
     Args:
-        full_prompt (str): The full prompt to be evaluated (including output format instructions)
+        full_prompt (str): The full prompt to be evaluated
         eval_data (pd.DataFrame): Evaluation dataset
         output_schema (dict): Schema for transforming and comparing output
+        problem_type (str): Type of classification problem ('binary' or 'multiclass')
         log_dir (str, optional): Directory for storing logs
         iteration (int, optional): Current iteration number
         use_cache (bool, optional): Whether to use cached model outputs. Defaults to True.
@@ -77,7 +91,11 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
             })
 
     # Calculate metrics
-    results = calculate_metrics(predictions, true_labels, invalid_predictions, valid_predictions, false_positives, false_negatives, true_positives, invalid_outputs)
+    results = calculate_metrics(
+        predictions, true_labels, invalid_predictions, valid_predictions,
+        false_positives, false_negatives, true_positives, invalid_outputs,
+        problem_type
+    )
 
     # Log results if log_dir is provided
     if log_dir and iteration:
@@ -116,42 +134,42 @@ def process_output(output: int, ground_truth: int, is_valid: bool, index: int, t
     print(f"Prediction {index + 1}/{total}: {output} | Ground Truth: {ground_truth} {result}")
     return result
 
-def calculate_metrics(predictions: list, true_labels: list, invalid_predictions: int, valid_predictions: int, false_positives: list, false_negatives: list, true_positives: list, invalid_outputs: list) -> dict:
+def calculate_metrics(predictions: list, true_labels: list, invalid_predictions: int, 
+                     valid_predictions: int, false_positives: list, false_negatives: list, 
+                     true_positives: list, invalid_outputs: list, problem_type: str) -> dict:
     """
-    Calculate evaluation metrics.
-
-    Args:
-        predictions (list): List of model predictions
-        true_labels (list): List of true labels
-        invalid_predictions (int): Number of invalid predictions
-        valid_predictions (int): Number of valid predictions
-        false_positives (list): List of false positive samples
-        false_negatives (list): List of false negative samples
-        true_positives (list): List of true positive samples
-        invalid_outputs (list): List of invalid output samples
-
-    Returns:
-        dict: Dictionary containing calculated metrics
+    Calculate evaluation metrics for both binary and multiclass classification.
     """
     if len(predictions) > 0:
-        precision = precision_score(true_labels, predictions, zero_division=0)
-        recall = recall_score(true_labels, predictions, zero_division=0)
+        # Calculate confusion matrix
+        try:
+            conf_matrix = confusion_matrix(true_labels, predictions)
+            conf_matrix = conf_matrix.tolist() # Convert confusion matrix to list for JSON serialization
+        except Exception as e:
+            print(f"Warning: Could not calculate confusion matrix: {str(e)}")
+            conf_matrix = None
+        
+        if problem_type == 'binary':
+            precision = precision_score(true_labels, predictions, zero_division=0)
+            recall = recall_score(true_labels, predictions, zero_division=0)
+            f1 = f1_score(true_labels, predictions, zero_division=0)
+        else:
+            # For multiclass, use weighted average
+            precision = precision_score(true_labels, predictions, average='weighted', zero_division=0)
+            recall = recall_score(true_labels, predictions, average='weighted', zero_division=0)
+            f1 = f1_score(true_labels, predictions, average='weighted', zero_division=0)
+        
         accuracy = accuracy_score(true_labels, predictions)
-        f1 = f1_score(true_labels, predictions, zero_division=0)
     else:
         precision = recall = accuracy = f1 = 0
-
-    invalid_output_message = (
-        "Note: There were invalid output formats detected. Please ensure that the output format "
-        "is correct and follows the instructions provided in the prompt. Invalid outputs are not "
-        "included in the FP and FN analysis."
-    )
+        conf_matrix = None
 
     return {
         'precision': precision,
         'recall': recall,
         'accuracy': accuracy,
         'f1': f1,
+        'confusion_matrix': conf_matrix,
         'predictions': predictions,
         'false_positives': false_positives,
         'false_negatives': false_negatives,
@@ -159,5 +177,10 @@ def calculate_metrics(predictions: list, true_labels: list, invalid_predictions:
         'invalid_predictions': invalid_predictions,
         'valid_predictions': valid_predictions,
         'invalid_outputs': invalid_outputs,
-        'invalid_output_message': invalid_output_message if invalid_predictions > 0 else None
+        'problem_type': problem_type,
+        'invalid_output_message': (
+            "Note: There were invalid output formats detected. Please ensure that the output format "
+            "is correct and follows the instructions provided in the prompt. Invalid outputs are not "
+            "included in the analysis."
+        ) if invalid_predictions > 0 else None
     }
