@@ -1,3 +1,8 @@
+# Template prompts for multiclass classification analysis and optimization
+# These prompts guide the AI in analyzing and improving classification performance
+
+# Prompt template for analyzing correct predictions
+# Used to identify successful patterns and effective classification strategies
 CORRECT_PREDICTIONS_ANALYSIS_PROMPT = """
 Analyze the following correct prediction examples for multiclass classification:
 
@@ -27,6 +32,8 @@ Consider both the text content and the chain of thought in your analysis. Sugges
 Limit your response to 3-5 key points, prioritizing the most impactful observations.
 """
 
+# Main prompt template for improving multiclass classification prompts
+# Guides the AI in optimizing the prompt based on analysis results
 PROMPT_ENGINEER_INPUT_MULTICLASS = """
 You are an expert in refining prompts for multiclass classification tasks.
 
@@ -81,7 +88,8 @@ You are an expert in refining prompts for multiclass classification tasks.
 Provide only the improved prompt without any additional commentary.
 """
 
-# Add this new prompt template
+# Prompt template for analyzing incorrect predictions
+# Used to identify error patterns and areas for improvement
 INCORRECT_PREDICTIONS_ANALYSIS_PROMPT = """
 Analyze the following incorrect prediction examples for multiclass classification:
 

@@ -1,3 +1,8 @@
+# Template prompts for binary classification analysis and optimization
+# These prompts guide the AI in analyzing and improving classification performance
+
+# Main prompt template for prompt engineering
+# Used to generate improved prompts based on analysis results
 PROMPT_ENGINEER_INPUT = """
 You are an expert in refining prompts for classification tasks. 
 
@@ -60,10 +65,10 @@ You are an expert in refining prompts for classification tasks.
 4.Specify the steps required to complete a task
 5.Provide examples
 6. Specify the desired length of the output
-
 """
 
-# Analysis prompts
+# Template for analyzing false positives
+# Used to identify and understand overclassification errors
 FALSE_POSITIVES_ANALYSIS_PROMPT = """
 Analyze the following false positive examples for the given prompt:
 
@@ -87,6 +92,8 @@ Provide a concise analysis of these false positives, focusing only on high-confi
 Limit your response to 3-5 key points.
 """
 
+# Template for analyzing false negatives
+# Used to identify and understand missed classifications
 FALSE_NEGATIVES_ANALYSIS_PROMPT = """
 Analyze the following false negative examples for the given prompt:
 
@@ -110,6 +117,8 @@ Provide a concise analysis of these false negatives, focusing only on high-confi
 Limit your response to 3-5 key points.
 """
 
+# Template for analyzing true positives
+# Used to identify and reinforce successful classification patterns
 TRUE_POSITIVES_ANALYSIS_PROMPT = """
 Analyze the following true positive examples for the given prompt:
 
@@ -134,7 +143,8 @@ Provide a concise analysis of these true positives, focusing only on high-confid
 Limit your response to 3-5 key points.
 """
 
-# Add this new prompt for analyzing invalid outputs
+# Template for analyzing invalid outputs
+# Used to identify and fix output formatting issues
 INVALID_OUTPUTS_ANALYSIS_PROMPT = """
 Analyze the following invalid outputs for the given prompt and output format instructions:
 
@@ -167,7 +177,8 @@ Your suggestions should aim to guide the model to produce outputs that match the
 Limit your response to 3-5 key points, prioritizing the most critical issues that lead to invalid outputs.
 """
 
-# Add this new prompt for validation and improvement
+# Template for validating and improving prompts
+# Used to ensure prompts follow best practices and maintain quality
 VALIDATION_AND_IMPROVEMENT_PROMPT = """
 As an expert in prompt engineering, your task is to validate and improve the following prompt:
 

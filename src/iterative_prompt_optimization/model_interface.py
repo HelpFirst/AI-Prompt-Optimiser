@@ -1,3 +1,6 @@
+# Module for interfacing with various AI model providers
+# Handles API calls, caching, and error handling for different model providers
+
 import os
 import ollama
 import openai
@@ -10,34 +13,44 @@ import hashlib
 from pathlib import Path
 import warnings
 
-# Add this at the top of the file, after imports
+# Directory for caching model responses to reduce API calls
 CACHE_DIR = Path("model_cache")
 CACHE_DIR.mkdir(exist_ok=True)
 
+# Maximum number of retries for API calls before falling back to default behavior
 MAX_RETRIES = 3
 
-def get_model_output(provider: str, model: str, temperature: float, full_prompt: str, text: str, index: int = None, total: int = None, use_json_mode: bool = False, use_cache: bool = True) -> dict:
+def get_model_output(provider: str, model: str, temperature: float, full_prompt: str, text: str, 
+                    index: int = None, total: int = None, use_json_mode: bool = False, 
+                    use_cache: bool = True) -> dict:
     """
-    Get the output from the selected AI model for evaluation or analysis.
-
+    Get output from the selected AI model with caching and error handling.
+    
+    This function:
+    1. Checks cache for existing responses
+    2. Makes API calls to the appropriate provider
+    3. Handles retries and errors
+    4. Caches successful responses
+    
     Args:
-        provider (str): The AI provider (e.g., "ollama", "openai")
-        model (str): The specific model being used
-        temperature (float): The temperature setting for the model
-        full_prompt (str): The complete prompt including instructions
-        text (str): The input text to be evaluated
-        index (int, optional): Current index in the dataset (for evaluation)
-        total (int, optional): Total number of samples (for evaluation)
-        use_json_mode (bool): Whether to use JSON mode for output (only for OpenAI and AzureOpenAI during evaluation)
-        use_cache (bool): Whether to use cached results
-
+        provider: AI provider (e.g., "ollama", "openai")
+        model: Specific model name
+        temperature: Temperature setting for generation
+        full_prompt: Complete prompt including instructions
+        text: Input text for evaluation
+        index: Current index in dataset (for progress tracking)
+        total: Total number of samples
+        use_json_mode: Whether to enforce JSON output format
+        use_cache: Whether to use cached results
+        
     Returns:
-        dict: Model output containing the generated content
+        dict: Model output containing generated content
     """
     if index is not None and total is not None:
         print("-----------------------------------")
         print(f"Processing text {index + 1}/{total} .....")
     
+    # Check cache first if enabled
     if use_cache:
         cache_key = get_cache_key(full_prompt, text, model)
         cached_output = get_cached_output(cache_key)
@@ -46,8 +59,10 @@ def get_model_output(provider: str, model: str, temperature: float, full_prompt:
                 print(f"Using cached output for text {index + 1}/{total}")
             return cached_output
 
+    # Try API calls with retries
     for retry in range(MAX_RETRIES):
         try:
+            # Route to appropriate provider-specific function
             if provider == "azure_openai":
                 output = _get_azure_openai_output(model, full_prompt, text, use_json_mode, temperature)
             elif provider == "ollama":
@@ -61,16 +76,20 @@ def get_model_output(provider: str, model: str, temperature: float, full_prompt:
             else:
                 raise ValueError(f"Unsupported provider: {provider}")
             
+            # Cache successful response if enabled
             if use_cache:
                 cache_output(cache_key, output)
             return output
         except Exception as e:
             print(f"API error: {str(e)}. Retrying... (Attempt {retry + 1}/{MAX_RETRIES})")
+            
+    # Return default prediction if all retries fail
     print(f"Max retries reached. Using default prediction.")
-    return {'choices': [{'message': {'content': '0'}}]}  # Default prediction
+    return {'choices': [{'message': {'content': '0'}}]}
 
+# Provider-specific helper functions
 def _get_ollama_output(model: str, full_prompt: str, text: str, temperature: float) -> dict:
-    """Helper function to get output from Ollama models."""
+    """Handle API calls to Ollama models."""
     response = ollama.chat(
         model=model,
         messages=[
@@ -249,9 +268,9 @@ def _get_google_analysis(model: str, analysis_prompt: str, temperature: float) -
         else:
             raise
 
-# Keep the existing helper functions
+# Caching helper functions
 def get_cache_key(full_prompt: str, text: str, model: str) -> str:
-    """Generate a unique cache key based on the prompt, text, and model."""
+    """Generate a unique cache key based on input parameters."""
     combined = f"{full_prompt}|{text}|{model}"
     return hashlib.md5(combined.encode()).hexdigest()
 
@@ -264,7 +283,7 @@ def get_cached_output(cache_key: str) -> dict:
     return None
 
 def cache_output(cache_key: str, output: dict):
-    """Cache the model output."""
+    """Cache the model output for future use."""
     cache_file = CACHE_DIR / f"{cache_key}.json"
     with cache_file.open('w') as f:
         json.dump(output, f)

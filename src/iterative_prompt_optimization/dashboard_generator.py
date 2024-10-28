@@ -1,3 +1,6 @@
+# Dashboard generator for binary classification results
+# Handles creation of HTML dashboards with metrics, visualizations, and analyses
+
 import os
 import json
 from jinja2 import Template
@@ -13,18 +16,35 @@ from io import BytesIO
 import numpy as np
 
 def generate_confusion_matrix(y_true, y_pred):
-    # Remove pairs where either y_true or y_pred is NaN
+    """
+    Generate a confusion matrix visualization for binary classification.
+    
+    This function:
+    1. Filters out invalid predictions
+    2. Creates a confusion matrix visualization
+    3. Handles edge cases (no data, errors)
+    4. Converts the plot to a base64 encoded image
+    
+    Args:
+        y_true: Array of true labels
+        y_pred: Array of predicted labels
+        
+    Returns:
+        str: Base64 encoded image of the confusion matrix
+    """
+    # Remove pairs where either value is NaN
     valid_indices = ~(np.isnan(y_true) | np.isnan(y_pred))
     y_true_valid = np.array(y_true)[valid_indices]
     y_pred_valid = np.array(y_pred)[valid_indices]
     
     if len(y_true_valid) == 0:
-        # If no valid pairs, return a placeholder image
+        # Handle case with no valid predictions
         plt.figure(figsize=(8, 6))
         plt.text(0.5, 0.5, 'No valid predictions', ha='center', va='center')
         plt.title('Confusion Matrix (No Valid Data)')
         plt.axis('off')
     else:
+        # Generate and plot confusion matrix
         cm = confusion_matrix(y_true_valid, y_pred_valid)
         plt.figure(figsize=(8, 6))
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
@@ -32,7 +52,7 @@ def generate_confusion_matrix(y_true, y_pred):
         plt.ylabel('True Label')
         plt.xlabel('Predicted Label')
     
-    # Save the plot to a base64 encoded string
+    # Convert plot to base64 image
     buffer = BytesIO()
     plt.savefig(buffer, format='png')
     buffer.seek(0)
@@ -41,50 +61,38 @@ def generate_confusion_matrix(y_true, y_pred):
     
     return image_base64
 
-import numpy as np
-
-def generate_confusion_matrix(y_true, y_pred):
-    # Remove pairs where either y_true or y_pred is NaN
-    valid_indices = ~(np.isnan(y_true) | np.isnan(y_pred))
-    y_true_valid = np.array(y_true)[valid_indices]
-    y_pred_valid = np.array(y_pred)[valid_indices]
+def generate_iteration_dashboard(log_dir: str, iteration: int, results: dict, 
+                               current_prompt: str, output_format_prompt: str, 
+                               initial_prompt: str):
+    """
+    Generate an HTML dashboard for a single iteration of binary classification.
     
-    if len(y_true_valid) == 0:
-        # If no valid pairs, return a placeholder image
-        plt.figure(figsize=(8, 6))
-        plt.text(0.5, 0.5, 'No valid predictions', ha='center', va='center')
-        plt.title('Confusion Matrix (No Valid Data)')
-        plt.axis('off')
-    else:
-        cm = confusion_matrix(y_true_valid, y_pred_valid)
-        plt.figure(figsize=(8, 6))
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
-        plt.title('Confusion Matrix')
-        plt.ylabel('True Label')
-        plt.xlabel('Predicted Label')
+    This function creates a comprehensive dashboard showing:
+    - Performance metrics
+    - Confusion matrix
+    - Detailed prediction results
+    - Analysis of different prediction categories
+    - Prompt evolution and improvements
     
-    # Save the plot to a base64 encoded string
-    buffer = BytesIO()
-    plt.savefig(buffer, format='png')
-    buffer.seek(0)
-    image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
-    plt.close()
-    
-    return image_base64
-
-def generate_iteration_dashboard(log_dir: str, iteration: int, results: dict, current_prompt: str, output_format_prompt: str, initial_prompt: str):
-    """Generate and save an HTML dashboard for a single iteration."""
-    
-    # Load evaluation results
+    Args:
+        log_dir: Directory for saving the dashboard
+        iteration: Current iteration number
+        results: Dictionary containing evaluation results
+        current_prompt: Current classification prompt
+        output_format_prompt: Output format instructions
+        initial_prompt: Original starting prompt
+    """
+    # Load evaluation results from file
     evaluation_file = os.path.join(log_dir, f'iteration_{iteration}_evaluation.json')
     with open(evaluation_file, 'r') as f:
         evaluation_data = json.load(f)
     
-    # Convert evaluation results to DataFrame
+    # Convert evaluation results to DataFrame for easier processing
     df = pd.DataFrame(evaluation_data['evaluations'])
     
     # Try to normalize the raw_output column
     def parse_raw_output(raw_output):
+        """Parse raw output into structured format."""
         try:
             return json.loads(raw_output)
         except json.JSONDecodeError:
@@ -93,257 +101,34 @@ def generate_iteration_dashboard(log_dir: str, iteration: int, results: dict, cu
             except:
                 return raw_output
 
+    # Process raw outputs
     df['parsed_output'] = df['raw_output'].apply(parse_raw_output)
     
-    # Try to normalize the parsed output
     try:
+        # Normalize parsed JSON outputs into columns
         normalized = pd.json_normalize(df['parsed_output'])
-        # Remove any columns that are already in the main DataFrame
         normalized = normalized[[col for col in normalized.columns if col not in df.columns]]
-        # Combine the original DataFrame with the normalized data
         df = pd.concat([df, normalized], axis=1)
     except:
-        # If normalization fails, we'll just use the original DataFrame
+        # Continue without normalization if it fails
         pass
     
-    # Reorder columns
-    ordered_columns = ['text', 'label', 'transformed_output', 'result'] + [col for col in df.columns if col not in ['text', 'label', 'transformed_output', 'result']]
+    # Organize columns for display
+    ordered_columns = ['text', 'label', 'transformed_output', 'result'] + [
+        col for col in df.columns if col not in ['text', 'label', 'transformed_output', 'result']
+    ]
     df = df[ordered_columns]
     
-    # Convert DataFrame back to list of dicts for Jinja template
+    # Convert DataFrame back to list for template
     evaluation_results = df.to_dict('records')
-    
-    # Get column names for the table header
     table_headers = df.columns.tolist()
     
-    # Generate confusion matrix
+    # Generate confusion matrix visualization
     y_true = df['label'].tolist()
     y_pred = df['transformed_output'].tolist()
-    
-    # Add debugging information
-    print(f"Number of samples: {len(y_true)}")
-    print(f"Number of NaN in y_true: {sum(np.isnan(y_true))}")
-    print(f"Number of NaN in y_pred: {sum(np.isnan(y_pred))}")
-    print(f"Sample of y_pred: {y_pred[:10]}")  # Print first 10 predictions
-    
     confusion_matrix_image = generate_confusion_matrix(y_true, y_pred)
     
-    template = Template('''
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Iteration {{ iteration }} Dashboard</title>
-        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.24/css/jquery.dataTables.css">
-        <script type="text/javascript" charset="utf8" src="https://code.jquery.com/jquery-3.5.1.js"></script>
-        <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.js"></script>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-            .container { max-width: 1200px; margin: 0 auto; }
-            .metrics { display: flex; justify-content: space-around; margin-bottom: 20px; }
-            .metric { text-align: center; }
-            .prompt, .analysis { white-space: pre-wrap; background-color: #f0f0f0; padding: 10px; border-radius: 5px; margin-bottom: 20px; }
-            .chart-container { display: flex; justify-content: space-between; margin-bottom: 20px; }
-            .chart { width: 48%; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: fixed; }
-            th, td { 
-                width: 150px; 
-                height: 50px; 
-                overflow: hidden; 
-                text-overflow: ellipsis; 
-                white-space: nowrap; 
-                border: 1px solid #ddd; padding: 8px; text-align: left; 
-            }
-            th { background-color: #f2f2f2; }
-            .truncate {
-                max-width: 200px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-            .modal {
-                display: none;
-                position: fixed;
-                z-index: 1;
-                left: 0;
-                top: 0;
-                width: 100%;
-                height: 100%;
-                overflow: auto;
-                background-color: rgba(0,0,0,0.4);
-            }
-            .modal-content {
-                background-color: #fefefe;
-                margin: 15% auto;
-                padding: 20px;
-                border: 1px solid #888;
-                width: 80%;
-                max-height: 70vh;
-                overflow-y: auto;
-            }
-            #modalText {
-                white-space: pre-wrap;
-                word-wrap: break-word;
-                max-width: 100%;
-            }
-            .close {
-                color: #aaa;
-                float: right;
-                font-size: 28px;
-                font-weight: bold;
-            }
-            .close:hover,
-            .close:focus {
-                color: black;
-                text-decoration: none;
-                cursor: pointer;
-            }
-            .confusion-matrix {
-                width: 50%;
-                margin: 20px auto;
-                text-align: center;
-            }
-            .confusion-matrix img {
-                max-width: 100%;
-                height: auto;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>Iteration {{ iteration }} Dashboard</h1>
-            
-            <h2>Evaluation Metrics</h2>
-            <div class="metrics">
-                <div class="metric"><strong>Precision:</strong> {{ "%.4f"|format(results.precision) }}</div>
-                <div class="metric"><strong>Recall:</strong> {{ "%.4f"|format(results.recall) }}</div>
-                <div class="metric"><strong>Accuracy:</strong> {{ "%.4f"|format(results.accuracy) }}</div>
-                <div class="metric"><strong>F1 Score:</strong> {{ "%.4f"|format(results.f1) }}</div>
-                <div class="metric"><strong>Valid Predictions:</strong> {{ results.valid_predictions }}</div>
-                <div class="metric"><strong>Invalid Predictions:</strong> {{ results.invalid_predictions }}</div>
-            </div>
-
-            <h2>Confusion Matrix</h2>
-            <div class="confusion-matrix">
-                <img src="data:image/png;base64,{{ confusion_matrix_image }}" alt="Confusion Matrix">
-            </div>
-
-            <h2>Evaluation Results</h2>
-            <table id="resultsTable" class="display">
-                <thead>
-                    <tr>
-                        {% for header in table_headers %}
-                        <th>{{ header }}</th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for eval in evaluation_results %}
-                    <tr>
-                        {% for header in table_headers %}
-                        <td title="{{ eval[header] }}">{{ eval[header] }}</td>
-                        {% endfor %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            
-            <h2>Current Prompt</h2>
-            <pre class="prompt">{{ current_prompt }}</pre>
-            
-            <h2>Analyses and Prompts</h2>
-            
-            <h3>False Positives Analysis</h3>
-            <h4>Prompt Used:</h4>
-            <pre class="prompt">{{ results.prompts_used.fp_prompt }}</pre>
-            <h4>Analysis:</h4>
-            <pre class="analysis">{{ results.fp_analysis }}</pre>
-            
-            <h3>False Negatives Analysis</h3>
-            <h4>Prompt Used:</h4>
-            <pre class="prompt">{{ results.prompts_used.fn_prompt }}</pre>
-            <h4>Analysis:</h4>
-            <pre class="analysis">{{ results.fn_analysis }}</pre>
-            
-            <h3>True Positives Analysis</h3>
-            <h4>Prompt Used:</h4>
-            <pre class="prompt">{{ results.prompts_used.tp_prompt }}</pre>
-            <h4>Analysis:</h4>
-            <pre class="analysis">{{ results.tp_analysis }}</pre>
-            
-            <h3>Invalid Outputs Analysis</h3>
-            <h4>Prompt Used:</h4>
-            <pre class="prompt">{{ results.prompts_used.invalid_prompt }}</pre>
-            <h4>Analysis:</h4>
-            <pre class="analysis">{{ results.invalid_analysis }}</pre>
-            
-            <h3>Prompt Engineer Input</h3>
-            <pre class="prompt">{{ results.prompts_used.prompt_engineer_input }}</pre>
-            
-            <h3>New Generated Prompt</h3>
-            <pre class="prompt">{{ results.new_prompt }}</pre>
-            
-            <h3>Validation and Improvement</h3>
-            <h4>Validation Result:</h4>
-            <pre class="analysis">{{ results.validation_result if results.validation_result != "Skipped" else "Validation was skipped for this iteration." }}</pre>
-            
-            <h3>Final Improved Prompt for Next Iteration</h3>
-            <pre class="prompt">{{ results.improved_prompt }}</pre>
-        </div>
-        
-        <div id="myModal" class="modal">
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <pre id="modalText"></pre>
-            </div>
-        </div>
-        
-        <script>
-            $(document).ready(function() {
-                $('#resultsTable').DataTable({
-                    pageLength: 10,
-                    lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
-                    order: [[4, 'desc'], [5, 'desc']],
-                    columnDefs: [
-                        {
-                            targets: '_all',
-                            render: function(data, type, row) {
-                                if (type === 'display') {
-                                    return '<div title="' + data + '">' + data + '</div>';
-                                }
-                                return data;
-                            }
-                        }
-                    ]
-                });
-
-                // Modal functionality
-                var modal = document.getElementById("myModal");
-                var span = document.getElementsByClassName("close")[0];
-
-                $('#resultsTable').on('dblclick', 'td', function() {
-                    var cellContent = $(this).text();
-                    $('#modalText').text(cellContent);
-                    modal.style.display = "block";
-                });
-
-                span.onclick = function() {
-                    modal.style.display = "none";
-                }
-
-                window.onclick = function(event) {
-                    if (event.target == modal) {
-                        modal.style.display = "none";
-                    }
-                }
-            });
-        </script>
-    </body>
-    </html>
-    ''')
-    
+    # Generate HTML content using template
     html_content = template.render(
         iteration=iteration,
         results=results,
@@ -353,130 +138,37 @@ def generate_iteration_dashboard(log_dir: str, iteration: int, results: dict, cu
         confusion_matrix_image=confusion_matrix_image
     )
     
+    # Save dashboard
     with open(os.path.join(log_dir, f'iteration_{iteration}_dashboard.html'), 'w') as f:
         f.write(html_content)
 
-def generate_combined_dashboard(log_dir: str, all_metrics: list, best_prompt: str, output_format_prompt: str):
-    """Generate and save a combined HTML dashboard for all iterations."""
+def generate_combined_dashboard(log_dir: str, all_metrics: list, 
+                              best_prompt: str, output_format_prompt: str):
+    """
+    Generate a combined HTML dashboard for all iterations.
+    
+    This function creates a summary dashboard showing:
+    - Metrics across all iterations
+    - Performance trends
+    - Best performing prompt
+    - Detailed iteration-by-iteration analysis
+    
+    Args:
+        log_dir: Directory for saving the dashboard
+        all_metrics: List of metrics from all iterations
+        best_prompt: Best performing prompt
+        output_format_prompt: Output format instructions
+    """
     # Find the best metrics (highest F1 score)
     best_metrics = max(all_metrics, key=lambda x: x['f1'])
     best_iteration = best_metrics['iteration']
     
-    template = Template('''
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Combined Experiment Dashboard</title>
-        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-            .container { max-width: 1200px; margin: 0 auto; }
-            .prompt { white-space: pre-wrap; background-color: #f0f0f0; padding: 10px; border-radius: 5px; }
-            .iteration { margin-bottom: 40px; border: 1px solid #ddd; padding: 20px; border-radius: 5px; }
-            .metrics { display: flex; flex-wrap: wrap; justify-content: space-between; }
-            .metric { width: 30%; margin-bottom: 10px; }
-            .analysis { margin-top: 20px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
-            th { background-color: #f2f2f2; }
-            .best-value { font-weight: bold; color: #007bff; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>Combined Experiment Dashboard</h1>
-            <h2>Summary of All Iterations</h2>
-            <table>
-                <tr>
-                    <th>Iteration</th>
-                    <th>Precision</th>
-                    <th>Recall</th>
-                    <th>Accuracy</th>
-                    <th>F1-score</th>
-                    <th>Valid Predictions</th>
-                    <th>Invalid Predictions</th>
-                </tr>
-                {% for metrics in all_metrics %}
-                <tr>
-                    <td>{{ metrics.iteration }}</td>
-                    <td{% if metrics.precision == max_values.precision %} class="best-value"{% endif %}>{{ "%.4f"|format(metrics.precision) }}</td>
-                    <td{% if metrics.recall == max_values.recall %} class="best-value"{% endif %}>{{ "%.4f"|format(metrics.recall) }}</td>
-                    <td{% if metrics.accuracy == max_values.accuracy %} class="best-value"{% endif %}>{{ "%.4f"|format(metrics.accuracy) }}</td>
-                    <td{% if metrics.f1 == max_values.f1 %} class="best-value"{% endif %}>{{ "%.4f"|format(metrics.f1) }}</td>
-                    <td{% if metrics.valid_predictions == max_values.valid_predictions %} class="best-value"{% endif %}>{{ metrics.valid_predictions }}</td>
-                    <td{% if metrics.invalid_predictions == min_values.invalid_predictions %} class="best-value"{% endif %}>{{ metrics.invalid_predictions }}</td>
-                </tr>
-                {% endfor %}
-            </table>
-            <div id="metricsChart"></div>
-            <div id="validityChart"></div>
-            <h2>Best Prompt - Iteration {{ best_iteration }}, F1 Score: {{ best_metrics.f1|round(4) }}</h2>
-            <pre class="prompt">{{ best_prompt }}</pre>
-            <h2>Best Metrics Summary</h2>
-            <table>
-                <tr><th>Metric</th><th>Value</th></tr>
-                <tr><td>Precision</td><td>{{ best_metrics.precision|round(4) }}</td></tr>
-                <tr><td>Recall</td><td>{{ best_metrics.recall|round(4) }}</td></tr>
-                <tr><td>Accuracy</td><td>{{ best_metrics.accuracy|round(4) }}</td></tr>
-                <tr><td>F1 Score</td><td>{{ best_metrics.f1|round(4) }}</td></tr>
-                <tr><td>Valid Predictions</td><td>{{ best_metrics.valid_predictions }}</td></tr>
-                <tr><td>Invalid Predictions</td><td>{{ best_metrics.invalid_predictions }}</td></tr>
-            </table>
-            <h2>Iterations</h2>
-            {% for iteration in iterations %}
-            <div class="iteration">
-                <h3>Iteration {{ iteration.number }}</h3>
-                <div class="metrics">
-                    <div class="metric"><strong>Precision:</strong> {{ "%.4f"|format(iteration.precision) }}</div>
-                    <div class="metric"><strong>Recall:</strong> {{ "%.4f"|format(iteration.recall) }}</div>
-                    <div class="metric"><strong>Accuracy:</strong> {{ "%.4f"|format(iteration.accuracy) }}</div>
-                    <div class="metric"><strong>F1 Score:</strong> {{ "%.4f"|format(iteration.f1) }}</div>
-                    <div class="metric"><strong>Valid Predictions:</strong> {{ iteration.valid_predictions }}</div>
-                    <div class="metric"><strong>Invalid Predictions:</strong> {{ iteration.invalid_predictions }}</div>
-                </div>
-                <h4>Prompt</h4>
-                <pre class="prompt">{{ iteration.prompt }}</pre>
-                <div class="analysis">
-                    <h4>False Positives Analysis</h4>
-                    <pre class="prompt">{{ iteration.fp_analysis }}</pre>
-                    <h4>False Negatives Analysis</h4>
-                    <pre class="prompt">{{ iteration.fn_analysis }}</pre>
-                    <h4>True Positives Analysis</h4>
-                    <pre class="prompt">{{ iteration.tp_analysis }}</pre>
-                    <h4>Invalid Outputs Analysis</h4>
-                    <pre class="prompt">{{ iteration.invalid_analysis }}</pre>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        <script>
-            var metricsData = {{ metrics_data|tojson }};
-            var metricsLayout = {
-                title: 'Metrics Across Iterations',
-                xaxis: {title: 'Iteration'},
-                yaxis: {title: 'Score', range: [0, 1]}
-            };
-            Plotly.newPlot('metricsChart', metricsData, metricsLayout);
-
-            var validityData = {{ validity_data|tojson }};
-            var validityLayout = {
-                title: 'Valid vs Invalid Predictions Across Iterations',
-                xaxis: {title: 'Iteration'},
-                yaxis: {title: 'Number of Predictions'}
-            };
-            Plotly.newPlot('validityChart', validityData, validityLayout);
-        </script>
-    </body>
-    </html>
-    ''')
-    
-    # Prepare data for Plotly
+    # Prepare data for Plotly visualizations
     metrics = ['precision', 'recall', 'accuracy', 'f1']
     colors = ['red', 'blue', 'green', 'purple']
     metrics_data = []
     
+    # Create line plots for each metric
     for i, metric in enumerate(metrics):
         metrics_data.append({
             'x': [m['iteration'] for m in all_metrics],
@@ -487,6 +179,7 @@ def generate_combined_dashboard(log_dir: str, all_metrics: list, best_prompt: st
             'line': {'color': colors[i]}
         })
     
+    # Create bar plots for prediction validity
     validity_data = [
         {
             'x': [m['iteration'] for m in all_metrics],
@@ -504,7 +197,7 @@ def generate_combined_dashboard(log_dir: str, all_metrics: list, best_prompt: st
         }
     ]
     
-    # Calculate max values for highlighting
+    # Calculate max values for highlighting in the table
     max_values = {
         'precision': max(m['precision'] for m in all_metrics),
         'recall': max(m['recall'] for m in all_metrics),
@@ -544,6 +237,7 @@ def generate_combined_dashboard(log_dir: str, all_metrics: list, best_prompt: st
         
         iterations.append(iteration_data)
     
+    # Generate HTML content using template
     html_content = template.render(
         metrics_data=metrics_data,
         validity_data=validity_data,
@@ -557,5 +251,6 @@ def generate_combined_dashboard(log_dir: str, all_metrics: list, best_prompt: st
         min_values=min_values
     )
     
+    # Save the combined dashboard
     with open(os.path.join(log_dir, 'combined_dashboard.html'), 'w') as f:
         f.write(html_content)
