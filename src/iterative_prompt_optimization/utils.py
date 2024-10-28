@@ -438,8 +438,12 @@ def transform_and_compare_output(raw_output, label, output_schema):
     # This step maps the extracted value to the desired output format
     if value_mapping:
         if isinstance(extracted_value, str):
-            normalized_value = extracted_value.lower().replace(" ", "_")
-            transformed_output = value_mapping.get(normalized_value)
+            # Check the value directly first
+            transformed_output = value_mapping.get(extracted_value)
+            if transformed_output is None:
+                # If not found, try normalized version
+                normalized_value = extracted_value.lower().replace(" ", "_")
+                transformed_output = value_mapping.get(normalized_value)
         elif isinstance(extracted_value, int):
             # If the extracted value is already an integer, use it directly
             transformed_output = extracted_value
@@ -484,3 +488,4 @@ def log_evaluation_results(log_dir: str, iteration: int, results: dict, eval_dat
     }
     with open(log_file_path, 'w') as f:
         json.dump(log_data, f, indent=2)
+
