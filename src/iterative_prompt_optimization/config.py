@@ -130,3 +130,13 @@ OUTPUT_SCHEMA_EXAMPLE = {
     'chain_of_thought_key': 'chain_of_thought',
     'chain_of_thought_regex': r'"chain_of_thought":\s*"(.*?)"'
 }
+
+# Add these imports at the top of config.py, after the existing imports
+from .prompts import (
+    PROMPT_ENGINEER_INPUT,
+    FALSE_POSITIVES_ANALYSIS_PROMPT,
+    FALSE_NEGATIVES_ANALYSIS_PROMPT,
+    TRUE_POSITIVES_ANALYSIS_PROMPT,
+    INVALID_OUTPUTS_ANALYSIS_PROMPT,
+    VALIDATION_AND_IMPROVEMENT_PROMPT
+)
