@@ -1,7 +1,7 @@
 import os
 import ollama
 import openai
-from openai import AzureOpenAI
+from openai import AzureOpenAI, OpenAI
 import anthropic
 import google.generativeai as genai
 from . import config
@@ -87,6 +87,7 @@ def _get_ollama_output(model: str, full_prompt: str, text: str, temperature: flo
 
 def _get_openai_output(model: str, full_prompt: str, text: str, use_json_mode: bool, temperature: float) -> dict:
     """Helper function to get output from OpenAI models."""
+    client = OpenAI()  # Initialize the client
     messages = [
         {"role": "system", "content": full_prompt},
         {"role": "user", "content": text}
@@ -99,8 +100,8 @@ def _get_openai_output(model: str, full_prompt: str, text: str, use_json_mode: b
     if use_json_mode:
         completion_args["response_format"] = {"type": "json_object"}
     
-    response = openai.ChatCompletion.create(**completion_args)
-    return {'choices': [{'message': {'content': response.choices[0].message['content'].strip()}}]}
+    response = client.chat.completions.create(**completion_args)
+    return {'choices': [{'message': {'content': response.choices[0].message.content.strip()}}]}
 
 def _get_azure_openai_output(model: str, full_prompt: str, text: str, use_json_mode: bool, temperature: float) -> dict:
     """Helper function to get output from Azure OpenAI models."""
