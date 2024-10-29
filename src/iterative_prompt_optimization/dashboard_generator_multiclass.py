@@ -122,10 +122,12 @@ def generate_iteration_dashboard_multiclass(log_dir: str, iteration: int, result
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Multiclass Classification - Iteration {{ iteration }} Dashboard</title>
+        <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.css">
+        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
+        <script type="text/javascript" src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+        <script type="text/javascript" src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
         <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.24/css/jquery.dataTables.css">
-        <script type="text/javascript" charset="utf8" src="https://code.jquery.com/jquery-3.5.1.js"></script>
-        <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.js"></script>
         <style>
             body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
             .container { max-width: 1200px; margin: 0 auto; }
@@ -137,15 +139,20 @@ def generate_iteration_dashboard_multiclass(log_dir: str, iteration: int, result
             table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
             th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
             th { background-color: #f2f2f2; }
+            .truncate {
+                max-width: 200px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
             .modal {
                 display: none;
                 position: fixed;
-                z-index: 1;
+                z-index: 1000;
                 left: 0;
                 top: 0;
                 width: 100%;
                 height: 100%;
-                overflow: auto;
                 background-color: rgba(0,0,0,0.4);
             }
             .modal-content {
@@ -156,6 +163,51 @@ def generate_iteration_dashboard_multiclass(log_dir: str, iteration: int, result
                 width: 80%;
                 max-height: 70vh;
                 overflow-y: auto;
+            }
+            #modalText {
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                max-width: 100%;
+            }
+            .close {
+                color: #aaa;
+                float: right;
+                font-size: 28px;
+                font-weight: bold;
+                cursor: pointer;
+            }
+            .close:hover,
+            .close:focus {
+                color: black;
+                text-decoration: none;
+            }
+            td { 
+                max-width: 200px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                cursor: pointer;
+            }
+            td:hover {
+                background-color: #f5f5f5;
+            }
+            .dataTables_wrapper {
+                margin: 20px 0;
+                padding: 20px;
+                background: white;
+                border-radius: 8px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            .dataTables_filter input {
+                padding: 5px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                margin-left: 10px;
+            }
+            .dataTables_length select {
+                padding: 5px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
             }
         </style>
     </head>
@@ -194,12 +246,20 @@ def generate_iteration_dashboard_multiclass(log_dir: str, iteration: int, result
                     {% for eval in evaluation_results %}
                     <tr>
                         {% for header in table_headers %}
-                        <td title="{{ eval[header] }}">{{ eval[header] }}</td>
+                        <td title="Double click to expand">{{ eval[header] }}</td>
                         {% endfor %}
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+
+            <!-- Add modal dialog -->
+            <div id="myModal" class="modal">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <pre id="modalText"></pre>
+                </div>
+            </div>
 
             <h2>Analyses</h2>
             
@@ -229,18 +289,59 @@ def generate_iteration_dashboard_multiclass(log_dir: str, iteration: int, result
 
         <script>
             $(document).ready(function() {
-                $('#resultsTable').DataTable({
+                // Initialize DataTable with advanced features
+                var table = $('#resultsTable').DataTable({
                     pageLength: 10,
                     lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+                    dom: 'Bfrtip',
+                    buttons: [
+                        'copy', 'csv', 'excel'
+                    ],
+                    order: [[0, 'asc']],
                     columnDefs: [{
                         targets: '_all',
                         render: function(data, type, row) {
                             if (type === 'display') {
-                                return '<div title="' + data + '">' + data + '</div>';
+                                if (data && data.length > 100) {
+                                    return '<span title="Click to view full content">' + 
+                                           data.substr(0, 100) + '...</span>';
+                                }
                             }
                             return data;
                         }
                     }]
+                });
+
+                // Modal functionality
+                var modal = document.getElementById("myModal");
+                var modalText = document.getElementById("modalText");
+                var span = document.getElementsByClassName("close")[0];
+
+                // Click handler for table cells
+                $('#resultsTable tbody').on('click', 'td', function() {
+                    var cellContent = table.cell(this).data();
+                    if (cellContent) {
+                        modalText.textContent = cellContent;
+                        modal.style.display = "block";
+                    }
+                });
+
+                // Close modal handlers
+                span.onclick = function() {
+                    modal.style.display = "none";
+                }
+
+                window.onclick = function(event) {
+                    if (event.target == modal) {
+                        modal.style.display = "none";
+                    }
+                }
+
+                // Close modal on escape key
+                $(document).keydown(function(e) {
+                    if (e.key === "Escape") {
+                        modal.style.display = "none";
+                    }
                 });
             });
         </script>
@@ -390,11 +491,14 @@ def generate_combined_dashboard_multiclass(log_dir: str, all_metrics: list,
                     <div class="metric"><strong>Valid Predictions:</strong> {{ iteration.valid_predictions }}</div>
                     <div class="metric"><strong>Invalid Predictions:</strong> {{ iteration.invalid_predictions }}</div>
                 </div>
+                
                 <h4>Prompt Used</h4>
                 <pre class="prompt">{{ iteration.prompt }}</pre>
+                
                 <div class="analysis">
                     <h4>Correct Predictions Analysis</h4>
                     <pre class="prompt">{{ iteration.correct_analysis }}</pre>
+                    
                     <h4>Incorrect Predictions Analysis</h4>
                     <pre class="prompt">{{ iteration.incorrect_analysis }}</pre>
                 </div>
@@ -449,14 +553,28 @@ def generate_combined_dashboard_multiclass(log_dir: str, all_metrics: list,
         }
         
         # Load additional data from iteration files
-        iteration_file = os.path.join(log_dir, f'iteration_{i+1}_prompt_generation.json')
-        if os.path.exists(iteration_file):
-            with open(iteration_file, 'r') as f:
-                iteration_json = json.load(f)
+        prompt_gen_file = os.path.join(log_dir, f'iteration_{i+1}_prompt_generation.json')
+        eval_file = os.path.join(log_dir, f'iteration_{i+1}_evaluation.json')
+        
+        if os.path.exists(prompt_gen_file):
+            with open(prompt_gen_file, 'r') as f:
+                prompt_gen_data = json.load(f)
                 iteration_data.update({
-                    'prompt': iteration_json.get('initial_prompt', ''),
-                    'correct_analysis': iteration_json.get('correct_predictions_analysis', ''),
-                    'incorrect_analysis': iteration_json.get('incorrect_predictions_analysis', '')
+                    'prompt': prompt_gen_data.get('initial_prompt', ''),
+                    'correct_analysis': prompt_gen_data.get('correct_predictions_analysis', 
+                                      prompt_gen_data.get('analyses', {}).get('correct_predictions_analysis', '')),
+                    'incorrect_analysis': prompt_gen_data.get('incorrect_predictions_analysis',
+                                        prompt_gen_data.get('analyses', {}).get('incorrect_predictions_analysis', ''))
+                })
+        
+        if os.path.exists(eval_file):
+            with open(eval_file, 'r') as f:
+                eval_data = json.load(f)
+                # Add evaluation data and any analyses that might be there
+                iteration_data.update({
+                    'evaluation_details': eval_data.get('evaluations', []),
+                    'correct_analysis': eval_data.get('correct_analysis', iteration_data.get('correct_analysis', '')),
+                    'incorrect_analysis': eval_data.get('incorrect_analysis', iteration_data.get('incorrect_analysis', ''))
                 })
         
         iterations.append(iteration_data)

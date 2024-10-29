@@ -261,88 +261,264 @@ COMBINED_DASHBOARD_TEMPLATE = '''
     <title>Combined Experiment Dashboard</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .prompt { white-space: pre-wrap; background-color: #f0f0f0; padding: 10px; border-radius: 5px; }
-        .iteration { margin-bottom: 40px; border: 1px solid #ddd; padding: 20px; border-radius: 5px; }
-        .metrics { display: flex; flex-wrap: wrap; justify-content: space-between; }
-        .metric { width: 30%; margin-bottom: 10px; }
-        .analysis { margin-top: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
-        th { background-color: #f2f2f2; }
-        .best-value { font-weight: bold; color: #007bff; }
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+        }
+        .prompt { 
+            white-space: pre-wrap; 
+            background-color: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 5px;
+            border: 1px solid #e9ecef;
+            font-family: monospace;
+        }
+        .iteration { 
+            margin-bottom: 40px; 
+            border: 1px solid #e9ecef; 
+            padding: 20px; 
+            border-radius: 8px;
+            background: white;
+        }
+        .metrics { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .metric { 
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            min-width: 200px;
+            text-align: center;
+        }
+        .metric strong {
+            display: block;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .analysis { 
+            margin-top: 20px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-bottom: 20px;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        th, td { 
+            border: 1px solid #e9ecef; 
+            padding: 12px; 
+            text-align: right;
+        }
+        th { 
+            background-color: #f8f9fa;
+            color: #495057;
+            font-weight: 600;
+        }
+        .best-value { 
+            font-weight: bold; 
+            color: #28a745;
+            background-color: #e8f5e9;
+        }
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        h1 { font-size: 2em; }
+        h2 { font-size: 1.5em; }
+        h3 { font-size: 1.2em; }
+        .chart-container {
+            margin: 30px 0;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body>
-    <h1>Combined Dashboard</h1>
+    <div class="container">
+        <h1>Combined Experiment Dashboard</h1>
 
-    <div class="section">
-        <h2>Performance Metrics Over Time</h2>
-        <div id="metricsChart" class="metrics-chart"></div>
-        <script>
-            var metricsData = {{ metrics_data|tojson }};
-            Plotly.newPlot('metricsChart', metricsData);
-        </script>
-    </div>
+        <div class="section">
+            <h2>Performance Overview</h2>
+            <div class="chart-container">
+                <div id="metricsChart"></div>
+            </div>
+            <div class="chart-container">
+                <div id="validityChart"></div>
+            </div>
+        </div>
 
-    <div class="section">
-        <h2>Prediction Validity Over Time</h2>
-        <div id="validityChart" class="validity-chart"></div>
-        <script>
-            var validityData = {{ validity_data|tojson }};
-            Plotly.newPlot('validityChart', validityData);
-        </script>
-    </div>
+        <div class="section">
+            <h2>Summary of All Iterations</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Iteration</th>
+                        <th>Precision</th>
+                        <th>Recall</th>
+                        <th>Accuracy</th>
+                        <th>F1-score</th>
+                        <th>Valid Predictions</th>
+                        <th>Invalid Predictions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for metrics in all_metrics %}
+                    <tr>
+                        <td>{{ metrics.iteration }}</td>
+                        <td{% if metrics.precision == max_values.precision %} class="best-value"{% endif %}>
+                            {{ "%.4f"|format(metrics.precision) }}
+                        </td>
+                        <td{% if metrics.recall == max_values.recall %} class="best-value"{% endif %}>
+                            {{ "%.4f"|format(metrics.recall) }}
+                        </td>
+                        <td{% if metrics.accuracy == max_values.accuracy %} class="best-value"{% endif %}>
+                            {{ "%.4f"|format(metrics.accuracy) }}
+                        </td>
+                        <td{% if metrics.f1 == max_values.f1 %} class="best-value"{% endif %}>
+                            {{ "%.4f"|format(metrics.f1) }}
+                        </td>
+                        <td{% if metrics.valid_predictions == max_values.valid_predictions %} class="best-value"{% endif %}>
+                            {{ metrics.valid_predictions }}
+                        </td>
+                        <td{% if metrics.invalid_predictions == min_values.invalid_predictions %} class="best-value"{% endif %}>
+                            {{ metrics.invalid_predictions }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-    <div class="section">
-        <h2>Best Performing Prompt (Iteration {{ best_iteration }})</h2>
-        <div class="prompt-box">{{ best_prompt }}</div>
-        <h3>Output Format</h3>
-        <div class="prompt-box">{{ output_format_prompt }}</div>
-    </div>
+        <div class="section">
+            <h2>Best Performing Prompt (Iteration {{ best_iteration }})</h2>
+            <div class="metrics">
+                <div class="metric">
+                    <strong>F1 Score</strong>
+                    {{ "%.4f"|format(best_metrics.f1) }}
+                </div>
+                <div class="metric">
+                    <strong>Precision</strong>
+                    {{ "%.4f"|format(best_metrics.precision) }}
+                </div>
+                <div class="metric">
+                    <strong>Recall</strong>
+                    {{ "%.4f"|format(best_metrics.recall) }}
+                </div>
+                <div class="metric">
+                    <strong>Accuracy</strong>
+                    {{ "%.4f"|format(best_metrics.accuracy) }}
+                </div>
+            </div>
+            <pre class="prompt">{{ best_prompt }}</pre>
+            
+            <h3>Output Format</h3>
+            <pre class="prompt">{{ output_format_prompt }}</pre>
+        </div>
 
-    <div class="section">
-        <h2>Iteration Details</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Iteration</th>
-                    <th>Precision</th>
-                    <th>Recall</th>
-                    <th>Accuracy</th>
-                    <th>F1</th>
-                    <th>Valid</th>
-                    <th>Invalid</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for iteration in iterations %}
-                <tr>
-                    <td>{{ iteration.number }}</td>
-                    <td {% if iteration.precision == max_values.precision %}class="highlight"{% endif %}>
+        <div class="section">
+            <h2>Detailed Iteration History</h2>
+            {% for iteration in iterations %}
+            <div class="iteration">
+                <h3>Iteration {{ iteration.number }}</h3>
+                <div class="metrics">
+                    <div class="metric">
+                        <strong>Precision</strong>
                         {{ "%.4f"|format(iteration.precision) }}
-                    </td>
-                    <td {% if iteration.recall == max_values.recall %}class="highlight"{% endif %}>
+                    </div>
+                    <div class="metric">
+                        <strong>Recall</strong>
                         {{ "%.4f"|format(iteration.recall) }}
-                    </td>
-                    <td {% if iteration.accuracy == max_values.accuracy %}class="highlight"{% endif %}>
+                    </div>
+                    <div class="metric">
+                        <strong>Accuracy</strong>
                         {{ "%.4f"|format(iteration.accuracy) }}
-                    </td>
-                    <td {% if iteration.f1 == max_values.f1 %}class="highlight"{% endif %}>
+                    </div>
+                    <div class="metric">
+                        <strong>F1 Score</strong>
                         {{ "%.4f"|format(iteration.f1) }}
-                    </td>
-                    <td {% if iteration.valid_predictions == max_values.valid_predictions %}class="highlight"{% endif %}>
-                        {{ iteration.valid_predictions }}
-                    </td>
-                    <td {% if iteration.invalid_predictions == min_values.invalid_predictions %}class="highlight"{% endif %}>
-                        {{ iteration.invalid_predictions }}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                    </div>
+                </div>
+                
+                <h4>Prompt Used</h4>
+                <pre class="prompt">{{ iteration.prompt }}</pre>
+                
+                <div class="analysis">
+                    <h4>Analysis Results</h4>
+                    <div class="metrics">
+                        <div class="metric">
+                            <strong>Valid Predictions</strong>
+                            {{ iteration.valid_predictions }}
+                        </div>
+                        <div class="metric">
+                            <strong>Invalid Predictions</strong>
+                            {{ iteration.invalid_predictions }}
+                        </div>
+                    </div>
+                    
+                    <h4>False Positives Analysis</h4>
+                    <pre class="prompt">{{ iteration.fp_analysis }}</pre>
+                    
+                    <h4>False Negatives Analysis</h4>
+                    <pre class="prompt">{{ iteration.fn_analysis }}</pre>
+                    
+                    <h4>True Positives Analysis</h4>
+                    <pre class="prompt">{{ iteration.tp_analysis }}</pre>
+                    
+                    <h4>Invalid Outputs Analysis</h4>
+                    <pre class="prompt">{{ iteration.invalid_analysis }}</pre>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
     </div>
+
+    <script>
+        var metricsData = {{ metrics_data|tojson }};
+        var metricsLayout = {
+            title: 'Metrics Across Iterations',
+            xaxis: {title: 'Iteration'},
+            yaxis: {title: 'Score', range: [0, 1]},
+            template: 'plotly_white'
+        };
+        Plotly.newPlot('metricsChart', metricsData, metricsLayout);
+
+        var validityData = {{ validity_data|tojson }};
+        var validityLayout = {
+            title: 'Valid vs Invalid Predictions Across Iterations',
+            xaxis: {title: 'Iteration'},
+            yaxis: {title: 'Number of Predictions'},
+            barmode: 'stack',
+            template: 'plotly_white'
+        };
+        Plotly.newPlot('validityChart', validityData, validityLayout);
+    </script>
 </body>
 </html>
 '''

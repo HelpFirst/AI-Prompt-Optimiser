@@ -167,6 +167,9 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                     invalid_comments=invalid_comments,
                     prompt_engineering_comments=prompt_engineering_comments
                 )
+                # Keep binary analyses format
+                results.update(analyses)
+                results['prompts_used'] = prompts_used
             else:  # problem_type == "multiclass"
                 new_prompt, analyses, prompts_used = generate_new_prompt_multiclass(
                     initial_prompt=current_prompt,
@@ -182,10 +185,13 @@ def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: p
                     incorrect_comments="",
                     prompt_engineering_comments=prompt_engineering_comments
                 )
-            
-            # Add analyses and prompts used to results
-            results.update(analyses)
-            results['prompts_used'] = prompts_used
+                # Update results with multiclass analyses format
+                results.update({
+                    'correct_analysis': analyses.get('correct_predictions_analysis', ''),
+                    'incorrect_analysis': analyses.get('incorrect_predictions_analysis', ''),
+                    'prompts_used': prompts_used,
+                    'analyses': analyses
+                })
             
             # Validate and improve the new prompt if not skipped
             if not skip_prompt_validation:
