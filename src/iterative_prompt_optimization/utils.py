@@ -132,17 +132,43 @@ def display_analysis(analysis: str, title: str = "Analysis"):
     )
     Console().print(analysis_panel)
 
-def log_prompt_generation(log_dir: str, iteration: int, initial_prompt: str, fp_analysis: str, fn_analysis: str, tp_analysis: str, invalid_analysis: str, new_prompt: str):
-    """Log the prompt generation process for a specific iteration."""
+def log_prompt_generation(log_dir: str, iteration: int, initial_prompt: str, 
+                         fp_analysis: str, fn_analysis: str, tp_analysis: str, 
+                         invalid_analysis: str, new_prompt: str,
+                         prompts_used: dict = None) -> None:
+    """
+    Log the prompt generation process for a specific iteration.
+    
+    Args:
+        log_dir (str): Directory for storing logs
+        iteration (int): Current iteration number
+        initial_prompt (str): The initial prompt
+        fp_analysis (str): Analysis of false positives
+        fn_analysis (str): Analysis of false negatives
+        tp_analysis (str): Analysis of true positives
+        invalid_analysis (str): Analysis of invalid outputs
+        new_prompt (str): The newly generated prompt
+        prompts_used (dict): Dictionary containing all prompts used in the analysis
+    """
     log_file_path = os.path.join(log_dir, f"iteration_{iteration}_prompt_generation.json")
     log_data = {
         "initial_prompt": initial_prompt,
-        "false_positives_analysis": fp_analysis,
-        "false_negatives_analysis": fn_analysis,
-        "true_positives_analysis": tp_analysis,
-        "invalid_outputs_analysis": invalid_analysis,
+        "analysis_results": {
+            "false_positives": fp_analysis,
+            "false_negatives": fn_analysis,
+            "true_positives": tp_analysis,
+            "invalid_outputs": invalid_analysis
+        },
+        "prompts_for_analysis": {
+            "false_positives": prompts_used.get('fp_prompt', 'No prompt used'),
+            "false_negatives": prompts_used.get('fn_prompt', 'No prompt used'),
+            "true_positives": prompts_used.get('tp_prompt', 'No prompt used'),
+            "invalid_outputs": prompts_used.get('invalid_prompt', 'No prompt used'),
+            "prompt_engineering": prompts_used.get('prompt_engineer_input', 'No prompt used')
+        } if prompts_used else {},
         "new_prompt": new_prompt
     }
+    
     with open(log_file_path, 'w') as f:
         json.dump(log_data, f, indent=2)
 
@@ -576,3 +602,141 @@ def log_prompt_generation_multiclass(log_dir: str, iteration: int, initial_promp
     }
     with open(log_file_path, 'w') as f:
         json.dump(log_data, f, indent=2)
+
+def regenerate_dashboards(experiment_dir: str):
+    """Regenerate dashboards from existing JSON files."""
+    import json
+    import os
+    from .dashboard_generator import generate_iteration_dashboard, generate_combined_dashboard
+    from .dashboard_generator_multiclass import (
+        generate_iteration_dashboard_multiclass,
+        generate_combined_dashboard_multiclass
+    )
+    
+    # Load initial setup
+    with open(os.path.join(experiment_dir, 'initial_setup.json'), 'r') as f:
+        initial_setup = json.load(f)
+        initial_prompt = initial_setup['initial_prompt']
+        output_format_prompt = initial_setup['output_format_prompt']
+    
+    # Load final results
+    with open(os.path.join(experiment_dir, 'final_results.json'), 'r') as f:
+        final_results = json.load(f)
+        best_prompt = final_results['best_prompt']
+        all_metrics = final_results['all_metrics']
+    
+    # Determine problem type from the first evaluation file
+    first_eval_file = os.path.join(experiment_dir, 'iteration_1_evaluation.json')
+    with open(first_eval_file, 'r') as f:
+        first_eval = json.load(f)
+        problem_type = first_eval.get('problem_type', 'binary')  # Default to binary if not specified
+    
+    print(f"Detected problem type: {problem_type}")
+    
+    # Generate iteration dashboards
+    iteration = 1
+    while True:
+        eval_file = os.path.join(experiment_dir, f'iteration_{iteration}_evaluation.json')
+        if not os.path.exists(eval_file):
+            break
+            
+        with open(eval_file, 'r') as f:
+            results = json.load(f)
+            
+        # Restructure results to match expected format
+        # Move metrics to top level for template access
+        results.update(results.get('metrics', {}))
+        
+        # Load prompt generation results if they exist
+        prompt_gen_file = os.path.join(experiment_dir, f'iteration_{iteration}_prompt_generation.json')
+        if os.path.exists(prompt_gen_file):
+            with open(prompt_gen_file, 'r') as f:
+                prompt_gen = json.load(f)
+                if problem_type == 'binary':
+                    results.update({
+                        'analysis_results': prompt_gen.get('analysis_results', {}),
+                        'prompts_for_analysis': prompt_gen.get('prompts_for_analysis', {}),
+                        'initial_prompt': prompt_gen.get('initial_prompt', ''),
+                        'new_prompt': prompt_gen.get('new_prompt', '')
+                    })
+                else:
+                    results.update({
+                        'correct_analysis': prompt_gen.get('analysis_results', {}).get('correct', ''),
+                        'incorrect_analysis': prompt_gen.get('analysis_results', {}).get('incorrect', ''),
+                        'prompts_for_analysis': prompt_gen.get('prompts_for_analysis', {}),
+                        'new_prompt': prompt_gen.get('new_prompt', '')
+                    })
+        
+        # Print debug information
+        print(f"\nIteration {iteration} data:")
+        print("Available keys:", list(results.keys()))
+        print("Metrics:", results.get('metrics', {}))
+        
+        # Generate appropriate dashboard
+        if problem_type == 'binary':
+            generate_iteration_dashboard(
+                experiment_dir, 
+                iteration,
+                results,
+                results.get('initial_prompt', ''),
+                output_format_prompt,
+                initial_prompt
+            )
+        else:
+            generate_iteration_dashboard_multiclass(
+                experiment_dir, 
+                iteration,
+                results,
+                results.get('initial_prompt', ''),
+                output_format_prompt,
+                initial_prompt
+            )
+        
+        iteration += 1
+    
+    # Generate appropriate combined dashboard based on problem type
+    if problem_type == 'binary':
+        generate_combined_dashboard(
+            experiment_dir,
+            all_metrics,
+            best_prompt,
+            output_format_prompt
+        )
+    else:
+        generate_combined_dashboard_multiclass(
+            experiment_dir,
+            all_metrics,
+            best_prompt,
+            output_format_prompt
+        )
+    
+    print(f"Successfully regenerated dashboards for {experiment_dir}")
+    print(f"Problem type: {problem_type}")
+    print(f"Number of iterations processed: {iteration-1}")
+
+def get_result_symbol(is_correct: bool, is_valid: bool, true_label: int, pred_label: int, problem_type: str = "binary") -> str:
+    """
+    Generate a result symbol for display in the dashboard.
+    
+    Args:
+        is_correct (bool): Whether the prediction was correct
+        is_valid (bool): Whether the output format was valid
+        true_label (int): The true label
+        pred_label (int): The predicted label
+        problem_type (str): Type of classification ("binary" or "multiclass")
+        
+    Returns:
+        str: A formatted string with emoji and result type 
+             Binary: "✅ (TP)", "✅ (TN)", "❌ (FP)", "❌ (FN)"
+             Multiclass: "✅ (Correct)", "❌ (Incorrect)"
+    """
+    if not is_valid:
+        return "❌ (Invalid)"
+        
+    if problem_type == "binary":
+        if is_correct:
+            return "✅ (TP)" if true_label == 1 else "✅ (TN)"
+        else:
+            return "❌ (FP)" if pred_label == 1 else "❌ (FN)"
+    else:  # multiclass
+        return "✅ (Correct)" if is_correct else f"❌ (Predicted {pred_label}, True {true_label})"

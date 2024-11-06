@@ -16,3 +16,5 @@ __pycache__/
 /examples/binary_classifier/runs
 /examples/multiclass_classifier/runs
 /examples/muticlass_classifier/model_cache
+/examples/single_evaluation/experiments
+/examples/single_evaluation/model_cache

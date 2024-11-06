@@ -20,6 +20,376 @@ from jinja2 import Template
 
 # Add these template definitions at the top of the file, after the imports
 
+# Common styles to be included in both templates
+COMMON_STYLES = '''
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #34495e;
+            --accent-color: #3498db;
+            --background-color: #f8f9fa;
+            --prompt-bg-color: #fff9e6;
+            --success-color: #2ecc71;
+            --border-color: #e9ecef;
+        }
+        
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--primary-color);
+            line-height: 1.6;
+        }
+        
+        .header {
+            background: white;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .logo {
+            height: 40px;
+            margin-right: 1rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        .metric {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        
+        .metric:hover {
+            transform: translateY(-2px);
+        }
+        
+        .metric strong {
+            display: block;
+            color: var(--secondary-color);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .metric span {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+        
+        .prompt, .analysis {
+            background-color: var(--prompt-bg-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 1.5rem 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        th, td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background-color: var(--background-color);
+            font-weight: 600;
+            text-align: left;
+            color: var(--secondary-color);
+        }
+        
+        .best-value {
+            color: var(--success-color);
+            font-weight: 600;
+        }
+        
+        /* Collapsible sections */
+        .collapsible {
+            background: none;
+            border: none;
+            padding: 1rem;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        .collapsible:after {
+            content: '\\002B';
+            font-weight: bold;
+            float: right;
+            margin-left: 5px;
+        }
+        
+        .active:after {
+            content: '\\2212';
+        }
+        
+        .content {
+            padding: 0 18px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            background-color: white;
+        }
+        
+        .content.show {
+            max-height: none;  /* Changed from fixed height to allow any height */
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        /* Add styles for text cells */
+        .truncated-text {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: pointer;
+            padding: 4px;
+        }
+        
+        .truncated-text:hover {
+            background-color: var(--prompt-bg-color);
+            border-radius: 4px;
+        }
+        
+        /* Modal styling */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-text {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            padding: 1rem;
+            background-color: var(--prompt-bg-color);
+            border-radius: 4px;
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: var(--accent-color);
+        }
+        
+        /* Table and cell styles */
+        .truncate-cell {
+            max-width: 300px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .truncated-text {
+            max-width: 300px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+        }
+        
+        .truncated-text:hover {
+            color: var(--accent-color);
+            text-decoration: underline;
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background-color: var(--prompt-bg-color);
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: var(--accent-color);
+        }
+        
+        /* DataTables specific styling */
+        .dataTables_wrapper {
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        
+        .dataTables_filter input {
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            margin-left: 0.5rem;
+        }
+        
+        .dataTables_length select {
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            margin: 0 0.5rem;
+        }
+    </style>
+'''
+
+# Add collapsible functionality JavaScript
+COLLAPSIBLE_SCRIPT = '''
+    <script>
+        var coll = document.getElementsByClassName("collapsible");
+        for (var i = 0; i < coll.length; i++) {
+            coll[i].addEventListener("click", function() {
+                this.classList.toggle("active");
+                var content = this.nextElementSibling;
+                if (content.style.maxHeight) {
+                    content.style.maxHeight = null;
+                } else {
+                    content.style.maxHeight = content.scrollHeight + "px";
+                    
+                    // If this content contains other collapsibles, adjust parent's maxHeight
+                    var parent = content.parentElement;
+                    while (parent && parent.classList.contains("content")) {
+                        parent.style.maxHeight = parent.scrollHeight + "px";
+                        parent = parent.parentElement;
+                    }
+                }
+            });
+        }
+    </script>
+'''
+
+# Add this function definition before the templates
+def get_base64_logo():
+    """Get the HelpFirst logo as a base64 encoded string."""
+    import os
+    import base64
+    
+    # Get the path to the logo relative to this file
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    logo_path = os.path.join(current_dir, 'assets', 'helpfirst-logo.jpg')
+    
+    try:
+        with open(logo_path, 'rb') as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+            return encoded_string
+    except FileNotFoundError:
+        print(f"Warning: Logo file not found at {logo_path}")
+        return ""
+
+# Now we can use the function
+LOGO_BASE64 = get_base64_logo()
+
+# Update the logo in the template
 DASHBOARD_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="en">
@@ -28,215 +398,193 @@ DASHBOARD_TEMPLATE = '''
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iteration {{ iteration }} Dashboard</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code&display=swap">
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.24/css/jquery.dataTables.css">
-    <script type="text/javascript" charset="utf8" src="https://code.jquery.com/jquery-3.5.1.js"></script>
-    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/1.7.0/css/buttons.dataTables.min.css">
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/buttons/1.7.0/js/dataTables.buttons.min.js"></script>
+    ''' + COMMON_STYLES + '''
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .metrics { display: flex; justify-content: space-around; margin-bottom: 20px; }
-        .metric { text-align: center; }
-        .prompt, .analysis { white-space: pre-wrap; background-color: #f0f0f0; padding: 10px; border-radius: 5px; margin-bottom: 20px; }
-        .chart-container { display: flex; justify-content: space-between; margin-bottom: 20px; }
-        .chart { width: 48%; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: fixed; }
-        th, td { 
-            width: 150px; 
-            height: 50px; 
-            overflow: hidden; 
-            text-overflow: ellipsis; 
-            white-space: nowrap; 
-            border: 1px solid #ddd; padding: 8px; text-align: left; 
+        /* DataTables specific styling */
+        .dataTables_wrapper {
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
-        th { background-color: #f2f2f2; }
-        .truncate {
-            max-width: 200px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        
+        table.dataTable {
+            width: 100% !important;
+            margin: 0 !important;
         }
+        
+        .dataTables_filter input {
+            padding: 5px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+        
+        /* Modal styling */
         .modal {
             display: none;
             position: fixed;
-            z-index: 1;
+            z-index: 1000;
             left: 0;
             top: 0;
             width: 100%;
             height: 100%;
-            overflow: auto;
             background-color: rgba(0,0,0,0.4);
         }
+        
         .modal-content {
-            background-color: #fefefe;
-            margin: 15% auto;
+            background-color: white;
+            margin: 5% auto;
             padding: 20px;
-            border: 1px solid #888;
+            border-radius: 8px;
             width: 80%;
-            max-height: 70vh;
+            max-width: 800px;
+            max-height: 80vh;
             overflow-y: auto;
         }
-        #modalText {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            max-width: 100%;
-        }
+        
         .close {
             color: #aaa;
             float: right;
             font-size: 28px;
             font-weight: bold;
-        }
-        .close:hover,
-        .close:focus {
-            color: black;
-            text-decoration: none;
             cursor: pointer;
-        }
-        .confusion-matrix {
-            width: 50%;
-            margin: 20px auto;
-            text-align: center;
-        }
-        .confusion-matrix img {
-            max-width: 100%;
-            height: auto;
         }
     </style>
 </head>
 <body>
-    <h1>Iteration {{ iteration }} Dashboard</h1>
-
-    <div class="section">
-        <h2>Performance Metrics</h2>
-        <div class="metrics">
-            <div class="metric-card">
-                <h3>Precision</h3>
-                <p>{{ "%.4f"|format(results.precision) }}</p>
-            </div>
-            <div class="metric-card">
-                <h3>Recall</h3>
-                <p>{{ "%.4f"|format(results.recall) }}</p>
-            </div>
-            <div class="metric-card">
-                <h3>Accuracy</h3>
-                <p>{{ "%.4f"|format(results.accuracy) }}</p>
-            </div>
-            <div class="metric-card">
-                <h3>F1 Score</h3>
-                <p>{{ "%.4f"|format(results.f1) }}</p>
+    <div class="header">
+        <img src="data:image/jpeg;base64,''' + LOGO_BASE64 + '''" alt="HelpFirst Logo" class="logo">
+        <h1>Iteration {{ iteration }} Dashboard</h1>
+    </div>
+    
+    <div class="container">
+        <button class="collapsible">Performance Metrics</button>
+        <div class="content section">
+            <div class="metrics">
+                <div class="metric">
+                    <strong>Precision</strong>
+                    <span>{{ "%.3f"|format(results.precision) }}</span>
+                </div>
+                <div class="metric">
+                    <strong>Recall</strong>
+                    <span>{{ "%.3f"|format(results.recall) }}</span>
+                </div>
+                <div class="metric">
+                    <strong>F1 Score</strong>
+                    <span>{{ "%.3f"|format(results.f1) }}</span>
+                </div>
+                <div class="metric">
+                    <strong>Accuracy</strong>
+                    <span>{{ "%.3f"|format(results.accuracy) }}</span>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="section">
-        <h2>Confusion Matrix</h2>
-        <div class="confusion-matrix">
+        <button class="collapsible">Confusion Matrix</button>
+        <div class="content section">
             <img src="data:image/png;base64,{{ confusion_matrix_image }}" alt="Confusion Matrix">
         </div>
-    </div>
 
-    <div class="section">
-        <h2>Current Prompt</h2>
-        <div class="prompt-box">{{ current_prompt }}</div>
-    </div>
+        <button class="collapsible">Current Prompt</button>
+        <div class="content section">
+            <div class="prompt">{{ current_prompt }}</div>
+        </div>
 
-    <div class="section">
-        <h2>Evaluation Results</h2>
-        <table>
-            <thead>
-                <tr>
-                    {% for header in table_headers %}
-                    <th>{{ header }}</th>
+        <div class="section">
+            <h2>Detailed Results</h2>
+            <table id="resultsTable" class="display">
+                <thead>
+                    <tr>
+                        <th>Text</th>
+                        <th>True Label</th>
+                        <th>Prediction</th>
+                        <th>Result</th>
+                        <th>Correct?</th>
+                        <th>Valid?</th>
+                        <th>Chain of Thought</th>
+                        <th>Raw Output</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in evaluation_results %}
+                    <tr>
+                        <td>
+                            <div class="truncated-text" data-full-text="{{ result.text|replace('`', '\\`')|replace('"', '\\"')|replace('\n', '\\n')|replace("'", "\\'") }}">
+                                {{ result.text|truncate(100) }}
+                            </div>
+                        </td>
+                        <td>{{ result.label }}</td>
+                        <td>{{ result.transformed_output }}</td>
+                        <td>{{ "✅ (TP)" if result.is_correct and result.label == 1 else 
+                               "✅ (TN)" if result.is_correct and result.label == 0 else 
+                               "❌ (FP)" if not result.is_correct and result.transformed_output == 1 else 
+                               "❌ (FN)" if not result.is_correct and result.transformed_output == 0 else 
+                               "❌ (Invalid)" if not result.is_valid else "" }}</td>
+                        <td>{{ "✅" if result.is_correct else "❌" }}</td>
+                        <td>{{ "✅" if result.is_valid else "❌" }}</td>
+                        <td>
+                            <div class="truncated-text" data-full-text="{{ result.chain_of_thought|replace('`', '\\`')|replace('"', '\\"')|replace('\n', '\\n')|replace("'", "\\'") }}">
+                                {{ result.chain_of_thought|truncate(100) }}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="truncated-text" data-full-text="{{ result.raw_output|replace('`', '\\`')|replace('"', '\\"')|replace('\n', '\\n')|replace("'", "\\'") }}">
+                                {{ result.raw_output|truncate(100) }}
+                            </div>
+                        </td>
+                    </tr>
                     {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for result in evaluation_results %}
-                <tr>
-                    {% for header in table_headers %}
-                    <td>{{ result[header] }}</td>
-                    {% endfor %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    <h2>Analyses and Prompts</h2>
-    
-    <h3>False Positives Analysis</h3>
-    <h4>Prompt Used:</h4>
-    <pre class="prompt">{{ results.prompts_used.fp_prompt }}</pre>
-    <h4>Analysis:</h4>
-    <pre class="analysis">{{ results.fp_analysis }}</pre>
-    
-    <h3>False Negatives Analysis</h3>
-    <h4>Prompt Used:</h4>
-    <pre class="prompt">{{ results.prompts_used.fn_prompt }}</pre>
-    <h4>Analysis:</h4>
-    <pre class="analysis">{{ results.fn_analysis }}</pre>
-    
-    <h3>True Positives Analysis</h3>
-    <h4>Prompt Used:</h4>
-    <pre class="prompt">{{ results.prompts_used.tp_prompt }}</pre>
-    <h4>Analysis:</h4>
-    <pre class="analysis">{{ results.tp_analysis }}</pre>
-    
-    <h3>Invalid Outputs Analysis</h3>
-    <h4>Prompt Used:</h4>
-    <pre class="prompt">{{ results.prompts_used.invalid_prompt }}</pre>
-    <h4>Analysis:</h4>
-    <pre class="analysis">{{ results.invalid_analysis }}</pre>
-    
-    <h3>Prompt Engineer Input</h3>
-    <pre class="prompt">{{ results.prompts_used.prompt_engineer_input }}</pre>
-    
-    <h3>New Generated Prompt</h3>
-    <pre class="prompt">{{ results.new_prompt }}</pre>
-    
-    <h3>Validation and Improvement</h3>
-    <h4>Validation Result:</h4>
-    <pre class="analysis">{{ results.validation_result if results.validation_result != "Skipped" else "Validation was skipped for this iteration." }}</pre>
-    
-    <h3>Final Improved Prompt for Next Iteration</h3>
-    <pre class="prompt">{{ results.improved_prompt }}</pre>
-
-    <div id="myModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <pre id="modalText"></pre>
+                </tbody>
+            </table>
         </div>
     </div>
-    
+
+    <!-- Modal -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modalTitle"></h2>
+            <pre id="modalContent"></pre>
+        </div>
+    </div>
+
     <script>
         $(document).ready(function() {
-            $('#resultsTable').DataTable({
+            // Initialize DataTable
+            var table = $('#resultsTable').DataTable({
                 pageLength: 10,
                 lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
-                order: [[4, 'desc'], [5, 'desc']],
-                columnDefs: [
-                    {
-                        targets: '_all',
-                        render: function(data, type, row) {
-                            if (type === 'display') {
-                                return '<div title="' + data + '">' + data + '</div>';
-                            }
-                            return data;
-                        }
-                    }
-                ]
+                order: [],
+                scrollX: true
+            });
+
+            // Add click handler for truncated text
+            $('.truncated-text').on('click', function() {
+                var fullText = $(this).data('full-text');
+                var title = $(this).closest('tr').find('td:first .truncated-text').data('full-text').substring(0, 100) + '...';
+                showModal(title, fullText);
             });
         });
 
         // Modal functionality
-        var modal = document.getElementById("myModal");
+        var modal = document.getElementById("modal");
         var span = document.getElementsByClassName("close")[0];
 
-        $('#resultsTable').on('dblclick', 'td', function() {
-            var cellContent = $(this).text();
-            $('#modalText').text(cellContent);
+        function showModal(title, content) {
+            content = content.replace(/\\n/g, '\n')
+                           .replace(/\\'/g, "'")
+                           .replace(/\\"/g, '"')
+                           .replace(/\\`/g, '`');
+            document.getElementById("modalTitle").textContent = title;
+            document.getElementById("modalContent").textContent = content;
             modal.style.display = "block";
-        });
+        }
 
         span.onclick = function() {
             modal.style.display = "none";
@@ -248,6 +596,8 @@ DASHBOARD_TEMPLATE = '''
             }
         }
     </script>
+    
+    ''' + COLLAPSIBLE_SCRIPT + '''
 </body>
 </html>
 '''
@@ -260,130 +610,26 @@ COMBINED_DASHBOARD_TEMPLATE = '''
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Combined Experiment Dashboard</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            margin: 0; 
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container { 
-            max-width: 1200px; 
-            margin: 0 auto; 
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .section {
-            margin-bottom: 30px;
-            padding: 20px;
-            background: white;
-            border-radius: 8px;
-        }
-        .prompt { 
-            white-space: pre-wrap; 
-            background-color: #f8f9fa; 
-            padding: 15px; 
-            border-radius: 5px;
-            border: 1px solid #e9ecef;
-            font-family: monospace;
-        }
-        .iteration { 
-            margin-bottom: 40px; 
-            border: 1px solid #e9ecef; 
-            padding: 20px; 
-            border-radius: 8px;
-            background: white;
-        }
-        .metrics { 
-            display: flex; 
-            flex-wrap: wrap; 
-            gap: 20px;
-            margin: 20px 0;
-        }
-        .metric { 
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            min-width: 200px;
-            text-align: center;
-        }
-        .metric strong {
-            display: block;
-            color: #666;
-            margin-bottom: 5px;
-        }
-        .analysis { 
-            margin-top: 20px;
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-        }
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin-bottom: 20px;
-            background: white;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        th, td { 
-            border: 1px solid #e9ecef; 
-            padding: 12px; 
-            text-align: right;
-        }
-        th { 
-            background-color: #f8f9fa;
-            color: #495057;
-            font-weight: 600;
-        }
-        .best-value { 
-            font-weight: bold; 
-            color: #28a745;
-            background-color: #e8f5e9;
-        }
-        h1, h2, h3, h4 {
-            color: #2c3e50;
-            margin-top: 30px;
-            margin-bottom: 15px;
-        }
-        h1 { font-size: 2em; }
-        h2 { font-size: 1.5em; }
-        h3 { font-size: 1.2em; }
-        .chart-container {
-            margin: 30px 0;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-    </style>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code&display=swap">
+    ''' + COMMON_STYLES + '''
 </head>
 <body>
-    <div class="container">
+    <div class="header">
+        <img src="data:image/jpeg;base64,''' + LOGO_BASE64 + '''" alt="HelpFirst Logo" class="logo">
         <h1>Combined Experiment Dashboard</h1>
-
-        <div class="section">
-            <h2>Performance Overview</h2>
-            <div class="chart-container">
-                <div id="metricsChart"></div>
-            </div>
-            <div class="chart-container">
-                <div id="validityChart"></div>
-            </div>
-        </div>
-
-        <div class="section">
-            <h2>Summary of All Iterations</h2>
+    </div>
+    
+    <div class="container">
+        <button class="collapsible">Summary of All Iterations</button>
+        <div class="content section">
             <table>
                 <thead>
                     <tr>
                         <th>Iteration</th>
                         <th>Precision</th>
                         <th>Recall</th>
+                        <th>F1 Score</th>
                         <th>Accuracy</th>
-                        <th>F1-score</th>
                         <th>Valid Predictions</th>
                         <th>Invalid Predictions</th>
                     </tr>
@@ -392,22 +638,22 @@ COMBINED_DASHBOARD_TEMPLATE = '''
                     {% for metrics in all_metrics %}
                     <tr>
                         <td>{{ metrics.iteration }}</td>
-                        <td{% if metrics.precision == max_values.precision %} class="best-value"{% endif %}>
-                            {{ "%.4f"|format(metrics.precision) }}
+                        <td {% if metrics.precision == max_values.precision %}class="best-value"{% endif %}>
+                            {{ "%.3f"|format(metrics.precision) }}
                         </td>
-                        <td{% if metrics.recall == max_values.recall %} class="best-value"{% endif %}>
-                            {{ "%.4f"|format(metrics.recall) }}
+                        <td {% if metrics.recall == max_values.recall %}class="best-value"{% endif %}>
+                            {{ "%.3f"|format(metrics.recall) }}
                         </td>
-                        <td{% if metrics.accuracy == max_values.accuracy %} class="best-value"{% endif %}>
-                            {{ "%.4f"|format(metrics.accuracy) }}
+                        <td {% if metrics.f1 == max_values.f1 %}class="best-value"{% endif %}>
+                            {{ "%.3f"|format(metrics.f1) }}
                         </td>
-                        <td{% if metrics.f1 == max_values.f1 %} class="best-value"{% endif %}>
-                            {{ "%.4f"|format(metrics.f1) }}
+                        <td {% if metrics.accuracy == max_values.accuracy %}class="best-value"{% endif %}>
+                            {{ "%.3f"|format(metrics.accuracy) }}
                         </td>
-                        <td{% if metrics.valid_predictions == max_values.valid_predictions %} class="best-value"{% endif %}>
+                        <td {% if metrics.valid_predictions == max_values.valid_predictions %}class="best-value"{% endif %}>
                             {{ metrics.valid_predictions }}
                         </td>
-                        <td{% if metrics.invalid_predictions == min_values.invalid_predictions %} class="best-value"{% endif %}>
+                        <td {% if metrics.invalid_predictions == min_values.invalid_predictions %}class="best-value"{% endif %}>
                             {{ metrics.invalid_predictions }}
                         </td>
                     </tr>
@@ -415,110 +661,86 @@ COMBINED_DASHBOARD_TEMPLATE = '''
                 </tbody>
             </table>
         </div>
-
-        <div class="section">
-            <h2>Best Performing Prompt (Iteration {{ best_iteration }})</h2>
-            <div class="metrics">
-                <div class="metric">
-                    <strong>F1 Score</strong>
-                    {{ "%.4f"|format(best_metrics.f1) }}
-                </div>
-                <div class="metric">
-                    <strong>Precision</strong>
-                    {{ "%.4f"|format(best_metrics.precision) }}
-                </div>
-                <div class="metric">
-                    <strong>Recall</strong>
-                    {{ "%.4f"|format(best_metrics.recall) }}
-                </div>
-                <div class="metric">
-                    <strong>Accuracy</strong>
-                    {{ "%.4f"|format(best_metrics.accuracy) }}
-                </div>
+        
+        <button class="collapsible">Performance Overview</button>
+        <div class="content section">
+            <div class="chart-container">
+                <div id="metricsChart"></div>
+                <div id="validityChart"></div>
             </div>
-            <pre class="prompt">{{ best_prompt }}</pre>
-            
-            <h3>Output Format</h3>
-            <pre class="prompt">{{ output_format_prompt }}</pre>
+            <script>
+                var metricsData = {{ metrics_data|tojson }};
+                var validityData = {{ validity_data|tojson }};
+                
+                Plotly.newPlot('metricsChart', metricsData, {
+                    title: 'Performance Metrics Across Iterations',
+                    xaxis: {title: 'Iteration'},
+                    yaxis: {title: 'Score'}
+                });
+                
+                Plotly.newPlot('validityChart', validityData, {
+                    title: 'Prediction Validity Across Iterations',
+                    xaxis: {title: 'Iteration'},
+                    yaxis: {title: 'Count'},
+                    barmode: 'stack'
+                });
+            </script>
         </div>
-
-        <div class="section">
-            <h2>Detailed Iteration History</h2>
+        
+        <button class="collapsible">Best Performing Prompt (Iteration {{ best_iteration }})</button>
+        <div class="content section">
+            <div class="prompt">{{ best_prompt }}</div>
+        </div>
+        
+        <button class="collapsible">Detailed Iteration History</button>
+        <div class="content section">
             {% for iteration in iterations %}
-            <div class="iteration">
-                <h3>Iteration {{ iteration.number }}</h3>
-                <div class="metrics">
-                    <div class="metric">
-                        <strong>Precision</strong>
-                        {{ "%.4f"|format(iteration.precision) }}
-                    </div>
-                    <div class="metric">
-                        <strong>Recall</strong>
-                        {{ "%.4f"|format(iteration.recall) }}
-                    </div>
-                    <div class="metric">
-                        <strong>Accuracy</strong>
-                        {{ "%.4f"|format(iteration.accuracy) }}
-                    </div>
-                    <div class="metric">
-                        <strong>F1 Score</strong>
-                        {{ "%.4f"|format(iteration.f1) }}
-                    </div>
-                </div>
-                
-                <h4>Prompt Used</h4>
-                <pre class="prompt">{{ iteration.prompt }}</pre>
-                
-                <div class="analysis">
-                    <h4>Analysis Results</h4>
+            <button class="collapsible">Iteration {{ iteration.number }}</button>
+            <div class="content">
+                <div class="section">
+                    <h3>Metrics</h3>
                     <div class="metrics">
                         <div class="metric">
-                            <strong>Valid Predictions</strong>
-                            {{ iteration.valid_predictions }}
+                            <strong>Precision</strong>
+                            <span>{{ "%.3f"|format(iteration.precision) }}</span>
                         </div>
                         <div class="metric">
-                            <strong>Invalid Predictions</strong>
-                            {{ iteration.invalid_predictions }}
+                            <strong>Recall</strong>
+                            <span>{{ "%.3f"|format(iteration.recall) }}</span>
+                        </div>
+                        <div class="metric">
+                            <strong>F1 Score</strong>
+                            <span>{{ "%.3f"|format(iteration.f1) }}</span>
+                        </div>
+                        <div class="metric">
+                            <strong>Accuracy</strong>
+                            <span>{{ "%.3f"|format(iteration.accuracy) }}</span>
                         </div>
                     </div>
                     
-                    <h4>False Positives Analysis</h4>
-                    <pre class="prompt">{{ iteration.fp_analysis }}</pre>
+                    <h3>Prompt</h3>
+                    <div class="prompt">{{ iteration.prompt }}</div>
                     
-                    <h4>False Negatives Analysis</h4>
-                    <pre class="prompt">{{ iteration.fn_analysis }}</pre>
-                    
-                    <h4>True Positives Analysis</h4>
-                    <pre class="prompt">{{ iteration.tp_analysis }}</pre>
-                    
-                    <h4>Invalid Outputs Analysis</h4>
-                    <pre class="prompt">{{ iteration.invalid_analysis }}</pre>
+                    <h3>Analysis</h3>
+                    <div class="analysis">
+                        <h4>False Positives Analysis</h4>
+                        {{ iteration.fp_analysis }}
+                        
+                        <h4>False Negatives Analysis</h4>
+                        {{ iteration.fn_analysis }}
+                        
+                        <h4>True Positives Analysis</h4>
+                        {{ iteration.tp_analysis }}
+                        
+                        <h4>Invalid Outputs Analysis</h4>
+                        {{ iteration.invalid_analysis }}
+                    </div>
                 </div>
             </div>
             {% endfor %}
         </div>
     </div>
-
-    <script>
-        var metricsData = {{ metrics_data|tojson }};
-        var metricsLayout = {
-            title: 'Metrics Across Iterations',
-            xaxis: {title: 'Iteration'},
-            yaxis: {title: 'Score', range: [0, 1]},
-            template: 'plotly_white'
-        };
-        Plotly.newPlot('metricsChart', metricsData, metricsLayout);
-
-        var validityData = {{ validity_data|tojson }};
-        var validityLayout = {
-            title: 'Valid vs Invalid Predictions Across Iterations',
-            xaxis: {title: 'Iteration'},
-            yaxis: {title: 'Number of Predictions'},
-            barmode: 'stack',
-            template: 'plotly_white'
-        };
-        Plotly.newPlot('validityChart', validityData, validityLayout);
-    </script>
+    ''' + COLLAPSIBLE_SCRIPT + '''
 </body>
 </html>
 '''
@@ -563,64 +785,34 @@ def generate_confusion_matrix(y_true, y_pred):
 def generate_iteration_dashboard(log_dir: str, iteration: int, results: dict, 
                                current_prompt: str, output_format_prompt: str, 
                                initial_prompt: str):
-    """
-    Generate an HTML dashboard for a single iteration of binary classification.
-    
-    This function creates a comprehensive dashboard showing:
-    - Performance metrics
-    - Confusion matrix
-    - Detailed prediction results
-    - Analysis of different prediction categories
-    - Prompt evolution and improvements
-    
-    Args:
-        log_dir: Directory for saving the dashboard
-        iteration: Current iteration number
-        results: Dictionary containing evaluation results
-        current_prompt: Current classification prompt
-        output_format_prompt: Output format instructions
-        initial_prompt: Original starting prompt
-    """
-    # Load evaluation results from file
-    evaluation_file = os.path.join(log_dir, f'iteration_{iteration}_evaluation.json')
-    with open(evaluation_file, 'r') as f:
-        evaluation_data = json.load(f)
+    """Generate an HTML dashboard for a single iteration."""
+    # Load prompt generation data if available
+    prompt_gen_file = os.path.join(log_dir, f'iteration_{iteration}_prompt_generation.json')
+    prompt_data = {}
+    if os.path.exists(prompt_gen_file):
+        with open(prompt_gen_file, 'r') as f:
+            prompt_data = json.load(f)
     
     # Convert evaluation results to DataFrame for easier processing
-    df = pd.DataFrame(evaluation_data['evaluations'])
+    df = pd.DataFrame(results.get('evaluations', []))
     
-    # Try to normalize the raw_output column
-    def parse_raw_output(raw_output):
-        """Parse raw output into structured format."""
-        try:
-            return json.loads(raw_output)
-        except json.JSONDecodeError:
-            try:
-                return literal_eval(raw_output)
-            except:
-                return raw_output
-
-    # Process raw outputs
-    df['parsed_output'] = df['raw_output'].apply(parse_raw_output)
+    # Ensure all required columns exist with correct names
+    required_columns = {
+        'text': 'text',
+        'label': 'label',
+        'transformed_output': 'transformed_output',
+        'is_correct': 'is_correct',
+        'is_valid': 'is_valid',
+        'chain_of_thought': 'chain_of_thought',
+        'raw_output': 'raw_output'
+    }
     
-    try:
-        # Normalize parsed JSON outputs into columns
-        normalized = pd.json_normalize(df['parsed_output'])
-        normalized = normalized[[col for col in normalized.columns if col not in df.columns]]
-        df = pd.concat([df, normalized], axis=1)
-    except:
-        # Continue without normalization if it fails
-        pass
+    for col, default_value in required_columns.items():
+        if col not in df.columns:
+            df[col] = None
     
-    # Organize columns for display
-    ordered_columns = ['text', 'label', 'transformed_output', 'result'] + [
-        col for col in df.columns if col not in ['text', 'label', 'transformed_output', 'result']
-    ]
-    df = df[ordered_columns]
-    
-    # Convert DataFrame back to list for template
+    # Convert DataFrame back to list of dictionaries
     evaluation_results = df.to_dict('records')
-    table_headers = df.columns.tolist()
     
     # Generate confusion matrix visualization
     y_true = df['label'].tolist()
@@ -634,8 +826,8 @@ def generate_iteration_dashboard(log_dir: str, iteration: int, results: dict,
         results=results,
         current_prompt=current_prompt,
         evaluation_results=evaluation_results,
-        table_headers=table_headers,
-        confusion_matrix_image=confusion_matrix_image
+        confusion_matrix_image=confusion_matrix_image,
+        prompt_data=prompt_data
     )
     
     # Save dashboard
@@ -729,10 +921,11 @@ def generate_combined_dashboard(log_dir: str, all_metrics: list,
                 iteration_json = json.load(f)
                 iteration_data.update({
                     'prompt': iteration_json['initial_prompt'],
-                    'fp_analysis': iteration_json['false_positives_analysis'],
-                    'fn_analysis': iteration_json['false_negatives_analysis'],
-                    'tp_analysis': iteration_json['true_positives_analysis'],
-                    'invalid_analysis': iteration_json['invalid_outputs_analysis'],
+                    'fp_analysis': iteration_json['analysis_results']['false_positives'],
+                    'fn_analysis': iteration_json['analysis_results']['false_negatives'],
+                    'tp_analysis': iteration_json['analysis_results']['true_positives'],
+                    'invalid_analysis': iteration_json['analysis_results']['invalid_outputs'],
+                    'prompts_used': iteration_json['prompts_for_analysis']
                 })
         
         iterations.append(iteration_data)

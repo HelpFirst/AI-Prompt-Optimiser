@@ -149,9 +149,19 @@ def generate_new_prompt(initial_prompt: str, output_format_prompt: str, false_po
     new_prompt = get_analysis(provider, model, temperature, prompt_engineer_input)
     prompts_used['prompt_engineer_input'] = prompt_engineer_input
     
-    # Log prompt generation process
+    # Log prompt generation process with prompts used
     if log_dir and iteration:
-        log_prompt_generation(log_dir, iteration, initial_prompt, fp_analysis, fn_analysis, tp_analysis, invalid_analysis, new_prompt)
+        log_prompt_generation(
+            log_dir, 
+            iteration, 
+            initial_prompt, 
+            fp_analysis, 
+            fn_analysis, 
+            tp_analysis, 
+            invalid_analysis, 
+            new_prompt,
+            prompts_used
+        )
 
     return new_prompt, analyses, prompts_used
 

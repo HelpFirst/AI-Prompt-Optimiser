@@ -84,8 +84,8 @@ def get_model_output(provider: str, model: str, temperature: float, full_prompt:
             print(f"API error: {str(e)}. Retrying... (Attempt {retry + 1}/{MAX_RETRIES})")
             
     # Return default prediction if all retries fail
-    print(f"Max retries reached. Using default prediction.")
-    return {'choices': [{'message': {'content': '0'}}]}
+    error_msg = f"Failed to get model output after {MAX_RETRIES} retries. Last error: {str(e)}"
+    raise RuntimeError(error_msg)
 
 # Provider-specific helper functions
 def _get_ollama_output(model: str, full_prompt: str, text: str, temperature: float) -> dict:

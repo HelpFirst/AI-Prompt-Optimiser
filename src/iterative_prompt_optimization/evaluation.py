@@ -13,7 +13,16 @@ from sklearn.metrics import (
 import matplotlib.pyplot as plt
 import seaborn as sns
 from .model_interface import get_model_output
-from .utils import transform_and_compare_output, create_log_file_path, initialize_log_data, log_results
+from .utils import (
+    transform_and_compare_output, 
+    create_log_file_path, 
+    initialize_log_data, 
+    log_results,
+    get_result_symbol,
+    detect_problem_type
+)
+import os
+import json
 
 def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: dict, 
                    problem_type: str,
@@ -61,78 +70,104 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
     labels = []
     chain_of_thought_list = [] 
     
+    # Add these lists to track all outputs
+    transformed_outputs = []
+    is_correct_list = []
+    is_valid_list = []
+    
     # Initialize logging if enabled
     log_data = initialize_log_data(full_prompt) if log_dir else None
     use_json_mode = output_schema.get('use_json_mode', False)
     
     # Process each example in the evaluation dataset
     for index, row in eval_data.iterrows():
-        # Get model output for the current text
-        model_output = get_model_output(provider, model, temperature, full_prompt, row['text'], 
-                                      index, len(eval_data), use_json_mode, use_cache)
-        raw_output = model_output['choices'][0]['message']['content']
-        
-        # Transform and validate the model output
-        transformed_output, is_correct, is_valid, chain_of_thought = transform_and_compare_output(
-            raw_output, row['label'], output_schema
-        )
-        
-        # Process and display output
-        result = process_output(transformed_output, row['label'], is_valid, index, 
-                              len(eval_data), raw_output, problem_type)
-        
-        # Store information for every example
-        raw_outputs.append(raw_output)
-        texts.append(row['text'])
-        labels.append(row['label'])
-        chain_of_thought_list.append(chain_of_thought)
-        
-        if is_valid:
-            # Track valid predictions and analyze correctness
-            valid_predictions += 1
-            predictions.append(transformed_output)
-            true_labels.append(row['label'])
-            if is_correct:
-                if transformed_output == 1:  # For binary classification
-                    true_positives.append({
-                        'text': row['text'], 
-                        'label': row['label'], 
-                        'chain_of_thought': chain_of_thought
-                    })
+        try:
+            # Get model output for the current text
+            model_output = get_model_output(provider, model, temperature, full_prompt, row['text'], 
+                                          index, len(eval_data), use_json_mode, use_cache)
+            raw_output = model_output['choices'][0]['message']['content']
+            
+            # Transform and validate the model output
+            transformed_output, is_correct, is_valid, chain_of_thought = transform_and_compare_output(
+                raw_output, row['label'], output_schema
+            )
+            
+            # Store all outputs regardless of validity
+            transformed_outputs.append(transformed_output)
+            is_correct_list.append(is_correct)
+            is_valid_list.append(is_valid)
+            
+            # Process and display output
+            result = process_output(transformed_output, row['label'], is_valid, index, 
+                                  len(eval_data), raw_output, problem_type)
+            
+            # Store information for every example
+            raw_outputs.append(raw_output)
+            texts.append(row['text'])
+            labels.append(row['label'])
+            chain_of_thought_list.append(chain_of_thought)
+            
+            if is_valid:
+                # Track valid predictions and analyze correctness
+                valid_predictions += 1
+                predictions.append(transformed_output)
+                true_labels.append(row['label'])
+                if is_correct:
+                    if transformed_output == 1:  # For binary classification
+                        true_positives.append({
+                            'text': row['text'], 
+                            'label': row['label'], 
+                            'chain_of_thought': chain_of_thought
+                        })
+                else:
+                    if transformed_output == 1 and row['label'] == 0:
+                        false_positives.append({
+                            'text': row['text'], 
+                            'label': row['label'], 
+                            'chain_of_thought': chain_of_thought
+                        })
+                    elif transformed_output == 0 and row['label'] == 1:
+                        false_negatives.append({
+                            'text': row['text'], 
+                            'label': row['label'], 
+                            'chain_of_thought': chain_of_thought
+                        })
             else:
-                if transformed_output == 1 and row['label'] == 0:
-                    false_positives.append({
-                        'text': row['text'], 
-                        'label': row['label'], 
-                        'chain_of_thought': chain_of_thought
-                    })
-                elif transformed_output == 0 and row['label'] == 1:
-                    false_negatives.append({
-                        'text': row['text'], 
-                        'label': row['label'], 
-                        'chain_of_thought': chain_of_thought
-                    })
-        else:
-            # Track invalid outputs for analysis
+                # Track invalid outputs for analysis
+                invalid_predictions += 1
+                invalid_outputs.append({
+                    'text': row['text'], 
+                    'label': row['label'], 
+                    'raw_output': raw_output
+                })
+            
+            # Log evaluation data if enabled
+            if log_data:
+                log_data["evaluations"].append({
+                    "text": row['text'],
+                    "label": row['label'],
+                    "raw_output": raw_output,
+                    "transformed_output": transformed_output,
+                    "is_correct": is_correct,
+                    "is_valid": is_valid,
+                    "chain_of_thought": chain_of_thought,
+                    "result": result
+                })
+
+        except Exception as e:
+            print(f"Error processing example {index + 1}/{len(eval_data)}: {str(e)}")
+            # Add to invalid outputs with error message
             invalid_predictions += 1
             invalid_outputs.append({
                 'text': row['text'], 
-                'label': row['label'], 
-                'raw_output': raw_output
+                'label': row['label'],
+                'error': str(e)
             })
-        
-        # Log evaluation data if enabled
-        if log_data:
-            log_data["evaluations"].append({
-                "text": row['text'],
-                "label": row['label'],
-                "raw_output": raw_output,
-                "transformed_output": transformed_output,
-                "is_correct": is_correct,
-                "is_valid": is_valid,
-                "chain_of_thought": chain_of_thought,
-                "result": result
-            })
+            # Add None/False values for failed examples
+            transformed_outputs.append(None)
+            is_correct_list.append(False)
+            is_valid_list.append(False)
+            continue
 
     # Calculate performance metrics
     results = calculate_metrics(
@@ -152,8 +187,40 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
 
     # Log results if enabled
     if log_dir and iteration:
-        log_file_path = create_log_file_path(log_dir, iteration)
-        log_results(log_file_path, log_data, results)
+        evaluation_file = os.path.join(log_dir, f'iteration_{iteration}_evaluation.json')
+        complete_results = {
+            'prompt': full_prompt,
+            'metrics': {
+                'precision': results['precision'],
+                'recall': results['recall'],
+                'accuracy': results['accuracy'],
+                'f1': results['f1'],
+                'confusion_matrix': results['confusion_matrix'],
+                'valid_predictions': valid_predictions,
+                'invalid_predictions': invalid_predictions
+            },
+            'evaluations': [
+                {
+                    'text': str(row['text']),
+                    'label': int(row['label']),
+                    'raw_output': raw_outputs[i],
+                    'transformed_output': transformed_outputs[i],
+                    'is_correct': is_correct_list[i],
+                    'is_valid': is_valid_list[i],
+                    'chain_of_thought': chain_of_thought_list[i],
+                    'result': get_result_symbol(
+                        is_correct_list[i], 
+                        is_valid_list[i], 
+                        row['label'], 
+                        transformed_outputs[i],
+                        problem_type
+                    )
+                }
+                for i, row in eval_data.iterrows()
+            ]
+        }
+        with open(evaluation_file, 'w') as f:
+            json.dump(complete_results, f, indent=2)
 
     return results
 
@@ -259,3 +326,60 @@ def calculate_metrics(predictions: list, true_labels: list, invalid_predictions:
             "included in the analysis."
         ) if invalid_predictions > 0 else None
     }
+
+def single_prompt_evaluation(prompt: str, 
+                           eval_data: pd.DataFrame,
+                           output_schema: dict,
+                           eval_provider: str,
+                           eval_model: str,
+                           eval_temperature: float = 0.7,
+                           experiment_name: str = None) -> dict:
+    """
+    Evaluate a single prompt without iterations.
+    
+    Args:
+        prompt: The prompt to evaluate
+        eval_data: Dataset containing texts and labels
+        output_schema: Schema for parsing model outputs
+        eval_provider: AI provider name
+        eval_model: Model name
+        eval_temperature: Temperature setting for generation
+        experiment_name: Optional name for the experiment
+        
+    Returns:
+        dict: Evaluation results and metrics
+    """
+    # Create log directory for dashboard if experiment name provided
+    log_dir = None
+    if experiment_name:
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_dir = os.path.join("experiments", f"{experiment_name}_{timestamp}")
+        os.makedirs(log_dir, exist_ok=True)
+    
+    # Detect problem type
+    problem_type = detect_problem_type(eval_data, output_schema)
+    
+    # Run evaluation
+    results = evaluate_prompt(
+        full_prompt=prompt,
+        eval_data=eval_data,
+        output_schema=output_schema,
+        problem_type=problem_type,
+        log_dir=log_dir,
+        iteration=1,
+        provider=eval_provider,
+        model=eval_model,
+        temperature=eval_temperature
+    )
+    
+    # Generate dashboard if log_dir exists
+    if log_dir:
+        if problem_type == 'binary':
+            from .dashboard_generator import generate_iteration_dashboard
+            generate_iteration_dashboard(log_dir, 1, results, prompt, "", prompt)
+        else:
+            from .dashboard_generator_multiclass import generate_iteration_dashboard_multiclass
+            generate_iteration_dashboard_multiclass(log_dir, 1, results, prompt, "", prompt)
+            
+    return results
