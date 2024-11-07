@@ -202,7 +202,7 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
             'evaluations': [
                 {
                     'text': str(row['text']),
-                    'label': int(row['label']),
+                    'label': str(row['label']),
                     'raw_output': raw_outputs[i],
                     'transformed_output': transformed_outputs[i],
                     'is_correct': is_correct_list[i],
@@ -224,14 +224,14 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
 
     return results
 
-def process_output(output: int, ground_truth: int, is_valid: bool, index: int, 
+def process_output(output: any, ground_truth: any, is_valid: bool, index: int, 
                   total: int, raw_output: str, problem_type: str = "binary") -> str:
     """
     Process and format model output for display.
     
     Args:
-        output: Transformed model output
-        ground_truth: True label
+        output: Transformed model output (int for binary, any for multiclass)
+        ground_truth: True label (int for binary, any for multiclass)
         is_valid: Whether output format is valid
         index: Current example index
         total: Total number of examples
@@ -251,7 +251,7 @@ def process_output(output: int, ground_truth: int, is_valid: bool, index: int,
             result = "❌ (FP)" if output == 1 else "❌ (FN)"
     else:
         # Multiclass classification output
-        result = "✅ (Correct)" if output == ground_truth else "❌ (Incorrect)"
+        result = "✅ (Correct)" if str(output) == str(ground_truth) else "❌ (Incorrect)"
     
     print(f"Prediction {index + 1}/{total}: {output} | Ground Truth: {ground_truth} {result}")
     return result
