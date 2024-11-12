@@ -69,6 +69,7 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
     texts = []
     labels = []
     chain_of_thought_list = [] 
+    failed_examples = []  # New list to track failed examples
     
     # Add these lists to track all outputs
     transformed_outputs = []
@@ -154,21 +155,40 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
                     "result": result
                 })
 
-        except Exception as e:
-            print(f"Error processing example {index + 1}/{len(eval_data)}: {str(e)}")
-            # Add to invalid outputs with error message
+        except Exception as error:
+            print(f"Error processing example {index + 1}/{len(eval_data)}: {str(error)}")
+            # Track failed example
+            failed_examples.append({
+                'index': index + 1,
+                'text': row['text'], 
+                'label': row['label'],
+                'error': str(error)
+            })
+            # Add to invalid outputs
             invalid_predictions += 1
             invalid_outputs.append({
                 'text': row['text'], 
                 'label': row['label'],
-                'error': str(e)
+                'error': str(error)
             })
-            # Add None/False values for failed examples
+            # Add placeholder values for failed examples
+            raw_outputs.append(None)
             transformed_outputs.append(None)
             is_correct_list.append(False)
             is_valid_list.append(False)
+            chain_of_thought_list.append(None)
+            texts.append(row['text'])
+            labels.append(row['label'])
             continue
 
+    # Display warning about failed evaluations
+    if failed_examples:
+        print("\n⚠️ WARNING: Some examples failed to process:")
+        print(f"- Total failed examples: {len(failed_examples)} out of {len(eval_data)}")
+        print("- Failed example indices:", [ex['index'] for ex in failed_examples])
+        print("- Common errors:", set(ex['error'] for ex in failed_examples))
+        print("\nResults will be calculated using only successfully processed examples.")
+        
     # Calculate performance metrics
     results = calculate_metrics(
         predictions, true_labels, invalid_predictions, valid_predictions,
@@ -176,31 +196,29 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
         problem_type
     )
     
-    # Add additional information to results
+    # Add additional information to results including failed examples
     results.update({
         'raw_outputs': raw_outputs,
         'texts': texts,
         'labels': labels,
         'predictions': predictions,
-        'chain_of_thought': chain_of_thought_list
+        'chain_of_thought': chain_of_thought_list,
+        'failed_examples': failed_examples,  # Add failed examples to results
+        'total_examples': len(eval_data),
+        'processed_examples': len(eval_data) - len(failed_examples),
+        'failed_count': len(failed_examples)
     })
 
     # Log results if enabled
     if log_dir and iteration:
         evaluation_file = os.path.join(log_dir, f'iteration_{iteration}_evaluation.json')
-        complete_results = {
-            'prompt': full_prompt,
-            'metrics': {
-                'precision': results['precision'],
-                'recall': results['recall'],
-                'accuracy': results['accuracy'],
-                'f1': results['f1'],
-                'confusion_matrix': results['confusion_matrix'],
-                'valid_predictions': valid_predictions,
-                'invalid_predictions': invalid_predictions
-            },
-            'evaluations': [
-                {
+        
+        # Create evaluations list for all examples
+        evaluations = []
+        for i, row in eval_data.iterrows():
+            if i < len(raw_outputs) and raw_outputs[i] is not None:
+                # Successfully processed example
+                evaluation = {
                     'text': str(row['text']),
                     'label': str(row['label']),
                     'raw_output': raw_outputs[i],
@@ -214,11 +232,43 @@ def evaluate_prompt(full_prompt: str, eval_data: pd.DataFrame, output_schema: di
                         row['label'], 
                         transformed_outputs[i],
                         problem_type
-                    )
+                    ),
+                    'status': 'success'
                 }
-                for i, row in eval_data.iterrows()
-            ]
+            else:
+                # Failed example
+                error_msg = next((ex['error'] for ex in failed_examples if ex['index'] == i + 1), 'Unknown error')
+                evaluation = {
+                    'text': str(row['text']),
+                    'label': str(row['label']),
+                    'raw_output': None,
+                    'transformed_output': None,
+                    'is_correct': False,
+                    'is_valid': False,
+                    'chain_of_thought': None,
+                    'result': '❌ Failed to process',
+                    'status': 'failed',
+                    'error': error_msg
+                }
+            evaluations.append(evaluation)
+
+        complete_results = {
+            'prompt': full_prompt,
+            'metrics': {
+                'precision': results['precision'],
+                'recall': results['recall'],
+                'accuracy': results['accuracy'],
+                'f1': results['f1'],
+                'confusion_matrix': results['confusion_matrix'],
+                'valid_predictions': valid_predictions,
+                'invalid_predictions': invalid_predictions,
+                'total_examples': len(eval_data),
+                'processed_examples': len(eval_data) - len(failed_examples),
+                'failed_examples': len(failed_examples)
+            },
+            'evaluations': evaluations
         }
+        
         with open(evaluation_file, 'w') as f:
             json.dump(complete_results, f, indent=2)
 
