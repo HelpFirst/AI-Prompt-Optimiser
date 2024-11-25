@@ -1,0 +1,17 @@
+
+TODO:
+- Set package versions in requirements
+- Specify python version used / supported
+
+- Remove .DS_Store
+
+- Some unused imports (e.g. optimize.py)
+- Make any private functions private
+- there are some really long functions that I would tend to avoid (normally makes it harder to read and suggests they are doing multiple things)>
+- Then I’d just reiterate what I mentioned about tests, personally I think its important and would have for anything I published
+- I also think some of it would really benefit from being class based, things like what provider to use could really benefit from factory and provider adaptors, but thats a much bigger change
+
+DONE:
+- Remove things in other - all?
+- Remove readme.md from src
+- Move examples.py from root?
