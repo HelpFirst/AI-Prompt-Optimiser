@@ -10,6 +10,7 @@ To-do:
 - Variable to optimise based on precision/recall into the prompt optimisation step, and also threshold values (e.g. if precision>X, then focus on increasing recall)
 - Integrate the code with promptfoo 
 - Agentic behaviour
+- Create a pyproject.toml
 - add something in the prompt about making sure it writes thing in British English
 
 Done:

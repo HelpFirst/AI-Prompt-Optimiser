@@ -59,6 +59,7 @@ def get_model_output(provider: str, model: str, temperature: float, full_prompt:
                 print(f"Using cached output for text {index + 1}/{total}")
             return cached_output
 
+    last_error = None
     # Try API calls with retries
     for retry in range(MAX_RETRIES):
         try:
@@ -81,10 +82,11 @@ def get_model_output(provider: str, model: str, temperature: float, full_prompt:
                 cache_output(cache_key, output)
             return output
         except Exception as e:
+            last_error = e
             print(f"API error: {str(e)}. Retrying... (Attempt {retry + 1}/{MAX_RETRIES})")
             
     # Return default prediction if all retries fail
-    error_msg = f"Failed to get model output after {MAX_RETRIES} retries. Last error: {str(e)}"
+    error_msg = f"Failed to get model output after {MAX_RETRIES} retries. Last error: {str(last_error)}"
     raise RuntimeError(error_msg)
 
 # Provider-specific helper functions

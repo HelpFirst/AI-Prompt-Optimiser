@@ -1,3 +1,6 @@
+# custom folder
+/other
+
 .env
 runs/
 */__pycache__/*
