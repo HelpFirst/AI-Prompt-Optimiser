@@ -550,6 +550,9 @@ def generate_combined_dashboard_multiclass(log_dir: str, all_metrics: list,
             'f1': metrics['f1'],
             'valid_predictions': metrics['valid_predictions'],
             'invalid_predictions': metrics['invalid_predictions'],
+            'prompt': '',  # Initialize with empty string
+            'correct_analysis': '',  # Initialize with empty string
+            'incorrect_analysis': ''  # Initialize with empty string
         }
         
         # Load additional data from iteration files
@@ -559,23 +562,20 @@ def generate_combined_dashboard_multiclass(log_dir: str, all_metrics: list,
         if os.path.exists(prompt_gen_file):
             with open(prompt_gen_file, 'r') as f:
                 prompt_gen_data = json.load(f)
-                iteration_data.update({
-                    'prompt': prompt_gen_data.get('initial_prompt', ''),
-                    'correct_analysis': prompt_gen_data.get('correct_predictions_analysis', 
-                                      prompt_gen_data.get('analyses', {}).get('correct_predictions_analysis', '')),
-                    'incorrect_analysis': prompt_gen_data.get('incorrect_predictions_analysis',
-                                        prompt_gen_data.get('analyses', {}).get('incorrect_predictions_analysis', ''))
-                })
+                # Get prompt from initial_prompt field
+                iteration_data['prompt'] = prompt_gen_data.get('initial_prompt', '')
+                # Get analyses from correct/incorrect analysis fields
+                iteration_data['correct_analysis'] = prompt_gen_data.get('correct_analysis', '')
+                iteration_data['incorrect_analysis'] = prompt_gen_data.get('incorrect_analysis', '')
         
         if os.path.exists(eval_file):
             with open(eval_file, 'r') as f:
                 eval_data = json.load(f)
-                # Add evaluation data and any analyses that might be there
-                iteration_data.update({
-                    'evaluation_details': eval_data.get('evaluations', []),
-                    'correct_analysis': eval_data.get('correct_analysis', iteration_data.get('correct_analysis', '')),
-                    'incorrect_analysis': eval_data.get('incorrect_analysis', iteration_data.get('incorrect_analysis', ''))
-                })
+                # If prompt not found in prompt_gen_file, try to get it from eval_file
+                if not iteration_data['prompt']:
+                    iteration_data['prompt'] = eval_data.get('prompt', '')
+                # Add evaluation data
+                iteration_data['evaluation_details'] = eval_data.get('evaluations', [])
         
         iterations.append(iteration_data)
 
