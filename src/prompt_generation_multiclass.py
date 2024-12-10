@@ -185,7 +185,8 @@ def generate_new_prompt_multiclass(
             initial_prompt,
             correct_analysis=correct_analysis,
             incorrect_analysis=incorrect_analysis,
-            new_prompt=new_prompt
+            new_prompt=new_prompt,
+            prompts_used=prompts_used
         )
 
     return new_prompt, analyses, prompts_used

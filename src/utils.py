@@ -581,7 +581,7 @@ def detect_problem_type(eval_data: pd.DataFrame, output_schema: dict) -> str:
 # Add this new function in utils.py
 def log_prompt_generation_multiclass(log_dir: str, iteration: int, initial_prompt: str, 
                                    correct_analysis: str = None, incorrect_analysis: str = None, 
-                                   new_prompt: str = None) -> None:
+                                   new_prompt: str = None, prompts_used: dict = None) -> None:
     """
     Log the prompt generation process for multiclass classification.
     
@@ -592,13 +592,19 @@ def log_prompt_generation_multiclass(log_dir: str, iteration: int, initial_promp
         correct_analysis (str): Analysis of correct predictions
         incorrect_analysis (str): Analysis of incorrect predictions
         new_prompt (str): The newly generated prompt
+        prompts_used (dict): Dictionary containing all prompts used in the analysis
     """
     log_file_path = os.path.join(log_dir, f"iteration_{iteration}_prompt_generation.json")
     log_data = {
         "initial_prompt": initial_prompt,
         "correct_analysis": correct_analysis,
         "incorrect_analysis": incorrect_analysis,
-        "new_prompt": new_prompt
+        "new_prompt": new_prompt,
+        "prompts_for_analysis": {
+            "correct_prompt": prompts_used.get('correct_prompt', 'No prompt used'),
+            "incorrect_prompt": prompts_used.get('incorrect_prompt', 'No prompt used'),
+            "prompt_engineer_input": prompts_used.get('prompt_engineer_input', 'No prompt used')
+        } if prompts_used else {}
     }
     with open(log_file_path, 'w') as f:
         json.dump(log_data, f, indent=2)
@@ -618,6 +624,7 @@ def regenerate_dashboards(experiment_dir: str):
         initial_setup = json.load(f)
         initial_prompt = initial_setup['initial_prompt']
         output_format_prompt = initial_setup['output_format_prompt']
+        output_schema = initial_setup['output_schema']
     
     # Load final results
     with open(os.path.join(experiment_dir, 'final_results.json'), 'r') as f:
@@ -625,11 +632,9 @@ def regenerate_dashboards(experiment_dir: str):
         best_prompt = final_results['best_prompt']
         all_metrics = final_results['all_metrics']
     
-    # Determine problem type from the first evaluation file
-    first_eval_file = os.path.join(experiment_dir, 'iteration_1_evaluation.json')
-    with open(first_eval_file, 'r') as f:
-        first_eval = json.load(f)
-        problem_type = first_eval.get('problem_type', 'binary')  # Default to binary if not specified
+    # Determine problem type from output schema
+    value_mapping = output_schema.get('value_mapping', {})
+    problem_type = 'multiclass' if len(value_mapping) > 2 else 'binary'
     
     print(f"Detected problem type: {problem_type}")
     
@@ -647,6 +652,22 @@ def regenerate_dashboards(experiment_dir: str):
         # Move metrics to top level for template access
         results.update(results.get('metrics', {}))
         
+        # For multiclass, extract labels, predictions, and texts from evaluations
+        if problem_type == 'multiclass':
+            evaluations = results.get('evaluations', [])
+            results['labels'] = []
+            results['predictions'] = []
+            results['texts'] = []
+            results['chain_of_thought'] = []
+            results['raw_outputs'] = []
+            
+            for eval_item in evaluations:
+                results['texts'].append(eval_item.get('text', ''))
+                results['labels'].append(eval_item.get('label'))
+                results['predictions'].append(eval_item.get('transformed_output'))
+                results['chain_of_thought'].append(eval_item.get('chain_of_thought', 'N/A'))
+                results['raw_outputs'].append(eval_item.get('raw_output', 'N/A'))
+        
         # Load prompt generation results if they exist
         prompt_gen_file = os.path.join(experiment_dir, f'iteration_{iteration}_prompt_generation.json')
         if os.path.exists(prompt_gen_file):
@@ -660,17 +681,32 @@ def regenerate_dashboards(experiment_dir: str):
                         'new_prompt': prompt_gen.get('new_prompt', '')
                     })
                 else:
+                    # For multiclass, structure the prompts and analyses
                     results.update({
-                        'correct_analysis': prompt_gen.get('analysis_results', {}).get('correct', ''),
-                        'incorrect_analysis': prompt_gen.get('analysis_results', {}).get('incorrect', ''),
-                        'prompts_for_analysis': prompt_gen.get('prompts_for_analysis', {}),
-                        'new_prompt': prompt_gen.get('new_prompt', '')
+                        'correct_analysis': prompt_gen.get('correct_analysis', ''),
+                        'incorrect_analysis': prompt_gen.get('incorrect_analysis', ''),
+                        'initial_prompt': prompt_gen.get('initial_prompt', ''),
+                        'new_prompt': prompt_gen.get('new_prompt', ''),
+                        'prompts_used': {
+                            'correct_prompt': prompt_gen.get('prompts_for_analysis', {}).get('correct_prompt', ''),
+                            'incorrect_prompt': prompt_gen.get('prompts_for_analysis', {}).get('incorrect_prompt', ''),
+                            'prompt_engineer_input': prompt_gen.get('prompts_for_analysis', {}).get('prompt_engineer_input', '')
+                        }
                     })
+        else:
+            # Initialize empty prompts_used if no prompt generation file exists
+            if problem_type == 'multiclass':
+                results['prompts_used'] = {
+                    'correct_prompt': '',
+                    'incorrect_prompt': '',
+                    'prompt_engineer_input': ''
+                }
         
         # Print debug information
         print(f"\nIteration {iteration} data:")
         print("Available keys:", list(results.keys()))
         print("Metrics:", results.get('metrics', {}))
+        print("Number of samples:", len(results.get('evaluations', [])))
         
         # Generate appropriate dashboard
         if problem_type == 'binary':
