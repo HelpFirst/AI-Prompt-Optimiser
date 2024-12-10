@@ -90,6 +90,17 @@ def generate_iteration_dashboard_multiclass(log_dir: str, iteration: int, result
     with open(evaluation_file, 'r') as f:
         evaluation_data = json.load(f)
     
+    # Load prompt generation results if available
+    prompt_gen_file = os.path.join(log_dir, f'iteration_{iteration}_prompt_generation.json')
+    if os.path.exists(prompt_gen_file):
+        with open(prompt_gen_file, 'r') as f:
+            prompt_gen_data = json.load(f)
+            # Update results with analyses from prompt generation
+            results['correct_analysis'] = prompt_gen_data.get('correct_analysis', '')
+            results['incorrect_analysis'] = prompt_gen_data.get('incorrect_analysis', '')
+            results['prompts_used'] = results.get('prompts_used', {})
+            results['new_prompt'] = prompt_gen_data.get('new_prompt', '')
+    
     # Generate confusion matrix
     y_true = results['labels']
     y_pred = results['predictions']
@@ -115,7 +126,8 @@ def generate_iteration_dashboard_multiclass(log_dir: str, iteration: int, result
     
     table_headers = ['Text', 'True Label', 'Predicted', 'Chain of Thought', 'Raw Output', 'Result']
     
-    template = Template('''
+    # Define the HTML template
+    template = Template(r'''
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -129,16 +141,52 @@ def generate_iteration_dashboard_multiclass(log_dir: str, iteration: int, result
         <script type="text/javascript" src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
         <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
         <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-            .container { max-width: 1200px; margin: 0 auto; }
-            .metrics { display: flex; justify-content: space-around; margin-bottom: 20px; }
-            .metric { text-align: center; }
-            .prompt, .analysis { white-space: pre-wrap; background-color: #f0f0f0; padding: 10px; border-radius: 5px; margin-bottom: 20px; }
-            .confusion-matrix { width: 50%; margin: 20px auto; text-align: center; }
-            .confusion-matrix img { max-width: 100%; height: auto; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f2f2f2; }
+            body { 
+                font-family: Arial, sans-serif; 
+                margin: 0; 
+                padding: 20px; 
+            }
+            .container { 
+                max-width: 1200px; 
+                margin: 0 auto; 
+            }
+            .metrics { 
+                display: flex; 
+                justify-content: space-around; 
+                margin-bottom: 20px; 
+            }
+            .metric { 
+                text-align: center; 
+            }
+            .prompt, .analysis { 
+                white-space: pre-wrap; 
+                background-color: #f0f0f0; 
+                padding: 10px; 
+                border-radius: 5px; 
+                margin-bottom: 20px; 
+            }
+            .confusion-matrix { 
+                width: 50%; 
+                margin: 20px auto; 
+                text-align: center; 
+            }
+            .confusion-matrix img { 
+                max-width: 100%; 
+                height: auto; 
+            }
+            table { 
+                width: 100%; 
+                border-collapse: collapse; 
+                margin-bottom: 20px; 
+            }
+            th, td { 
+                border: 1px solid #ddd; 
+                padding: 8px; 
+                text-align: left; 
+            }
+            th { 
+                background-color: #f2f2f2; 
+            }
             .truncate {
                 max-width: 200px;
                 white-space: nowrap;
@@ -349,15 +397,18 @@ def generate_iteration_dashboard_multiclass(log_dir: str, iteration: int, result
     </html>
     ''')
     
+    # Prepare template data
+    template_data = {
+        'iteration': iteration,
+        'results': results,  # Pass the entire results dictionary directly
+        'current_prompt': current_prompt,
+        'evaluation_results': evaluation_results,
+        'table_headers': table_headers,
+        'confusion_matrix_image': confusion_matrix_image
+    }
+    
     # Generate HTML content
-    html_content = template.render(
-        iteration=iteration,
-        results=results,
-        current_prompt=current_prompt,
-        evaluation_results=evaluation_results,
-        table_headers=table_headers,
-        confusion_matrix_image=confusion_matrix_image
-    )
+    html_content = template.render(**template_data)
     
     # Save dashboard
     with open(os.path.join(log_dir, f'iteration_{iteration}_dashboard_multiclass.html'), 'w') as f:
