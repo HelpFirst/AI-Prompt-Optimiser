@@ -240,7 +240,7 @@ def generate_iteration_dashboard(
         # Save dashboard
         suffix = 'binary' if is_binary else 'multiclass'
         output_file = os.path.join(log_dir, f'iteration_{iteration}_dashboard_{suffix}.html')
-        with open(output_file, 'w') as f:
+        with open(output_file, 'w', encoding='utf-8') as f:
             f.write(html_content)
             
     except Exception as e:
@@ -351,7 +351,7 @@ def generate_combined_dashboard(
         # Save the combined dashboard
         suffix = 'binary' if is_binary else 'multiclass'
         output_file = os.path.join(log_dir, f'combined_dashboard_{suffix}.html')
-        with open(output_file, 'w') as f:
+        with open(output_file, 'w', encoding='utf-8') as f:
             f.write(html_content)
             
     except Exception as e:
