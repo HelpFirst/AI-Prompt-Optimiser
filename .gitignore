@@ -1,5 +1,5 @@
 # custom folder
-/other
+other/
 
 .env
 runs/
