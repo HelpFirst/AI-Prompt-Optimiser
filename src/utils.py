@@ -613,6 +613,63 @@ def log_prompt_generation_multiclass(log_dir: str, iteration: int, initial_promp
     with open(log_file_path, 'w') as f:
         json.dump(log_data, f, indent=2)
 
+def calculate_metrics(labels, predictions):
+    """
+    Calculate classification metrics from labels and predictions.
+    
+    Args:
+        labels: List of true labels
+        predictions: List of predicted labels
+        
+    Returns:
+        dict: Dictionary containing precision, recall, accuracy, and f1 score
+    """
+    if not labels or not predictions:
+        return {
+            'precision': 0,
+            'recall': 0,
+            'accuracy': 0,
+            'f1': 0,
+            'valid_predictions': 0,
+            'invalid_predictions': 0
+        }
+    
+    # Count valid and invalid predictions
+    valid_pairs = [(l, p) for l, p in zip(labels, predictions) if p is not None]
+    if not valid_pairs:
+        return {
+            'precision': 0,
+            'recall': 0,
+            'accuracy': 0,
+            'f1': 0,
+            'valid_predictions': 0,
+            'invalid_predictions': len(predictions)
+        }
+    
+    valid_labels, valid_predictions = zip(*valid_pairs)
+    invalid_count = len(predictions) - len(valid_pairs)
+    
+    # Calculate metrics
+    tp = sum(1 for l, p in zip(valid_labels, valid_predictions) if l == 1 and p == 1)
+    fp = sum(1 for l, p in zip(valid_labels, valid_predictions) if l == 0 and p == 1)
+    fn = sum(1 for l, p in zip(valid_labels, valid_predictions) if l == 1 and p == 0)
+    tn = sum(1 for l, p in zip(valid_labels, valid_predictions) if l == 0 and p == 0)
+    
+    # Calculate derived metrics
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+    accuracy = (tp + tn) / len(valid_pairs) if valid_pairs else 0
+    f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+    
+    return {
+        'precision': precision,
+        'recall': recall,
+        'accuracy': accuracy,
+        'f1': f1,
+        'valid_predictions': len(valid_pairs),
+        'invalid_predictions': invalid_count
+    }
+
 def regenerate_dashboards(path_to_data: str, is_binary: bool = True):
     """
     Regenerate dashboards for a specific experiment.
@@ -621,51 +678,120 @@ def regenerate_dashboards(path_to_data: str, is_binary: bool = True):
         path_to_data: Path to the experiment data directory
         is_binary: Whether this is a binary classification problem
     """
-    # Load experiment data
-    with open(os.path.join(path_to_data, 'experiment_config.json'), 'r') as f:
-        config = json.load(f)
-    
-    # Get number of iterations from directory contents
-    iteration_files = [f for f in os.listdir(path_to_data) 
-                      if f.startswith('iteration_') and f.endswith('_evaluation.json')]
-    num_iterations = len(iteration_files)
-    
-    # Load metrics for all iterations
-    all_metrics = []
-    for i in range(1, num_iterations + 1):
-        with open(os.path.join(path_to_data, f'iteration_{i}_evaluation.json'), 'r') as f:
-            metrics = json.load(f)
-            metrics['iteration'] = i
-            all_metrics.append(metrics)
-    
-    # Regenerate individual dashboards
-    for i in range(1, num_iterations + 1):
-        # Load iteration data
-        with open(os.path.join(path_to_data, f'iteration_{i}_evaluation.json'), 'r') as f:
-            results = json.load(f)
+    try:
+        # Load experiment data
+        with open(os.path.join(path_to_data, 'initial_setup.json'), 'r') as f:
+            config = json.load(f)
         
-        with open(os.path.join(path_to_data, f'iteration_{i}_prompt_generation.json'), 'r') as f:
-            prompt_data = json.load(f)
+        # Get number of iterations from directory contents
+        iteration_files = [f for f in os.listdir(path_to_data) 
+                          if f.startswith('iteration_') and f.endswith('_evaluation.json')]
+        num_iterations = len(iteration_files)
         
-        # Generate dashboard
-        generate_iteration_dashboard(
+        # Keep track of the last valid prompt for final iteration
+        last_valid_prompt = config.get('initial_prompt', '')
+        
+        # Load and process all iterations
+        all_metrics = []
+        best_f1 = -1
+        best_metrics = None
+        
+        # First pass to get the last generated prompt
+        for i in range(1, num_iterations):  # Stop before last iteration
+            prompt_gen_path = os.path.join(path_to_data, f'iteration_{i}_prompt_generation.json')
+            if os.path.exists(prompt_gen_path):
+                with open(prompt_gen_path, 'r') as f:
+                    prompt_data = json.load(f)
+                    if prompt_data.get('new_prompt'):
+                        last_valid_prompt = prompt_data['new_prompt']
+        
+        # Now process all iterations including the last one
+        for i in range(1, num_iterations + 1):
+            try:
+                # Load iteration data
+                with open(os.path.join(path_to_data, f'iteration_{i}_evaluation.json'), 'r') as f:
+                    results = json.load(f)
+                
+                # Try to load prompt generation data, use defaults if not found
+                prompt_data = {}
+                prompt_gen_path = os.path.join(path_to_data, f'iteration_{i}_prompt_generation.json')
+                
+                if os.path.exists(prompt_gen_path):
+                    with open(prompt_gen_path, 'r') as f:
+                        prompt_data = json.load(f)
+                        if prompt_data.get('new_prompt'):
+                            last_valid_prompt = prompt_data['new_prompt']
+                else:
+                    # For the last iteration, use the prompt from previous iteration
+                    prompt_data = {
+                        'initial_prompt': last_valid_prompt,  # Use the last generated prompt
+                        'new_prompt': last_valid_prompt,
+                        'analysis_results': {} if is_binary else {},
+                        'correct_analysis': '',
+                        'incorrect_analysis': '',
+                        'prompts_for_analysis': {}
+                    }
+                
+                # Extract labels and predictions from evaluations
+                labels = []
+                predictions = []
+                texts = []
+                chain_of_thoughts = []
+                raw_outputs = []
+                
+                for eval_item in results.get('evaluations', []):
+                    labels.append(int(eval_item.get('label', 0)))
+                    predictions.append(eval_item.get('transformed_output'))
+                    texts.append(eval_item.get('text', ''))
+                    chain_of_thoughts.append(eval_item.get('chain_of_thought', ''))
+                    raw_outputs.append(eval_item.get('raw_output', ''))
+                
+                # Calculate metrics for this iteration
+                metrics = calculate_metrics(labels, predictions)
+                metrics['iteration'] = i
+                all_metrics.append(metrics)
+                
+                # Track best metrics
+                if metrics['f1'] > best_f1:
+                    best_f1 = metrics['f1']
+                    best_metrics = metrics.copy()
+                
+                # Update results with extracted data
+                results.update(metrics)
+                results['labels'] = labels
+                results['predictions'] = predictions
+                results['texts'] = texts
+                results['chain_of_thought'] = chain_of_thoughts
+                results['raw_outputs'] = raw_outputs
+                
+                # For the last iteration, ensure we use the last valid prompt
+                current_prompt = last_valid_prompt if i == num_iterations else prompt_data.get('initial_prompt', last_valid_prompt)
+                
+                # Generate dashboard
+                generate_iteration_dashboard(
+                    log_dir=path_to_data,
+                    iteration=i,
+                    results=results,
+                    current_prompt=current_prompt,  # Use the determined prompt
+                    output_format_prompt=config.get('output_format_prompt', ''),
+                    initial_prompt=config.get('initial_prompt', ''),
+                    is_binary=is_binary
+                )
+            except Exception as e:
+                print(f"Error processing iteration {i}: {str(e)}")
+                continue
+        
+        # Generate combined dashboard
+        generate_combined_dashboard(
             log_dir=path_to_data,
-            iteration=i,
-            results=results,
-            current_prompt=prompt_data['initial_prompt'],
-            output_format_prompt=config['output_format_prompt'],
-            initial_prompt=config['initial_prompt'],
+            all_metrics=all_metrics,
+            best_prompt=last_valid_prompt,  # Use the last valid prompt
+            output_format_prompt=config.get('output_format_prompt', ''),
             is_binary=is_binary
         )
-    
-    # Generate combined dashboard
-    generate_combined_dashboard(
-        log_dir=path_to_data,
-        all_metrics=all_metrics,
-        best_prompt=prompt_data['new_prompt'],  # Use the last generated prompt
-        output_format_prompt=config['output_format_prompt'],
-        is_binary=is_binary
-    )
+    except Exception as e:
+        print(f"Error regenerating dashboards: {str(e)}")
+        raise
 
 def get_result_symbol(is_correct: bool, is_valid: bool, true_label: int, pred_label: int, problem_type: str = "binary") -> str:
     """

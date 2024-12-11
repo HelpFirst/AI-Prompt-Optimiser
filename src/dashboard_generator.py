@@ -225,25 +225,25 @@ def generate_combined_dashboard(
     """
     try:
         # Find the best metrics (highest F1 score)
-        best_metrics = max(all_metrics, key=lambda x: x['f1'])
-        best_iteration = best_metrics['iteration']
+        best_metrics = max(all_metrics, key=lambda x: x.get('f1', 0))
+        best_iteration = best_metrics.get('iteration', 1)
         
+        # Calculate max/min values for highlighting
+        max_values = {
+            'precision': max(m.get('precision', 0) for m in all_metrics),
+            'recall': max(m.get('recall', 0) for m in all_metrics),
+            'accuracy': max(m.get('accuracy', 0) for m in all_metrics),
+            'f1': max(m.get('f1', 0) for m in all_metrics),
+            'valid_predictions': max(m.get('valid_predictions', 0) for m in all_metrics),
+        }
+        min_values = {
+            'invalid_predictions': min(m.get('invalid_predictions', float('inf')) for m in all_metrics)
+        }
+
         # Prepare visualization data
         metrics_data = prepare_metrics_visualization(all_metrics)
         validity_data = prepare_validity_visualization(all_metrics)
         
-        # Calculate max/min values for highlighting
-        max_values = {
-            'precision': max(m['precision'] for m in all_metrics),
-            'recall': max(m['recall'] for m in all_metrics),
-            'accuracy': max(m['accuracy'] for m in all_metrics),
-            'f1': max(m['f1'] for m in all_metrics),
-            'valid_predictions': max(m['valid_predictions'] for m in all_metrics),
-        }
-        min_values = {
-            'invalid_predictions': min(m['invalid_predictions'] for m in all_metrics)
-        }
-
         # Collect iteration data
         iterations = collect_iteration_data(log_dir, all_metrics, is_binary)
         
@@ -278,8 +278,8 @@ def prepare_metrics_visualization(
     colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4']
     
     return [{
-        'x': [m['iteration'] for m in all_metrics],
-        'y': [m[metric] for m in all_metrics],
+        'x': [m.get('iteration', i+1) for i, m in enumerate(all_metrics)],
+        'y': [m.get(metric, 0) for m in all_metrics],
         'type': 'scatter',
         'mode': 'lines+markers',
         'name': metric.capitalize(),
@@ -292,15 +292,15 @@ def prepare_validity_visualization(
     """Prepare validity data for visualization."""
     return [
         {
-            'x': [m['iteration'] for m in all_metrics],
-            'y': [m['valid_predictions'] for m in all_metrics],
+            'x': [m.get('iteration', i+1) for i, m in enumerate(all_metrics)],
+            'y': [m.get('valid_predictions', 0) for m in all_metrics],
             'type': 'bar',
             'name': 'Valid Predictions',
             'marker': {'color': '#2ECC71'}
         },
         {
-            'x': [m['iteration'] for m in all_metrics],
-            'y': [m['invalid_predictions'] for m in all_metrics],
+            'x': [m.get('iteration', i+1) for i, m in enumerate(all_metrics)],
+            'y': [m.get('invalid_predictions', 0) for m in all_metrics],
             'type': 'bar',
             'name': 'Invalid Predictions',
             'marker': {'color': '#E74C3C'}
@@ -314,19 +314,32 @@ def collect_iteration_data(
 ) -> List[Dict]:
     """Collect and process data for each iteration."""
     iterations = []
+    last_valid_prompt = None
+    
+    # First pass to collect all prompts
+    for i in range(len(all_metrics)):
+        prompt_gen_file = os.path.join(log_dir, f'iteration_{i+1}_prompt_generation.json')
+        if os.path.exists(prompt_gen_file):
+            with open(prompt_gen_file, 'r') as f:
+                prompt_data = json.load(f)
+                if prompt_data.get('new_prompt'):
+                    last_valid_prompt = prompt_data['new_prompt']
+    
+    # Now process all iterations with the correct prompts
     for i, metrics in enumerate(all_metrics):
+        iteration_number = i + 1
         iteration_data = {
-            'number': i + 1,
-            'precision': metrics['precision'],
-            'recall': metrics['recall'],
-            'accuracy': metrics['accuracy'],
-            'f1': metrics['f1'],
-            'valid_predictions': metrics['valid_predictions'],
-            'invalid_predictions': metrics['invalid_predictions'],
+            'number': iteration_number,
+            'precision': metrics.get('precision', 0),
+            'recall': metrics.get('recall', 0),
+            'accuracy': metrics.get('accuracy', 0),
+            'f1': metrics.get('f1', 0),
+            'valid_predictions': metrics.get('valid_predictions', 0),
+            'invalid_predictions': metrics.get('invalid_predictions', 0),
         }
         
         # Load additional data from iteration files
-        prompt_gen_file = os.path.join(log_dir, f'iteration_{i+1}_prompt_generation.json')
+        prompt_gen_file = os.path.join(log_dir, f'iteration_{iteration_number}_prompt_generation.json')
         if os.path.exists(prompt_gen_file):
             with open(prompt_gen_file, 'r') as f:
                 prompt_data = json.load(f)
@@ -346,6 +359,25 @@ def collect_iteration_data(
                         'incorrect_analysis': prompt_data.get('incorrect_analysis', ''),
                         'prompts_used': prompt_data.get('prompts_for_analysis', {})
                     })
+                # Update last valid prompt if this iteration generated a new one
+                if prompt_data.get('new_prompt'):
+                    last_valid_prompt = prompt_data['new_prompt']
+        else:
+            # For iterations without prompt generation file (like the last one)
+            # Use the last valid prompt from the previous iteration
+            iteration_data.update({
+                'prompt': last_valid_prompt if last_valid_prompt is not None else '',
+                'fp_analysis': '',
+                'fn_analysis': '',
+                'tp_analysis': '',
+                'invalid_analysis': '',
+                'prompts_used': {}
+            } if is_binary else {
+                'prompt': last_valid_prompt if last_valid_prompt is not None else '',
+                'correct_analysis': '',
+                'incorrect_analysis': '',
+                'prompts_used': {}
+            })
         
         iterations.append(iteration_data)
     
