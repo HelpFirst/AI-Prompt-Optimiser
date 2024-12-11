@@ -96,6 +96,13 @@ def generate_confusion_matrix(
     
     return image_base64
 
+def get_prediction_type(true_label: int, predicted_label: int) -> str:
+    """Get the prediction type (TP, TN, FP, FN) for binary classification."""
+    if true_label == predicted_label:
+        return "TP" if true_label == 1 else "TN"
+    else:
+        return "FP" if predicted_label == 1 else "FN"
+
 def generate_iteration_dashboard(
     log_dir: str,
     iteration: int,
@@ -123,27 +130,22 @@ def generate_iteration_dashboard(
         with open(evaluation_file, 'r') as f:
             evaluation_data = json.load(f)
         
-        # Load and process prompt generation results
-        prompt_gen_file = os.path.join(log_dir, f'iteration_{iteration}_prompt_generation.json')
-        if os.path.exists(prompt_gen_file):
-            with open(prompt_gen_file, 'r') as f:
-                prompt_gen_data = json.load(f)
-                if is_binary:
-                    results.update({
-                        'fp_analysis': prompt_gen_data.get('analysis_results', {}).get('false_positives', ''),
-                        'fn_analysis': prompt_gen_data.get('analysis_results', {}).get('false_negatives', ''),
-                        'tp_analysis': prompt_gen_data.get('analysis_results', {}).get('true_positives', ''),
-                        'invalid_analysis': prompt_gen_data.get('analysis_results', {}).get('invalid_outputs', ''),
-                        'prompts_used': prompt_gen_data.get('prompts_for_analysis', {}),
-                        'new_prompt': prompt_gen_data.get('new_prompt', '')
-                    })
-                else:
-                    results.update({
-                        'correct_analysis': prompt_gen_data.get('correct_analysis', ''),
-                        'incorrect_analysis': prompt_gen_data.get('incorrect_analysis', ''),
-                        'prompts_used': results.get('prompts_used', {}),
-                        'new_prompt': prompt_gen_data.get('new_prompt', '')
-                    })
+        # Try to load prompt generation data, use defaults if not found
+        prompt_data = {}
+        prompt_gen_path = os.path.join(log_dir, f'iteration_{iteration}_prompt_generation.json')
+        
+        if os.path.exists(prompt_gen_path):
+            with open(prompt_gen_path, 'r') as f:
+                prompt_data = json.load(f)
+                if prompt_data.get('new_prompt'):
+                    last_valid_prompt = prompt_data['new_prompt']
+                
+                # Extract analysis results
+                if 'analysis_results' in prompt_data:
+                    results['tp_analysis'] = prompt_data['analysis_results'].get('true_positives', '')
+                    results['fp_analysis'] = prompt_data['analysis_results'].get('false_positives', '')
+                    results['fn_analysis'] = prompt_data['analysis_results'].get('false_negatives', '')
+                    results['invalid_analysis'] = prompt_data['analysis_results'].get('invalid_outputs', '')
         
         # Generate confusion matrix
         confusion_matrix_image = generate_confusion_matrix(
@@ -162,13 +164,15 @@ def generate_iteration_dashboard(
             results['raw_outputs']
         ):
             if is_binary:
+                # For binary classification, include prediction type
+                pred_type = get_prediction_type(label, pred) if pred is not None else "Invalid"
                 result = {
                     'Text': text,
                     'True Label': 'Positive (1)' if label == 1 else 'Negative (0)',
-                    'Predicted': 'Positive (1)' if pred == 1 else 'Negative (0)',
+                    'Predicted': 'Positive (1)' if pred == 1 else 'Negative (0)' if pred == 0 else 'Invalid',
                     'Chain of Thought': cot,
                     'Raw Output': raw,
-                    'Result': '✅' if label == pred else '❌'
+                    'Result': f"{'✅' if label == pred else '❌'} ({pred_type})"
                 }
             else:
                 result = {
@@ -186,7 +190,19 @@ def generate_iteration_dashboard(
         # Prepare template data
         template_data = {
             'iteration': iteration,
-            'results': results,
+            'results': {
+                'precision': results.get('precision'),
+                'recall': results.get('recall'),
+                'accuracy': results.get('accuracy'),
+                'f1': results.get('f1'),
+                'valid_predictions': results.get('valid_predictions'),
+                'invalid_predictions': results.get('invalid_predictions'),
+                'tp_analysis': results.get('tp_analysis'),
+                'tn_analysis': results.get('tn_analysis'),
+                'fp_analysis': results.get('fp_analysis'),
+                'fn_analysis': results.get('fn_analysis'),
+                'invalid_analysis': results.get('invalid_analysis')
+            },
             'current_prompt': current_prompt,
             'evaluation_results': evaluation_results,
             'table_headers': table_headers,
@@ -227,6 +243,16 @@ def generate_combined_dashboard(
         # Find the best metrics (highest F1 score)
         best_metrics = max(all_metrics, key=lambda x: x.get('f1', 0))
         best_iteration = best_metrics.get('iteration', 1)
+        
+        # Load prompts for each iteration
+        for metrics in all_metrics:
+            iteration = metrics.get('iteration')
+            if iteration:
+                eval_file = os.path.join(log_dir, f'iteration_{iteration}_evaluation.json')
+                if os.path.exists(eval_file):
+                    with open(eval_file, 'r') as f:
+                        eval_data = json.load(f)
+                        metrics['prompt'] = eval_data.get('prompt', 'N/A')
         
         # Calculate max/min values for highlighting
         max_values = {
@@ -312,76 +338,46 @@ def collect_iteration_data(
     all_metrics: List[Dict[str, Union[float, int]]],
     is_binary: bool
 ) -> List[Dict]:
-    """Collect and process data for each iteration."""
+    """Collect detailed data for each iteration."""
     iterations = []
-    last_valid_prompt = None
     
-    # First pass to collect all prompts
-    for i in range(len(all_metrics)):
-        prompt_gen_file = os.path.join(log_dir, f'iteration_{i+1}_prompt_generation.json')
-        if os.path.exists(prompt_gen_file):
-            with open(prompt_gen_file, 'r') as f:
-                prompt_data = json.load(f)
-                if prompt_data.get('new_prompt'):
-                    last_valid_prompt = prompt_data['new_prompt']
-    
-    # Now process all iterations with the correct prompts
-    for i, metrics in enumerate(all_metrics):
-        iteration_number = i + 1
+    for metrics in all_metrics:
+        iteration_num = metrics.get('iteration')
+        if iteration_num is None:
+            continue
+            
         iteration_data = {
-            'number': iteration_number,
-            'precision': metrics.get('precision', 0),
-            'recall': metrics.get('recall', 0),
-            'accuracy': metrics.get('accuracy', 0),
-            'f1': metrics.get('f1', 0),
-            'valid_predictions': metrics.get('valid_predictions', 0),
-            'invalid_predictions': metrics.get('invalid_predictions', 0),
+            'iteration': iteration_num,  # Explicitly include iteration number
+            **metrics  # Include all other metrics
         }
+            
+        # Load evaluation data
+        eval_file = os.path.join(log_dir, f'iteration_{iteration_num}_evaluation.json')
+        if os.path.exists(eval_file):
+            with open(eval_file, 'r') as f:
+                eval_data = json.load(f)
+                iteration_data['prompt'] = eval_data.get('prompt', 'N/A')
         
-        # Load additional data from iteration files
-        prompt_gen_file = os.path.join(log_dir, f'iteration_{iteration_number}_prompt_generation.json')
+        # Load prompt generation data
+        prompt_gen_file = os.path.join(log_dir, f'iteration_{iteration_num}_prompt_generation.json')
         if os.path.exists(prompt_gen_file):
             with open(prompt_gen_file, 'r') as f:
                 prompt_data = json.load(f)
-                if is_binary:
+                if 'analysis_results' in prompt_data:
                     iteration_data.update({
-                        'prompt': prompt_data.get('initial_prompt', ''),
-                        'fp_analysis': prompt_data.get('analysis_results', {}).get('false_positives', ''),
-                        'fn_analysis': prompt_data.get('analysis_results', {}).get('false_negatives', ''),
-                        'tp_analysis': prompt_data.get('analysis_results', {}).get('true_positives', ''),
-                        'invalid_analysis': prompt_data.get('analysis_results', {}).get('invalid_outputs', ''),
-                        'prompts_used': prompt_data.get('prompts_for_analysis', {})
+                        'correct_analysis': prompt_data['analysis_results'].get('correct_analysis', ''),
+                        'incorrect_analysis': prompt_data['analysis_results'].get('incorrect_analysis', ''),
+                        'fp_analysis': prompt_data['analysis_results'].get('false_positives', ''),
+                        'fn_analysis': prompt_data['analysis_results'].get('false_negatives', ''),
+                        'tp_analysis': prompt_data['analysis_results'].get('true_positives', ''),
+                        'invalid_analysis': prompt_data['analysis_results'].get('invalid_outputs', '')
                     })
-                else:
-                    iteration_data.update({
-                        'prompt': prompt_data.get('initial_prompt', ''),
-                        'correct_analysis': prompt_data.get('correct_analysis', ''),
-                        'incorrect_analysis': prompt_data.get('incorrect_analysis', ''),
-                        'prompts_used': prompt_data.get('prompts_for_analysis', {})
-                    })
-                # Update last valid prompt if this iteration generated a new one
-                if prompt_data.get('new_prompt'):
-                    last_valid_prompt = prompt_data['new_prompt']
-        else:
-            # For iterations without prompt generation file (like the last one)
-            # Use the last valid prompt from the previous iteration
-            iteration_data.update({
-                'prompt': last_valid_prompt if last_valid_prompt is not None else '',
-                'fp_analysis': '',
-                'fn_analysis': '',
-                'tp_analysis': '',
-                'invalid_analysis': '',
-                'prompts_used': {}
-            } if is_binary else {
-                'prompt': last_valid_prompt if last_valid_prompt is not None else '',
-                'correct_analysis': '',
-                'incorrect_analysis': '',
-                'prompts_used': {}
-            })
+                if 'new_prompt' in prompt_data:
+                    iteration_data['next_prompt'] = prompt_data['new_prompt']
         
         iterations.append(iteration_data)
     
-    return iterations
+    return sorted(iterations, key=lambda x: x['iteration'])  # Sort by iteration number
 
 # Backward compatibility functions
 def generate_iteration_dashboard_binary(*args, **kwargs):
