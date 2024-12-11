@@ -1,0 +1,1082 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Combined Classification Dashboard</title>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.css">
+    <script type="text/javascript" src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 15px;
+            background-color: #f8f9fa;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+        .metrics { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.8rem;
+            margin: 1rem 0;
+        }
+        .metric { 
+            text-align: center; 
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .metric strong {
+            display: block;
+            color: #34495e;
+            font-size: 0.85rem;
+            margin-bottom: 0.3rem;
+        }
+        .metric span {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #3498db;
+        }
+        .prompt, .analysis { 
+            background-color: #fff; 
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 0.8rem 0;
+            font-family: monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            border: 1px solid #eee;
+            max-width: 100%;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+        .confusion-matrix { 
+            width: 45%; 
+            margin: 15px auto; 
+            text-align: center; 
+            background: white;
+            padding: 0.8rem;
+            border-radius: 6px;
+        }
+        .confusion-matrix img { 
+            max-width: 100%; 
+            height: auto; 
+        }
+        table { 
+            width: 100%; 
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 1rem 0;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+            table-layout: fixed;
+            font-size: 0.85rem;
+        }
+        th, td { 
+            padding: 0.7rem;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 300px;
+        }
+        /* Column widths for evaluation table */
+        table#resultsTable th:nth-child(1), 
+        table#resultsTable td:nth-child(1) { width: 25%; } /* Text */
+        table#resultsTable th:nth-child(2),
+        table#resultsTable td:nth-child(2) { width: 10%; } /* True Label */
+        table#resultsTable th:nth-child(3),
+        table#resultsTable td:nth-child(3) { width: 10%; } /* Predicted */
+        table#resultsTable th:nth-child(4),
+        table#resultsTable td:nth-child(4) { width: 25%; } /* Chain of Thought */
+        table#resultsTable th:nth-child(5),
+        table#resultsTable td:nth-child(5) { width: 22%; } /* Raw Output */
+        table#resultsTable th:nth-child(6),
+        table#resultsTable td:nth-child(6) { width: 8%; } /* Result */
+        
+        th { 
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #34495e;
+            font-size: 0.85rem;
+        }
+        .section {
+            background: white;
+            border-radius: 6px;
+            padding: 1.2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 6px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-text {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-width: 100%;
+            font-family: monospace;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: #666;
+        }
+        .chart-container {
+            margin: 15px 0;
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        .best-value {
+            color: #2ecc71;
+            font-weight: 600;
+        }
+        .dataTables_wrapper {
+            padding: 0.8rem;
+            background: white;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            overflow-x: auto;
+            font-size: 0.85rem;
+        }
+        .dataTables_filter input,
+        .dataTables_length select {
+            padding: 0.4rem;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            margin: 0 0.4rem;
+            font-size: 0.85rem;
+        }
+        h1 {
+            color: #34495e;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 1.2rem;
+            margin-bottom: 0.8rem;
+            font-size: 1.4rem;
+        }
+        h3 {
+            color: #34495e;
+            margin-top: 1rem;
+            margin-bottom: 0.6rem;
+            font-size: 1.2rem;
+        }
+        h4 {
+            color: #34495e;
+            margin-top: 0.8rem;
+            margin-bottom: 0.4rem;
+            font-size: 1rem;
+        }
+        .result-icon {
+            font-weight: bold;
+        }
+        .result-success {
+            color: #2ecc71;
+        }
+        .result-failure {
+            color: #e74c3c;
+        }
+        .analysis-section {
+            margin-top: 0.8rem;
+        }
+        .analysis-section h3 {
+            margin-top: 1rem;
+            margin-bottom: 0.4rem;
+            color: #34495e;
+            font-size: 1.1rem;
+        }
+        .analysis-section h3:first-child {
+            margin-top: 0;
+        }
+        /* Custom scrollbar for better UX */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0.8rem;
+            }
+            .metrics {
+                grid-template-columns: 1fr;
+            }
+            .confusion-matrix {
+                width: 100%;
+            }
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+            th, td {
+                min-width: 100px;
+            }
+            body {
+                font-size: 13px;
+            }
+            h1 { font-size: 1.6rem; }
+            h2 { font-size: 1.3rem; }
+            h3 { font-size: 1.1rem; }
+            h4 { font-size: 0.95rem; }
+        }
+        /* Prediction type styles */
+        .result-type {
+            font-size: 0.8rem;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            margin-left: 0.3rem;
+            font-weight: normal;
+        }
+        .result-type.tp {
+            background-color: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+        }
+        .result-type.tn {
+            background-color: rgba(0, 123, 255, 0.2);
+            color: #007bff;
+        }
+        .result-type.fp {
+            background-color: rgba(255, 140, 0, 0.2);
+            color: #ff8c00;
+        }
+        .result-type.fn {
+            background-color: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+        }
+        .result-type.invalid {
+            background-color: #e2e3e5;
+            color: #383d41;
+        }
+        /* Combined Dashboard specific styles */
+        .combined-dashboard {
+            font-size: 0.85rem;
+        }
+        .combined-dashboard h1 {
+            font-size: 1.6rem;
+            margin: 1rem 0;
+        }
+        .combined-dashboard h2 {
+            font-size: 1.2rem;
+            margin: 0.8rem 0;
+        }
+        .combined-dashboard h3 {
+            font-size: 1rem;
+            margin: 0.6rem 0;
+        }
+        .combined-dashboard h4 {
+            font-size: 0.9rem;
+            margin: 0.4rem 0;
+        }
+        .combined-dashboard .section {
+            padding: 0.8rem;
+            margin-bottom: 1rem;
+        }
+        .combined-dashboard .metrics {
+            gap: 0.6rem;
+            margin: 0.8rem 0;
+        }
+        .combined-dashboard .metric {
+            padding: 0.8rem;
+        }
+        .combined-dashboard .metric strong {
+            font-size: 0.8rem;
+            margin-bottom: 0.2rem;
+        }
+        .combined-dashboard .metric span {
+            font-size: 1rem;
+        }
+        .combined-dashboard .prompt {
+            font-size: 0.8rem;
+            padding: 0.8rem;
+            margin: 0.6rem 0;
+        }
+        .combined-dashboard .analysis {
+            font-size: 0.8rem;
+            padding: 0.8rem;
+            margin: 0.6rem 0;
+        }
+        .combined-dashboard .chart-container {
+            margin: 0.8rem 0;
+            padding: 0.8rem;
+        }
+        /* Combined Dashboard table styles */
+        .combined-dashboard .prompt-cell {
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: pointer;
+            color: #2980b9;
+            text-decoration: underline;
+        }
+        .combined-dashboard .prompt-cell:hover {
+            color: #3498db;
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+        .combined-dashboard #summaryTable th:nth-child(1) { width: 8%; } /* Iteration */
+        .combined-dashboard #summaryTable th:nth-child(2) { width: 20%; } /* Prompt */
+        .combined-dashboard #summaryTable th:nth-child(3) { width: 12%; } /* Precision */
+        .combined-dashboard #summaryTable th:nth-child(4) { width: 12%; } /* Recall */
+        .combined-dashboard #summaryTable th:nth-child(5) { width: 12%; } /* Accuracy */
+        .combined-dashboard #summaryTable th:nth-child(6) { width: 12%; } /* F1-score */
+        .combined-dashboard #summaryTable th:nth-child(7) { width: 10%; } /* Valid Predictions */
+        .combined-dashboard #summaryTable th:nth-child(8) { width: 10%; } /* Invalid Predictions */
+        
+        .combined-dashboard #summaryTable td {
+            padding: 0.7rem;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 300px;
+        }
+        
+        .combined-dashboard #summaryTable td:hover {
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+    </style>
+
+</head>
+<body>
+    <div class="container combined-dashboard">
+        <h1>Combined Classification Dashboard</h1>
+        
+        <div class="section">
+            <h2>Summary of All Iterations</h2>
+            <div class="table-responsive">
+                <table id="summaryTable" class="display">
+                    <thead>
+                        <tr>
+                            <th>Iteration</th>
+                            <th>Prompt</th>
+                            <th>Precision</th>
+                            <th>Recall</th>
+                            <th>Accuracy</th>
+                            <th>F1-score</th>
+                            <th>Valid Predictions</th>
+                            <th>Invalid Predictions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        <tr>
+                            <td>1</td>
+                            <td title="Click to view full content">
+You are a sentiment analysis classifier. Determine whether the provided text expresses a positive sentiment. 
+Think through your analysis step by step using chain of thought reasoning. 
+After your analysis, respond with a STRIC JSON dictionary containing two keys: 
+"chain_of_thought" (your step-by-step reasoning) and "classification" (1 for positive, 0 for negative).
+
+Provide your response as a JSON dictionary with the following structure:
+{
+    "chain_of_thought": "Your step-by-step reasoning here"
+    "classification": 0 or 1,
+}
+Ensure that "chain_of_thought" contains your detailed analysis, and "classification" is strictly 0 or 1
+</td>
+                            <td>
+                                0.8182
+                            </td>
+                            <td class="best-value">
+                                0.9000
+                            </td>
+                            <td>
+                                0.8500
+                            </td>
+                            <td>
+                                0.8571
+                            </td>
+                            <td class="best-value">
+                                20
+                            </td>
+                            <td class="best-value">
+                                0
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <td>2</td>
+                            <td title="Click to view full content">You are a sentiment analysis classifier. Your task is to determine whether the provided text expresses a positive sentiment. Analyze the text step by step, focusing on identifying positive descriptors, emotional engagement, explicit ratings, and comparative context. Be cautious of mixed sentiments, sarcasm, and ambiguous language that may mislead your classification. After your analysis, respond with a strict JSON dictionary containing two keys: "chain_of_thought" (your detailed step-by-step reasoning) and "classification" (1 for positive, 0 for negative). 
+
+Provide your response as a JSON dictionary with the following structure:
+{
+    "chain_of_thought": "Your step-by-step reasoning here",
+    "classification": 0 or 1
+}
+Ensure that "chain_of_thought" contains your comprehensive analysis, and "classification" is strictly 0 or 1.</td>
+                            <td>
+                                0.8182
+                            </td>
+                            <td class="best-value">
+                                0.9000
+                            </td>
+                            <td>
+                                0.8500
+                            </td>
+                            <td>
+                                0.8571
+                            </td>
+                            <td class="best-value">
+                                20
+                            </td>
+                            <td class="best-value">
+                                0
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <td>3</td>
+                            <td title="Click to view full content">You are a sentiment analysis classifier. Your task is to determine whether the provided text expresses a positive sentiment. Analyze the text step by step, focusing on identifying strong positive descriptors, emotional engagement, explicit ratings, and contextual comparisons. Be vigilant about mixed sentiments, sarcasm, and ambiguous language that may mislead your classification. Pay special attention to the weight of negative descriptors and the context in which positive phrases are used. After your analysis, respond with a strict JSON dictionary containing two keys: "chain_of_thought" (your detailed step-by-step reasoning) and "classification" (1 for positive, 0 for negative). 
+
+Provide your response as a JSON dictionary with the following structure:
+{
+    "chain_of_thought": "Your step-by-step reasoning here",
+    "classification": 0 or 1
+}
+Ensure that "chain_of_thought" contains your comprehensive analysis, and "classification" is strictly 0 or 1.</td>
+                            <td class="best-value">
+                                1.0000
+                            </td>
+                            <td>
+                                0.8000
+                            </td>
+                            <td>
+                                0.9000
+                            </td>
+                            <td>
+                                0.8889
+                            </td>
+                            <td class="best-value">
+                                20
+                            </td>
+                            <td class="best-value">
+                                0
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <td>4</td>
+                            <td title="Click to view full content">You are a sentiment analysis classifier. Your task is to determine whether the provided text expresses a positive sentiment. Analyze the text step by step, focusing on identifying strong positive descriptors (e.g., "masterful," "excellent"), emotional engagement (e.g., expressions of enjoyment), explicit ratings (e.g., "9/10"), and contextual comparisons (e.g., "much better"). Be vigilant about mixed sentiments, sarcasm, and ambiguous language that may mislead your classification. Balance the weight of positive descriptors against negative ones, and ensure that explicit positive elements are not overlooked. After your analysis, respond with a strict JSON dictionary containing two keys: "chain_of_thought" (your detailed step-by-step reasoning) and "classification" (1 for positive, 0 for negative). 
+
+Provide your response as a JSON dictionary with the following structure:
+{
+    "chain_of_thought": "Your step-by-step reasoning here",
+    "classification": 0 or 1
+}
+Ensure that "chain_of_thought" contains your comprehensive analysis, and "classification" is strictly 0 or 1.</td>
+                            <td class="best-value">
+                                1.0000
+                            </td>
+                            <td class="best-value">
+                                0.9000
+                            </td>
+                            <td class="best-value">
+                                0.9500
+                            </td>
+                            <td class="best-value">
+                                0.9474
+                            </td>
+                            <td class="best-value">
+                                20
+                            </td>
+                            <td class="best-value">
+                                0
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <td>5</td>
+                            <td title="Click to view full content">You are a sentiment analysis classifier. Your task is to determine whether the provided text expresses a positive sentiment. Analyze the text step by step, focusing on identifying strong positive descriptors (e.g., "masterful," "excellent"), emotional engagement (e.g., expressions of enjoyment), explicit ratings (e.g., "9/10"), and contextual comparisons (e.g., "much better"). Be vigilant about mixed sentiments, sarcasm, and ambiguous language that may mislead your classification. Ensure that you weigh both positive and negative elements effectively, recognizing that humor and contextual nuances can indicate positive sentiment. After your analysis, respond with a strict JSON dictionary containing two keys: "chain_of_thought" (your detailed step-by-step reasoning) and "classification" (1 for positive, 0 for negative). 
+
+Provide your response as a JSON dictionary with the following structure:
+{
+    "chain_of_thought": "Your step-by-step reasoning here",
+    "classification": 0 or 1
+}
+Ensure that "chain_of_thought" contains your comprehensive analysis, and "classification" is strictly 0 or 1.</td>
+                            <td>
+                                0.8000
+                            </td>
+                            <td>
+                                0.8000
+                            </td>
+                            <td>
+                                0.8000
+                            </td>
+                            <td>
+                                0.8000
+                            </td>
+                            <td class="best-value">
+                                20
+                            </td>
+                            <td class="best-value">
+                                0
+                            </td>
+                        </tr>
+                        
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="myModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <pre id="modalText" class="modal-text"></pre>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Performance Metrics Over Time</h2>
+            <div id="metricsChart" class="chart-container"></div>
+            <div id="validityChart" class="chart-container"></div>
+        </div>
+
+        <div class="section">
+            <h2>Best Performing Prompt (Iteration 4)</h2>
+            <div class="metrics">
+                <div class="metric">
+                    <strong>F1 Score</strong>
+                    <span>0.9474</span>
+                </div>
+                <div class="metric">
+                    <strong>Precision</strong>
+                    <span>1.0000</span>
+                </div>
+                <div class="metric">
+                    <strong>Recall</strong>
+                    <span>0.9000</span>
+                </div>
+                <div class="metric">
+                    <strong>Accuracy</strong>
+                    <span>0.9500</span>
+                </div>
+            </div>
+            <pre class="prompt">You are a sentiment analysis classifier. Your task is to determine whether the provided text expresses a positive sentiment. Analyze the text step by step, focusing on identifying strong positive descriptors (e.g., "masterful," "excellent"), emotional engagement (e.g., expressions of enjoyment), explicit ratings (e.g., "9/10"), and contextual comparisons (e.g., "much better"). Be vigilant about mixed sentiments, sarcasm, and ambiguous language that may mislead your classification. Balance the weight of positive descriptors against negative ones, and ensure that explicit positive elements are not overlooked. After your analysis, respond with a strict JSON dictionary containing two keys: "chain_of_thought" (your detailed step-by-step reasoning) and "classification" (1 for positive, 0 for negative). 
+
+Provide your response as a JSON dictionary with the following structure:
+{
+    "chain_of_thought": "Your step-by-step reasoning here",
+    "classification": 0 or 1
+}
+Ensure that "chain_of_thought" contains your comprehensive analysis, and "classification" is strictly 0 or 1.</pre>
+        </div>
+
+        <div class="section">
+            <h2>Detailed Iteration History</h2>
+            
+            <div class="section">
+                <h3>Iteration 1</h3>
+                <div class="metrics">
+                    <div class="metric">
+                        <strong>Precision</strong>
+                        <span>0.8182</span>
+                    </div>
+                    <div class="metric">
+                        <strong>Recall</strong>
+                        <span>0.9000</span>
+                    </div>
+                    <div class="metric">
+                        <strong>Accuracy</strong>
+                        <span>0.8500</span>
+                    </div>
+                    <div class="metric">
+                        <strong>F1 Score</strong>
+                        <span>0.8571</span>
+                    </div>
+                </div>
+                
+                <h4>Prompt Used</h4>
+                <pre class="prompt">
+You are a sentiment analysis classifier. Determine whether the provided text expresses a positive sentiment. 
+Think through your analysis step by step using chain of thought reasoning. 
+After your analysis, respond with a STRIC JSON dictionary containing two keys: 
+"chain_of_thought" (your step-by-step reasoning) and "classification" (1 for positive, 0 for negative).
+
+Provide your response as a JSON dictionary with the following structure:
+{
+    "chain_of_thought": "Your step-by-step reasoning here"
+    "classification": 0 or 1,
+}
+Ensure that "chain_of_thought" contains your detailed analysis, and "classification" is strictly 0 or 1
+</pre>
+                
+                <div class="analysis-section">
+                    
+                    
+                    
+
+                    
+                    <h3>False Positives Analysis</h3>
+                    <pre class="analysis">1. **Mixed Sentiment Interpretation**: Both texts exhibit a blend of positive and negative sentiments, leading to confusion in classification. The analysis should prioritize identifying the dominant sentiment rather than treating positive and negative elements as equally weighted. Improvement: Implement a scoring system that quantifies positive and negative phrases to determine the overall sentiment more accurately.
+
+2. **Contextual Nuance**: The authors use irony and sarcasm, particularly in Text 2, which can mislead sentiment analysis. The phrase "great trash" suggests enjoyment of low-quality films, but the overall description remains negative. Improvement: Enhance the model's ability to detect sarcasm and contextual humor, possibly through training on datasets that include such nuances.
+
+3. **Recommendation Weighting**: In both examples, the presence of a recommendation or a positive conclusion sways the classification towards positive sentiment, despite significant negative commentary. Improvement: Establish clearer guidelines for weighing recommendations against critical assessments, ensuring that the overall sentiment reflects the majority of the text rather than isolated positive statements.
+
+4. **Clarity in Language**: The use of phrases like "really awful, but then again" in Text 2 creates ambiguity. The analysis should clarify how such phrases impact sentiment. Improvement: Develop a more robust framework for parsing complex sentence structures that may indicate mixed sentiments, ensuring that the classifier can accurately interpret the intent behind such phrases.
+
+5. **Focus on Overall Tone**: The overall tone of the text should be a key factor in classification. In both examples, the initial negative tone is overshadowed by later positive remarks. Improvement: Train the model to assess the overall tone throughout the text, rather than allowing later positive comments to dominate the sentiment classification.</pre>
+                    
+
+                    
+                    <h3>False Negatives Analysis</h3>
+                    <pre class="analysis">1. **Overemphasis on Humor**: The chain of thought notes "unintentional humour" and describes some aspects as "almost hilarious," which could be misinterpreted as positive sentiment. The classifier should better differentiate between humor derived from poor execution (negative) and humor that is genuinely enjoyable (positive). 
+
+2. **Ambiguous Language**: Phrases like "mindless fun at its best" and "silly" can be interpreted in multiple ways. The classifier should be trained to recognize context more effectively, especially when the language is ambiguous, to avoid misclassifying negative sentiments as positive.
+
+3. **Negation Handling**: The text contains several negative phrases that are negated by the surrounding context, such as "nothing in this movie to be taken seriously." The classifier should improve its ability to identify and process negations to ensure that negative sentiments are not overlooked.
+
+4. **Focus on Overall Tone**: The overall tone of the review is negative, despite some mixed sentiments about specific scenes. The classifier should prioritize the overall sentiment expressed in the text rather than getting caught up in isolated positive phrases.
+
+5. **Contextual Sentiment Analysis**: The classifier should incorporate a more nuanced understanding of context, particularly in reviews where the sentiment fluctuates. This could involve analyzing the frequency and weight of negative versus positive phrases to arrive at a more accurate classification. 
+
+By addressing these key points, the classifier can improve its recall and reduce the occurrence of false negatives in sentiment analysis.</pre>
+                    
+
+                    
+                    <h3>True Positives Analysis</h3>
+                    <pre class="analysis">1. **Positive Descriptors**: Each true positive example prominently features positive adjectives and phrases that convey strong appreciation for the films or shows discussed. Words like "masterful," "brilliant," "terrific," and "excellent quality" consistently signal positive sentiment. Reinforcing the identification of such descriptors in the training data can enhance classification accuracy.
+
+2. **Emotional Engagement**: The texts often express emotional responses, such as enjoyment, nostalgia, or inspiration. Phrases indicating strong personal feelings, like "I thoroughly enjoyed this movie experience" or "I loved every second of this movie," are key indicators of positive sentiment. Training the model to recognize emotional language can improve its sensitivity to sentiment nuances.
+
+3. **High Ratings and Recommendations**: Many true positives include explicit ratings (e.g., "10/10," "9/10") and recommendations (e.g., "definitely rent it or buy it"). These elements serve as strong signals of positive sentiment. Incorporating a focus on numerical ratings and recommendation phrases in the model's training could help solidify its classification capabilities.
+
+4. **Comparative Context**: In some examples, the text compares the film favorably against others, indicating a higher level of appreciation (e.g., "much better" or "one of the best"). Recognizing comparative language can help the model discern positive sentiment even when the overall context may include some critique.
+
+5. **Nostalgia and Personal Connection**: Several true positives evoke nostalgia or personal connections to the content, enhancing the positive sentiment (e.g., "fond memories" or "still on the floors laughing"). Training the model to identify nostalgic language and personal anecdotes can further refine its ability to classify sentiment accurately. 
+
+By focusing on these key elements and reinforcing their recognition in the model's training, the accuracy of sentiment classification can be significantly improved.</pre>
+                    
+
+                    
+                    <h3>Invalid Outputs Analysis</h3>
+                    <pre class="analysis">No invalid outputs found in this iteration.</pre>
+                    
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>Iteration 2</h3>
+                <div class="metrics">
+                    <div class="metric">
+                        <strong>Precision</strong>
+                        <span>0.8182</span>
+                    </div>
+                    <div class="metric">
+                        <strong>Recall</strong>
+                        <span>0.9000</span>
+                    </div>
+                    <div class="metric">
+                        <strong>Accuracy</strong>
+                        <span>0.8500</span>
+                    </div>
+                    <div class="metric">
+                        <strong>F1 Score</strong>
+                        <span>0.8571</span>
+                    </div>
+                </div>
+                
+                <h4>Prompt Used</h4>
+                <pre class="prompt">You are a sentiment analysis classifier. Your task is to determine whether the provided text expresses a positive sentiment. Analyze the text step by step, focusing on identifying positive descriptors, emotional engagement, explicit ratings, and comparative context. Be cautious of mixed sentiments, sarcasm, and ambiguous language that may mislead your classification. After your analysis, respond with a strict JSON dictionary containing two keys: "chain_of_thought" (your detailed step-by-step reasoning) and "classification" (1 for positive, 0 for negative). 
+
+Provide your response as a JSON dictionary with the following structure:
+{
+    "chain_of_thought": "Your step-by-step reasoning here",
+    "classification": 0 or 1
+}
+Ensure that "chain_of_thought" contains your comprehensive analysis, and "classification" is strictly 0 or 1.</pre>
+                
+                <div class="analysis-section">
+                    
+                    
+                    
+
+                    
+                    <h3>False Positives Analysis</h3>
+                    <pre class="analysis">1. **Mixed Sentiments Misinterpretation**: Both texts exhibit a blend of positive and negative sentiments, which can lead to misclassification. In Text 1, the author acknowledges the film as 'decent' and 'enjoyable for what it is,' but also highlights significant criticisms. In Text 2, while the author finds humor in the film's absurdity, they also label it as 'awful.' The classifier should be more sensitive to the weight of negative descriptors that may overshadow positive sentiments.
+
+2. **Contextual Nuance**: The use of phrases like 'great trash' and 'great party tape' in Text 2 suggests a specific context of enjoyment that may not translate to a general positive sentiment. The classifier should incorporate contextual understanding to differentiate between genuine praise and enjoyment derived from irony or camp.
+
+3. **Emotional Engagement vs. Sentiment**: In both examples, emotional engagement is present, but it does not equate to positive sentiment. The classifier should focus on distinguishing between emotional reactions (e.g., excitement, humor) and overall sentiment, ensuring that strong negative expressions are weighted appropriately.
+
+4. **Explicit Ratings and Comparatives**: The absence of explicit positive ratings or clear comparative context in both texts can lead to ambiguity. The classifier should prioritize identifying explicit positive descriptors or ratings that clearly indicate a positive sentiment, rather than relying on subjective interpretations.
+
+5. **Sarcasm and Irony Detection**: The texts contain elements of sarcasm and irony, particularly in the way the films are described. Enhancing the classifier's ability to detect these nuances will improve accuracy, as it can help differentiate between genuine positive sentiment and ironic or sarcastic commentary that may lead to false positives. 
+
+By addressing these key points, the classifier can improve its precision in sentiment analysis and reduce the occurrence of false positives.</pre>
+                    
+
+                    
+                    <h3>False Negatives Analysis</h3>
+                    <pre class="analysis">1. **Overemphasis on Negative Language**: The analysis heavily focused on negative descriptors and sentiments, such as "nothing to be taken seriously," "dumb," and "bad." While these are valid observations, the presence of phrases like "mindless fun" and "excitement" were not sufficiently weighted in the overall sentiment assessment. Improvement could involve a more balanced approach that considers both positive and negative sentiments, especially when they coexist.
+
+2. **Misinterpretation of Humor**: The review mentions "unintentional humour" and "mindless fun," which could indicate a level of enjoyment despite the overall negative critique. The analysis should recognize that humor can be a positive sentiment, even if it arises from a critique. Enhancing the model's ability to detect nuanced humor as a potential positive sentiment could improve recall.
+
+3. **Contextual Nuance**: The review contains mixed sentiments, where the reviewer oscillates between criticism and acknowledgment of entertainment value. The analysis could benefit from a more sophisticated understanding of context, allowing for a classification that reflects the complexity of the sentiment rather than a binary approach. Implementing a multi-class sentiment analysis could capture these nuances better.
+
+4. **Sarcasm Detection**: The review's sarcastic tone may have led to an underestimation of positive sentiment. Improving the model's ability to detect sarcasm and differentiate it from genuine negative sentiment could help in accurately classifying texts that contain both elements.
+
+5. **Explicit Positive Indicators**: The analysis did not sufficiently highlight any explicit positive indicators, such as "exciting" and "great action." Incorporating a more systematic approach to identify and weigh explicit positive descriptors could enhance the model's ability to recognize positive sentiment in mixed reviews.</pre>
+                    
+
+                    
+                    <h3>True Positives Analysis</h3>
+                    <pre class="analysis">1. **Use of Strong Positive Descriptors**: All true positive examples prominently feature strong positive adjectives and phrases such as "masterful," "brilliant," "excellent quality," and "thoroughly enjoyed." These descriptors create a clear positive sentiment and should be emphasized in future classifications.
+
+2. **Emotional Engagement**: The texts consistently demonstrate emotional engagement, with phrases indicating that the content evoked strong feelings (e.g., "tears are brought to the eyes," "I loved every second"). Recognizing emotional engagement as a key indicator of positive sentiment can enhance classification accuracy.
+
+3. **Explicit Ratings**: Many true positives include explicit ratings (e.g., "9/10," "10/10," "two thumbs way up"), which serve as clear indicators of positive sentiment. Incorporating a focus on explicit ratings in the analysis can help reinforce positive classifications.
+
+4. **Contextual Comparisons**: While some texts include comparisons to other works, they often frame the subject positively (e.g., "this one is much better"). Understanding the context of comparisons can help differentiate between constructive criticism and negative sentiment.
+
+5. **Absence of Mixed Sentiments**: True positives generally lack mixed sentiments, sarcasm, or ambiguous language. Training the classifier to identify and flag potential mixed sentiments or sarcasm can improve the reliability of classifications. 
+
+By reinforcing these patterns—strong positive descriptors, emotional engagement, explicit ratings, contextual comparisons, and the absence of mixed sentiments—the accuracy of sentiment classification can be enhanced.</pre>
+                    
+
+                    
+                    <h3>Invalid Outputs Analysis</h3>
+                    <pre class="analysis">No invalid outputs found in this iteration.</pre>
+                    
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>Iteration 3</h3>
+                <div class="metrics">
+                    <div class="metric">
+                        <strong>Precision</strong>
+                        <span>1.0000</span>
+                    </div>
+                    <div class="metric">
+                        <strong>Recall</strong>
+                        <span>0.8000</span>
+                    </div>
+                    <div class="metric">
+                        <strong>Accuracy</strong>
+                        <span>0.9000</span>
+                    </div>
+                    <div class="metric">
+                        <strong>F1 Score</strong>
+                        <span>0.8889</span>
+                    </div>
+                </div>
+                
+                <h4>Prompt Used</h4>
+                <pre class="prompt">You are a sentiment analysis classifier. Your task is to determine whether the provided text expresses a positive sentiment. Analyze the text step by step, focusing on identifying strong positive descriptors, emotional engagement, explicit ratings, and contextual comparisons. Be vigilant about mixed sentiments, sarcasm, and ambiguous language that may mislead your classification. Pay special attention to the weight of negative descriptors and the context in which positive phrases are used. After your analysis, respond with a strict JSON dictionary containing two keys: "chain_of_thought" (your detailed step-by-step reasoning) and "classification" (1 for positive, 0 for negative). 
+
+Provide your response as a JSON dictionary with the following structure:
+{
+    "chain_of_thought": "Your step-by-step reasoning here",
+    "classification": 0 or 1
+}
+Ensure that "chain_of_thought" contains your comprehensive analysis, and "classification" is strictly 0 or 1.</pre>
+                
+                <div class="analysis-section">
+                    
+                    
+                    
+
+                    
+                    <h3>False Positives Analysis</h3>
+                    <pre class="analysis">No false positives found in this iteration.</pre>
+                    
+
+                    
+                    <h3>False Negatives Analysis</h3>
+                    <pre class="analysis">### Analysis of False Negatives
+
+1. **Overemphasis on Negative Context**: Both texts contain strong negative descriptors and comparisons that overshadow the positive elements. The analysis focused too heavily on the negative aspects, leading to a misclassification. To improve recall, the classifier should balance the weight given to positive descriptors against negative ones, especially when positive sentiments are present.
+
+2. **Misinterpretation of Sarcasm**: The second text is heavily sarcastic, which can mislead sentiment analysis. The classifier should incorporate a mechanism to detect sarcasm more effectively, recognizing that sarcastic remarks can sometimes mask underlying positive sentiments or humor.
+
+3. **Contextual Nuance**: The first text mentions positive portrayals of actors and the film's status as a classic, which were not sufficiently weighted in the analysis. The classifier should enhance its ability to recognize and weigh contextual nuances, especially when positive phrases are used in a mixed sentiment context.
+
+4. **Explicit Positive Elements**: In both examples, there are explicit mentions of positive aspects (e.g., "brilliant portrayals," "entertains through some suspense"). The classifier should ensure that these explicit positive elements are not overlooked, even when they are surrounded by negative commentary.
+
+5. **Improved Sentiment Scoring**: Implement a scoring system that allows for a more nuanced classification, where texts can receive partial scores for positive and negative sentiments. This would help in cases where mixed sentiments are present, allowing for a more accurate overall classification.
+
+### Suggested Improvements
+- **Balance Positive and Negative Weights**: Adjust the algorithm to ensure that positive descriptors are given appropriate weight, even in the presence of negative commentary.
+- **Sarcasm Detection**: Integrate a sarcasm detection mechanism to better interpret the tone of the text.
+- **Contextual Analysis**: Enhance the model's ability to analyze context and recognize when positive phrases are present, regardless of surrounding negativity.
+- **Explicit Positive Recognition**: Ensure that explicit positive statements are highlighted and factored into the overall sentiment score.
+- **Nuanced Scoring System**: Develop a scoring system that allows for partial classifications, accommodating mixed sentiments more effectively.</pre>
+                    
+
+                    
+                    <h3>True Positives Analysis</h3>
+                    <pre class="analysis">1. **Strong Positive Descriptors**: Each true positive example prominently features strong positive descriptors such as "masterful," "terrific," "excellent quality," and "funniest cartoons." These descriptors create a clear and compelling positive sentiment that is easy to identify. Reinforcing the use of such strong adjectives in the classification process can enhance accuracy.
+
+2. **Emotional Engagement**: The texts consistently express emotional engagement, whether through nostalgia, enjoyment, or admiration for performances. Phrases like "leaves the viewer wanting more" and "I loved every second" indicate a deep connection with the content. Emphasizing the importance of emotional language in sentiment analysis can help classifiers recognize positive sentiment more effectively.
+
+3. **Explicit Ratings**: Many true positives include explicit ratings (e.g., "9/10," "10/10," "two thumbs way up"), which serve as clear indicators of positive sentiment. Incorporating a focus on explicit ratings in the classification criteria can provide a straightforward metric for determining sentiment.
+
+4. **Contextual Comparisons**: Several examples utilize comparisons to highlight superiority (e.g., "much better," "far exceeded my expectations"). This contextual framing helps to establish a positive sentiment relative to other works. Encouraging classifiers to pay attention to comparative language can improve their ability to discern positive sentiment.
+
+5. **Absence of Mixed Sentiments**: The true positives are characterized by a lack of mixed sentiments or sarcasm, allowing for a clear positive classification. Training classifiers to identify and flag potential mixed sentiments or sarcasm can help reduce false negatives and improve overall classification accuracy. 
+
+By focusing on these key elements, sentiment analysis classifiers can enhance their ability to accurately identify positive sentiments in various texts.</pre>
+                    
+
+                    
+                    <h3>Invalid Outputs Analysis</h3>
+                    <pre class="analysis">No invalid outputs found in this iteration.</pre>
+                    
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>Iteration 4</h3>
+                <div class="metrics">
+                    <div class="metric">
+                        <strong>Precision</strong>
+                        <span>1.0000</span>
+                    </div>
+                    <div class="metric">
+                        <strong>Recall</strong>
+                        <span>0.9000</span>
+                    </div>
+                    <div class="metric">
+                        <strong>Accuracy</strong>
+                        <span>0.9500</span>
+                    </div>
+                    <div class="metric">
+                        <strong>F1 Score</strong>
+                        <span>0.9474</span>
+                    </div>
+                </div>
+                
+                <h4>Prompt Used</h4>
+                <pre class="prompt">You are a sentiment analysis classifier. Your task is to determine whether the provided text expresses a positive sentiment. Analyze the text step by step, focusing on identifying strong positive descriptors (e.g., "masterful," "excellent"), emotional engagement (e.g., expressions of enjoyment), explicit ratings (e.g., "9/10"), and contextual comparisons (e.g., "much better"). Be vigilant about mixed sentiments, sarcasm, and ambiguous language that may mislead your classification. Balance the weight of positive descriptors against negative ones, and ensure that explicit positive elements are not overlooked. After your analysis, respond with a strict JSON dictionary containing two keys: "chain_of_thought" (your detailed step-by-step reasoning) and "classification" (1 for positive, 0 for negative). 
+
+Provide your response as a JSON dictionary with the following structure:
+{
+    "chain_of_thought": "Your step-by-step reasoning here",
+    "classification": 0 or 1
+}
+Ensure that "chain_of_thought" contains your comprehensive analysis, and "classification" is strictly 0 or 1.</pre>
+                
+                <div class="analysis-section">
+                    
+                    
+                    
+
+                    
+                    <h3>False Positives Analysis</h3>
+                    <pre class="analysis">No false positives found in this iteration.</pre>
+                    
+
+                    
+                    <h3>False Negatives Analysis</h3>
+                    <pre class="analysis">1. **Overemphasis on Negative Sentiment**: The analysis heavily focuses on the negative aspects of the text, such as "nothing to be taken seriously," "dumb dialog," and "so clichéd, so fake." While these descriptors are indeed strong, the classifier should also weigh the positive elements more effectively, such as "good action-sequences" and "mindless fun." A more balanced approach to evaluating both positive and negative sentiments could help improve recall.
+
+2. **Misinterpretation of Humor**: The text mentions "unintentional humor" and "mindless fun," which could indicate a level of enjoyment. However, the analysis interprets these phrases as ridicule rather than genuine enjoyment. The classifier should be trained to recognize that humor, even if unintentional, can contribute to a positive sentiment, especially in the context of entertainment.
+
+3. **Contextual Nuance**: The analysis fails to consider the context in which certain phrases are used. For example, the mention of "spectacular and excellently shot hijack" and "the airplane scenes are truly the highlight" suggests a positive sentiment that is not adequately acknowledged. Improving the classifier's ability to discern context and nuance in language could enhance its accuracy.
+
+4. **Sarcasm Detection**: The text employs sarcasm, particularly in phrases like "swell time" and "mindless fun at its best." The classifier should be equipped with better tools to detect sarcasm and differentiate between genuine positive sentiment and sarcastic remarks. This could prevent misclassification in similar contexts.
+
+5. **Explicit Positive Elements**: The analysis overlooks explicit positive descriptors such as "spectacular," "excellently shot," and "highlight of the film." The classifier should prioritize identifying and weighing these explicit positive elements more effectively to ensure they are not overshadowed by negative sentiments. 
+
+By addressing these key points, the classifier can improve its ability to recognize positive sentiments in texts that may initially appear negative.</pre>
+                    
+
+                    
+                    <h3>True Positives Analysis</h3>
+                    <pre class="analysis">1. **Strong Positive Descriptors**: Each true positive example prominently features strong positive descriptors such as "masterful," "excellent," "brilliant," and "terrific." These descriptors serve as clear indicators of positive sentiment and significantly contribute to the overall classification. Reinforcing the identification of such descriptors in future analyses can enhance classification accuracy.
+
+2. **Emotional Engagement**: The texts consistently express emotional engagement through phrases that convey enjoyment, nostalgia, or appreciation (e.g., "I thoroughly enjoyed this movie experience," "I loved every second of this movie"). Recognizing and prioritizing emotional engagement in the analysis can help in identifying positive sentiment more effectively.
+
+3. **Explicit Ratings**: Many true positives include explicit ratings (e.g., "9/10," "10/10," "two thumbs way up"), which provide clear, quantifiable evidence of positive sentiment. Incorporating a systematic approach to identify and weigh explicit ratings in future analyses can strengthen the classification process.
+
+4. **Contextual Comparisons**: Positive comparisons to other works (e.g., "much better," "definite example of an 80's teen classic") are frequently used to enhance the positive sentiment of the text. Acknowledging and analyzing contextual comparisons can help clarify the sentiment, especially in cases where mixed sentiments may arise.
+
+5. **Absence of Negative Sentiments**: True positives generally lack significant negative descriptors or mixed sentiments that could counterbalance the positive expressions. Ensuring a thorough examination for negative elements and weighing them against positive ones can help maintain clarity in sentiment classification. 
+
+By focusing on these key elements, future sentiment analyses can be refined to improve accuracy and consistency in classifications.</pre>
+                    
+
+                    
+                    <h3>Invalid Outputs Analysis</h3>
+                    <pre class="analysis">No invalid outputs found in this iteration.</pre>
+                    
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>Iteration 5</h3>
+                <div class="metrics">
+                    <div class="metric">
+                        <strong>Precision</strong>
+                        <span>0.8000</span>
+                    </div>
+                    <div class="metric">
+                        <strong>Recall</strong>
+                        <span>0.8000</span>
+                    </div>
+                    <div class="metric">
+                        <strong>Accuracy</strong>
+                        <span>0.8000</span>
+                    </div>
+                    <div class="metric">
+                        <strong>F1 Score</strong>
+                        <span>0.8000</span>
+                    </div>
+                </div>
+                
+                <h4>Prompt Used</h4>
+                <pre class="prompt">You are a sentiment analysis classifier. Your task is to determine whether the provided text expresses a positive sentiment. Analyze the text step by step, focusing on identifying strong positive descriptors (e.g., "masterful," "excellent"), emotional engagement (e.g., expressions of enjoyment), explicit ratings (e.g., "9/10"), and contextual comparisons (e.g., "much better"). Be vigilant about mixed sentiments, sarcasm, and ambiguous language that may mislead your classification. Ensure that you weigh both positive and negative elements effectively, recognizing that humor and contextual nuances can indicate positive sentiment. After your analysis, respond with a strict JSON dictionary containing two keys: "chain_of_thought" (your detailed step-by-step reasoning) and "classification" (1 for positive, 0 for negative). 
+
+Provide your response as a JSON dictionary with the following structure:
+{
+    "chain_of_thought": "Your step-by-step reasoning here",
+    "classification": 0 or 1
+}
+Ensure that "chain_of_thought" contains your comprehensive analysis, and "classification" is strictly 0 or 1.</pre>
+                
+                <div class="analysis-section">
+                    
+                    
+                    
+
+                    
+
+                    
+
+                    
+
+                    
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // Initialize DataTable
+            var table = $('#summaryTable').DataTable({
+                pageLength: 10,
+                lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+                order: [[0, 'asc']],
+                scrollX: true,
+                autoWidth: false
+            });
+
+            // Modal functionality
+            var modal = document.getElementById("myModal");
+            var modalText = document.getElementById("modalText");
+            var span = document.getElementsByClassName("close")[0];
+
+            // Click handler for table cells
+            $('#summaryTable tbody').on('click', 'td', function() {
+                var cellContent = table.cell(this).data();
+                if (cellContent) {
+                    modalText.textContent = cellContent;
+                    modal.style.display = "block";
+                }
+            });
+
+            // Close modal handlers
+            span.onclick = function() {
+                modal.style.display = "none";
+            }
+
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = "none";
+                }
+            }
+
+            $(document).keydown(function(e) {
+                if (e.key === "Escape") {
+                    modal.style.display = "none";
+                }
+            });
+
+            // Adjust table column widths on window resize
+            $(window).resize(function() {
+                table.columns.adjust();
+            });
+        });
+
+        var metricsData = [{"line": {"color": "#FF6B6B"}, "mode": "lines+markers", "name": "Precision", "type": "scatter", "x": [1, 2, 3, 4, 5], "y": [0.8181818181818182, 0.8181818181818182, 1.0, 1.0, 0.8]}, {"line": {"color": "#4ECDC4"}, "mode": "lines+markers", "name": "Recall", "type": "scatter", "x": [1, 2, 3, 4, 5], "y": [0.9, 0.9, 0.8, 0.9, 0.8]}, {"line": {"color": "#45B7D1"}, "mode": "lines+markers", "name": "Accuracy", "type": "scatter", "x": [1, 2, 3, 4, 5], "y": [0.85, 0.85, 0.9, 0.95, 0.8]}, {"line": {"color": "#96CEB4"}, "mode": "lines+markers", "name": "F1", "type": "scatter", "x": [1, 2, 3, 4, 5], "y": [0.8571428571428571, 0.8571428571428571, 0.8888888888888888, 0.9473684210526315, 0.8]}];
+        var metricsLayout = {
+            title: 'Metrics Across Iterations',
+            xaxis: {title: 'Iteration'},
+            yaxis: {title: 'Score', range: [0, 1]},
+            plot_bgcolor: 'white',
+            paper_bgcolor: 'white'
+        };
+        Plotly.newPlot('metricsChart', metricsData, metricsLayout);
+
+        var validityData = [{"marker": {"color": "#2ECC71"}, "name": "Valid Predictions", "type": "bar", "x": [1, 2, 3, 4, 5], "y": [20, 20, 20, 20, 20]}, {"marker": {"color": "#E74C3C"}, "name": "Invalid Predictions", "type": "bar", "x": [1, 2, 3, 4, 5], "y": [0, 0, 0, 0, 0]}];
+        var validityLayout = {
+            title: 'Valid vs Invalid Predictions',
+            xaxis: {title: 'Iteration'},
+            yaxis: {title: 'Number of Predictions'},
+            barmode: 'stack',
+            plot_bgcolor: 'white',
+            paper_bgcolor: 'white'
+        };
+        Plotly.newPlot('validityChart', validityData, validityLayout);
+    </script>
+</body>
+</html>

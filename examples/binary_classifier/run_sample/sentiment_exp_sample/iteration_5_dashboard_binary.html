@@ -1,0 +1,950 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classification Dashboard - Iteration 5</title>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.css">
+    <script type="text/javascript" src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 15px;
+            background-color: #f8f9fa;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+        .metrics { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.8rem;
+            margin: 1rem 0;
+        }
+        .metric { 
+            text-align: center; 
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .metric strong {
+            display: block;
+            color: #34495e;
+            font-size: 0.85rem;
+            margin-bottom: 0.3rem;
+        }
+        .metric span {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #3498db;
+        }
+        .prompt, .analysis { 
+            background-color: #fff; 
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 0.8rem 0;
+            font-family: monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            border: 1px solid #eee;
+            max-width: 100%;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+        .confusion-matrix { 
+            width: 45%; 
+            margin: 15px auto; 
+            text-align: center; 
+            background: white;
+            padding: 0.8rem;
+            border-radius: 6px;
+        }
+        .confusion-matrix img { 
+            max-width: 100%; 
+            height: auto; 
+        }
+        table { 
+            width: 100%; 
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 1rem 0;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+            table-layout: fixed;
+            font-size: 0.85rem;
+        }
+        th, td { 
+            padding: 0.7rem;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 300px;
+        }
+        /* Column widths for evaluation table */
+        table#resultsTable th:nth-child(1), 
+        table#resultsTable td:nth-child(1) { width: 25%; } /* Text */
+        table#resultsTable th:nth-child(2),
+        table#resultsTable td:nth-child(2) { width: 10%; } /* True Label */
+        table#resultsTable th:nth-child(3),
+        table#resultsTable td:nth-child(3) { width: 10%; } /* Predicted */
+        table#resultsTable th:nth-child(4),
+        table#resultsTable td:nth-child(4) { width: 25%; } /* Chain of Thought */
+        table#resultsTable th:nth-child(5),
+        table#resultsTable td:nth-child(5) { width: 22%; } /* Raw Output */
+        table#resultsTable th:nth-child(6),
+        table#resultsTable td:nth-child(6) { width: 8%; } /* Result */
+        
+        th { 
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #34495e;
+            font-size: 0.85rem;
+        }
+        .section {
+            background: white;
+            border-radius: 6px;
+            padding: 1.2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 6px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-text {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-width: 100%;
+            font-family: monospace;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: #666;
+        }
+        .chart-container {
+            margin: 15px 0;
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        .best-value {
+            color: #2ecc71;
+            font-weight: 600;
+        }
+        .dataTables_wrapper {
+            padding: 0.8rem;
+            background: white;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            overflow-x: auto;
+            font-size: 0.85rem;
+        }
+        .dataTables_filter input,
+        .dataTables_length select {
+            padding: 0.4rem;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            margin: 0 0.4rem;
+            font-size: 0.85rem;
+        }
+        h1 {
+            color: #34495e;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 1.2rem;
+            margin-bottom: 0.8rem;
+            font-size: 1.4rem;
+        }
+        h3 {
+            color: #34495e;
+            margin-top: 1rem;
+            margin-bottom: 0.6rem;
+            font-size: 1.2rem;
+        }
+        h4 {
+            color: #34495e;
+            margin-top: 0.8rem;
+            margin-bottom: 0.4rem;
+            font-size: 1rem;
+        }
+        .result-icon {
+            font-weight: bold;
+        }
+        .result-success {
+            color: #2ecc71;
+        }
+        .result-failure {
+            color: #e74c3c;
+        }
+        .analysis-section {
+            margin-top: 0.8rem;
+        }
+        .analysis-section h3 {
+            margin-top: 1rem;
+            margin-bottom: 0.4rem;
+            color: #34495e;
+            font-size: 1.1rem;
+        }
+        .analysis-section h3:first-child {
+            margin-top: 0;
+        }
+        /* Custom scrollbar for better UX */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0.8rem;
+            }
+            .metrics {
+                grid-template-columns: 1fr;
+            }
+            .confusion-matrix {
+                width: 100%;
+            }
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+            th, td {
+                min-width: 100px;
+            }
+            body {
+                font-size: 13px;
+            }
+            h1 { font-size: 1.6rem; }
+            h2 { font-size: 1.3rem; }
+            h3 { font-size: 1.1rem; }
+            h4 { font-size: 0.95rem; }
+        }
+        /* Prediction type styles */
+        .result-type {
+            font-size: 0.8rem;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            margin-left: 0.3rem;
+            font-weight: normal;
+        }
+        .result-type.tp {
+            background-color: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+        }
+        .result-type.tn {
+            background-color: rgba(0, 123, 255, 0.2);
+            color: #007bff;
+        }
+        .result-type.fp {
+            background-color: rgba(255, 140, 0, 0.2);
+            color: #ff8c00;
+        }
+        .result-type.fn {
+            background-color: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+        }
+        .result-type.invalid {
+            background-color: #e2e3e5;
+            color: #383d41;
+        }
+        /* Combined Dashboard specific styles */
+        .combined-dashboard {
+            font-size: 0.85rem;
+        }
+        .combined-dashboard h1 {
+            font-size: 1.6rem;
+            margin: 1rem 0;
+        }
+        .combined-dashboard h2 {
+            font-size: 1.2rem;
+            margin: 0.8rem 0;
+        }
+        .combined-dashboard h3 {
+            font-size: 1rem;
+            margin: 0.6rem 0;
+        }
+        .combined-dashboard h4 {
+            font-size: 0.9rem;
+            margin: 0.4rem 0;
+        }
+        .combined-dashboard .section {
+            padding: 0.8rem;
+            margin-bottom: 1rem;
+        }
+        .combined-dashboard .metrics {
+            gap: 0.6rem;
+            margin: 0.8rem 0;
+        }
+        .combined-dashboard .metric {
+            padding: 0.8rem;
+        }
+        .combined-dashboard .metric strong {
+            font-size: 0.8rem;
+            margin-bottom: 0.2rem;
+        }
+        .combined-dashboard .metric span {
+            font-size: 1rem;
+        }
+        .combined-dashboard .prompt {
+            font-size: 0.8rem;
+            padding: 0.8rem;
+            margin: 0.6rem 0;
+        }
+        .combined-dashboard .analysis {
+            font-size: 0.8rem;
+            padding: 0.8rem;
+            margin: 0.6rem 0;
+        }
+        .combined-dashboard .chart-container {
+            margin: 0.8rem 0;
+            padding: 0.8rem;
+        }
+        /* Combined Dashboard table styles */
+        .combined-dashboard .prompt-cell {
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: pointer;
+            color: #2980b9;
+            text-decoration: underline;
+        }
+        .combined-dashboard .prompt-cell:hover {
+            color: #3498db;
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+        .combined-dashboard #summaryTable th:nth-child(1) { width: 8%; } /* Iteration */
+        .combined-dashboard #summaryTable th:nth-child(2) { width: 20%; } /* Prompt */
+        .combined-dashboard #summaryTable th:nth-child(3) { width: 12%; } /* Precision */
+        .combined-dashboard #summaryTable th:nth-child(4) { width: 12%; } /* Recall */
+        .combined-dashboard #summaryTable th:nth-child(5) { width: 12%; } /* Accuracy */
+        .combined-dashboard #summaryTable th:nth-child(6) { width: 12%; } /* F1-score */
+        .combined-dashboard #summaryTable th:nth-child(7) { width: 10%; } /* Valid Predictions */
+        .combined-dashboard #summaryTable th:nth-child(8) { width: 10%; } /* Invalid Predictions */
+        
+        .combined-dashboard #summaryTable td {
+            padding: 0.7rem;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 300px;
+        }
+        
+        .combined-dashboard #summaryTable td:hover {
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+    </style>
+
+</head>
+<body>
+    <div class="container">
+        <h1>Iteration 5 Dashboard</h1>
+        
+        <div class="section">
+            <h2>Evaluation Metrics</h2>
+            <div class="metrics">
+                <div class="metric">
+                    <strong>Precision</strong> 
+                    <span>0.8000</span>
+                </div>
+                <div class="metric">
+                    <strong>Recall</strong> 
+                    <span>0.8000</span>
+                </div>
+                <div class="metric">
+                    <strong>Accuracy</strong> 
+                    <span>0.8000</span>
+                </div>
+                <div class="metric">
+                    <strong>F1 Score</strong> 
+                    <span>0.8000</span>
+                </div>
+                <div class="metric">
+                    <strong>Valid Predictions</strong> 
+                    <span>20</span>
+                </div>
+                <div class="metric">
+                    <strong>Invalid Predictions</strong> 
+                    <span>0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Confusion Matrix</h2>
+            <div class="confusion-matrix">
+                <img src="data:image/png;base64,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17x5cw0fPlxdunRRnTp1tG/fPkVHRys4ONjlvLJly6pAgQKaNm2a8uXLpzx58uihhx5SmTJlMhTX2rVr9eGHH2rYsGGOR53OnDlTjzzyiIYOHap33nknQ/MBAFKiMgAgR3rqqae0d+9ePfPMM/rmm2/Uu3dvDR48WCdOnNC4ceM0efJkx7mffPKJIiMjtX37dr366qtau3athgwZonnz5mVqTIUKFdKiRYuUO3duvfbaa5o1a5aioqL05JNPpoi9VKlS+vTTT9W7d2998MEHql+/vtauXSs/P78052/UqJG+//57FSpUSG+//bbee+89/fe//9WPP/6Y4Q/SWeGNN97QgAEDtGLFCvXr1087d+7UsmXLVLJkSZfzcuXKpVmzZsnT01M9e/bUc889p/Xr12foXpcvX9aLL76o6tWr680333SM16tXT/369dO4ceO0devWTHlfAGBlNiMjnWYAAAAA3AaVAQAAAMCiSAYAAAAAiyIZAAAAACyKZAAAAAC4ByUlJWno0KEqU6aMfH19VbZsWY0YMSJDm0/yaFEAAADgHjR27FhNnTpVs2bNUqVKlbRjxw516dJFfn5+6tu3b7rm4GlCAAAAwD2oefPmKlKkiGbMmOEYa926tXx9ffX555+naw6WCQEAAAA5RGJioi5duuRypLXrep06dbRmzRodOnRIkrRnzx5t2rRJTZs2Tff93HKZkG/1PmaHAACZ6sL2980OAQAylU8O/hRq5mfJ11vcp8jISJexYcOGpboT/eDBg3Xp0iWVL19enp6eSkpK0qhRo9ShQ4d03y8H/2cAAAAArGXIkCEKDw93GbPb7ameu2DBAkVHR2vu3LmqVKmSdu/erVdffVXFihVTp06d0nU/kgEAAADAmc28lfR2uz3ND///NGjQIA0ePFjt2rWTJFWuXFknT55UVFRUupMBegYAAACAe1BCQoI8PFw/znt6eio5OTndc1AZAAAAAO5BTz75pEaNGqVSpUqpUqVK2rVrl8aPH68XX3wx3XOQDAAAAADObDazI0iXKVOmaOjQoXr55Zd15swZFStWTD169NDbb7+d7jnccp8BniYEwN3wNCEA7iZHP03owX6m3fvqz5Oy9X45+D8DAAAAYAITG4izm3XeKQAAAAAXVAYAAAAAZ/dIz0BmoDIAAAAAWBTJAAAAAGBRLBMCAAAAnNFADAAA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Z5WQkODYZOzChQvKnTu38ubNqzNnzig4OFg//PCDSpYsaXK0AAAAcHcWerKo+Q3Eo0ePVq1atXT48GGdO3dO586d06FDh/TQQw9p0qRJiomJUWBgoEtvAQAAAIC7Z3pl4K233tLChQtVtmxZx1hISIjee+89tW7dWseOHdM777yj1q1bmxglAAAArIJNx7JRbGysbt68mWL85s2bOn36tCSpWLFiunz5cnaHBgAAALg105OBhg0bqkePHtq1a5djbNeuXerVq5ceffRRSdK+fftUpkwZs0IEAAAA3JLpycCMGTNUsGBBPfjgg7Lb7bLb7apZs6YKFiyoGTNmSJLy5s2rcePGmRwpAAAArMBKOxCb3jMQGBioVatW6bffftOhQ4ckSaGhoQoNDXWc07BhQ7PCAwAAANyW6cnALcHBwbLZbCpbtqy8vHJMWAAAALAYGoizUUJCgrp27arcuXOrUqVKiomJkSS98sorGjNmjMnRAQAAAO7L9GRgyJAh2rNnj9atWycfHx/HeKNGjTR//nwTIwMAAADcm+nrcRYvXqz58+frv//9r0tJplKlSjp69KiJkQEAAMCKWCaUjc6ePauAgIAU41euXLHUfwgAAAAgu5meDNSsWVPLli1z/HwrAfjkk09Uu3Zts8ICAACARfFo0Ww0evRoNW3aVAcOHNDNmzc1adIkHThwQJs3b9b69evNDg8AAABwW6ZXBh5++GHt3r1bN2/eVOXKlbVy5UoFBARoy5YtevDBB80ODwAAABZjs9lMO7Kb6ZUBSSpbtqymT59udhgAAACApZheGQAAAABgDtMqAx4eHv9aCrHZbLp582Y2RQQAAACY08hrFtOSgUWLFqX52pYtWzR58mQlJydnY0QAAACAtZiWDLRo0SLF2MGDBzV48GAtWbJEHTp00PDhw02IDAAAAFZmpb2uckTPwKlTp9StWzdVrlxZN2/e1O7duzVr1iwFBQWZHRoAAADgtkxNBuLi4vT6668rJCRE+/fv15o1a7RkyRI98MADZoYFAAAAWIJpy4TeeecdjR07VoGBgfriiy9SXTYEAAAAZDcLrRIyLxkYPHiwfH19FRISolmzZmnWrFmpnvf1119nc2QAAACANZiWDLzwwguWas4AAADAvcFKn1FNSwY+++wzs24NAAAAQCYmAwAAAEBOZKHCQM54tCgAAACA7EcyAAAAANyj/vzzT3Xs2FGFChWSr6+vKleurB07dqT7epYJAQAAAE7ulQbiCxcuqG7dumrYsKG+++47FS5cWIcPH5a/v3+65yAZAAAAAO5BY8eOVcmSJTVz5kzHWJkyZTI0B8uEAAAAACc2m3lHYmKiLl265HIkJiamGue3336rmjVr6tlnn1VAQICqV6+u6dOnZ+i9kgwAAAAAOURUVJT8/PxcjqioqFTPPXbsmKZOnapy5cppxYoV6tWrl/r27ZvmZr6psRmGYWRW8DmFb/U+ZocAAJnqwvb3zQ4BADKVTw5erP7fMetNu/f6/v9NUQmw2+2y2+0pzvX29lbNmjW1efNmx1jfvn21fft2bdmyJV33y8H/GQAAAIDsZ2YDcVof/FNTtGhRVaxY0WWsQoUKWrhwYbrvxzIhAAAA4B5Ut25dHTx40GXs0KFDCgoKSvccVAYAAAAAJ/fIk0XVv39/1alTR6NHj1abNm30008/6eOPP9bHH3+c7jmoDAAAAAD3oFq1amnRokX64osv9MADD2jEiBGaOHGiOnTokO45qAwAAAAATu6VTcckqXnz5mrevPkdX09lAAAAALAokgEAAADAolgmBAAAADi5h1YJ3TUqAwAAAIBFURkAAAAAnNxLDcR3i8oAAAAAYFEkAwAAAIBFsUwIAAAAcMIyIQAAAABuj8oAAAAA4MRChQEqAwAAAIBVkQwAAAAAFsUyIQAAAMAJDcQAAAAA3B6VAQAAAMCJhQoDVAYAAAAAq6IyAAAAADihZwAAAACA2yMZAAAAACyKZUIAAACAEwutEqIyAAAAAFgVlQEAAADAiYeFSgNUBgAAAACLIhkAAAAALIplQgAAAIATC60SojIAAAAAWBWVAQAAAMAJOxADAAAAcHtUBgAAAAAnHtYpDFAZAAAAAKyKZAAAAACwKJYJAQAAAE5oIAYAAADg9qgMAAAAAE4sVBigMgAAAABYFckAAAAAYFEsEwIAAACc2GSddUJUBgAAAACLojIAAAAAOGEHYgAAAABuj8oAAAAA4IRNxwAAAAC4PZIBAAAAwKJYJgQAAAA4sdAqISoDAAAAgFVRGQAAAACceFioNEBlAAAAALAokgEAAADAolgmBAAAADix0CohKgMAAACAVVEZAAAAAJywAzEAAAAAt0dlAAAAAHBiocIAlQEAAADAqkgGAAAAAItimRAAAADghB2IAQAAALg9KgMAAACAE+vUBagMAAAAAJZFMgAAAABYFMuEAAAAACfsQAwAAADA7aWrMrB37950T1ilSpU7DgYAAAAwm4d1CgPpSwaqVasmm80mwzBSff3WazabTUlJSZkaIAAAAICska5k4Pjx41kdBwAAAJAjWKlnIF3JQFBQUFbHAQAAACCb3VED8Zw5c1S3bl0VK1ZMJ0+elCRNnDhR33zzTaYGBwAAACDrZDgZmDp1qsLDw9WsWTNdvHjR0SNQoEABTZw4MbPjAwAAALKVzWbekd0ynAxMmTJF06dP15tvvilPT0/HeM2aNbVv375MDQ4AAABA1snwpmPHjx9X9erVU4zb7XZduXIlU4ICAAAAzGKlBuIMVwbKlCmj3bt3pxj//vvvVaFChcyICQAAAEA2yHBlIDw8XL1799a1a9dkGIZ++uknffHFF4qKitInn3ySFTECAAAAyAIZTgZeeukl+fr66q233lJCQoLat2+vYsWKadKkSWrXrl1WxAgAAABkG3Yg/hcdOnRQhw4dlJCQoPj4eAUEBGR2XAAAAACy2B0lA5J05swZHTx4UNLfTRaFCxfOtKAAAAAAs9BAfBuXL1/W888/r2LFiqlBgwZq0KCBihUrpo4dOyouLi4rYgQAAACQBTKcDLz00kvatm2bli1bposXL+rixYtaunSpduzYoR49emRFjAAAAEC2sZl4ZLcMLxNaunSpVqxYoYcfftgxFhYWpunTp6tJkyaZGhwAAACArJPhykChQoXk5+eXYtzPz0/+/v6ZEhQAAACArJfhZOCtt95SeHi4Tp8+7Rg7ffq0Bg0apKFDh2ZqcAAAAEB287DZTDuyW7qWCVWvXt2lq/rw4cMqVaqUSpUqJUmKiYmR3W7X2bNn6RsAAAAA7hHpSgaefvrpLA4DAAAAyBks9GTR9CUDw4YNy+o4AAAAAGSzDPcMAAAAAHAPGX60aFJSkiZMmKAFCxYoJiZG169fd3n9/PnzmRYcAAAAkN3Ygfg2IiMjNX78eLVt21ZxcXEKDw9Xq1at5OHhoYiIiCwIEQAAAEBWyHAyEB0drenTp2vAgAHy8vLSc889p08++URvv/22tm7dmhUxAgAAANnGZjPvyG4ZTgZOnz6typUrS5Ly5s2ruLg4SVLz5s21bNmyzI0OAAAAQJbJcDJQokQJxcbGSpLKli2rlStXSpK2b98uu92eudEBAAAAyDIZbiBu2bKl1qxZo4ceekivvPKKOnbsqBkzZigmJkb9+/fPihgBAACAbGPGTsBmyXAyMGbMGMef27Ztq6CgIG3evFnlypXTk08+manBAQAAAMg6d73PwH//+1+Fh4froYce0ujRozMjJgAAAMA0NBDfgdjYWA0dOjSzpgMAAABwGxEREbLZbC5H+fLlMzRHhpcJAQAAAO7sXtp0rFKlSlq9erXjZy+vjH28JxkAAAAA7lFeXl4KDAy84+szbZkQAAAAgLuTmJioS5cuuRyJiYlpnn/48GEVK1ZMwcHB6tChg2JiYjJ0P5thGEZ6TgwPD7/t62fPntXcuXOVlJSUoQCywrWbZkcAAJnLv1Yfs0MAgEx1ddf7ZoeQplcW/WravQvtma/IyEiXsWHDhikiIiLFud99953i4+MVGhqq2NhYRUZG6s8//9Qvv/yifPnypet+6U4GGjZsmK4Jf/jhh3Sdl5VIBgC4G5IBAO6GZCB17zULTlEJsNvt6drc9+LFiwoKCtL48ePVtWvXdN0v3T0DOeFDPgAAAJDVzGwgTu8H/9QUKFBA999/v44cOZLua+gZAAAAANxAfHy8jh49qqJFi6b7GpIBAAAA4B40cOBArV+/XidOnNDmzZvVsmVLeXp66rnnnkv3HDxaFAAAAHDicY9sM/DHH3/oueee07lz51S4cGE9/PDD2rp1qwoXLpzuOUgGAAAAgHvQvHnz7noOkgEAAADAyb1SGcgMd9QzsHHjRnXs2FG1a9fWn3/+KUmaM2eONm3alKnBAQAAAMg6GU4GFi5cqLCwMPn6+mrXrl2O56DGxcVp9OjRmR4gAAAAkJ1sNptpR3bLcDIwcuRITZs2TdOnT1euXLkc43Xr1tXOnTszNTgAAAAAWSfDycDBgwdVv379FON+fn66ePFiZsQEAAAAIBtkOBkIDAxMdVezTZs2KTg4OFOCAgAAAMziYTPvyPb3mtELunXrpn79+mnbtm2y2Ww6deqUoqOjNXDgQPXq1SsrYgQAAACQBTL8aNHBgwcrOTlZjz32mBISElS/fn3Z7XYNHDhQr7zySlbECAAAAGQbE/p4TZPhZMBms+nNN9/UoEGDdOTIEcXHx6tixYrKmzdvVsQHAAAAIIvc8aZj3t7eqlixYmbGAgAAACAbZTgZaNiw4W2fgbp27dq7CggAAAAwk4eF1gllOBmoVq2ay883btzQ7t279csvv6hTp06ZFRcAAACALJbhZGDChAmpjkdERCg+Pv6uAwIAAADMlOHHbd7DMu29duzYUZ9++mlmTQcAAAAgi91xA/E/bdmyRT4+Ppk1HQAAAGAKC7UMZDwZaNWqlcvPhmEoNjZWO3bs0NChQzMtMAAAAABZK8PJgJ+fn8vPHh4eCg0N1fDhw9W4ceNMCwwAAABA1spQMpCUlKQuXbqocuXK8vf3z6qYAAAAANNY6dGiGWog9vT0VOPGjXXx4sUsCgcAAABAdsnw04QeeOABHTt2LCtiAQAAAExns5l3ZLcMJwMjR47UwIEDtXTpUsXGxurSpUsuBwAAAIB7Q7p7BoYPH64BAwaoWbNmkqSnnnpKNqf0xTAM2Ww2JSUlZX6UAAAAADJdupOByMhI9ezZUz/88ENWxgMAAACYysM6/cPpTwYMw5AkNWjQIMuCAQAAAJB9MvRoUZsZXQ0AAABANrLSo0UzlAzcf//9/5oQnD9//q4CAgAAAJA9MpQMREZGptiBGAAAAHAnFioMZCwZaNeunQICArIqFgAAAADZKN37DNAvAAAAALiXDD9NCAAAAHBnPFo0FcnJyVkZBwAAAIBslqGeAQAAAMDd2WSd0kC6ewYAAAAAuBeSAQAAAMCiWCYEAAAAOLFSAzGVAQAAAMCiqAwAAAAATqgMAAAAAHB7VAYAAAAAJzabdUoDVAYAAAAAiyIZAAAAACyKZUIAAACAExqIAQAAALg9KgMAAACAEwv1D1MZAAAAAKyKZAAAAACwKJYJAQAAAE48LLROiMoAAAAAYFFUBgAAAAAnPFoUAAAAgNujMgAAAAA4sVDLAJUBAAAAwKpIBgAAAACLYpkQAAAA4MRD1lknRGUAAAAAsCgqAwAAAIATGogBAAAAuD2SAQAAAMCiWCYEAAAAOGEHYgAAAABuj8oAAAAA4MTDQh3EVAYAAAAAiyIZAAAAACyKZUIAAACAEwutEqIyAAAAAFgVlQEAAADACQ3EAAAAANwelQEAAADAiYUKA1QGAAAAAKsiGQAAAAAsimVCAAAAgBMrfVtupfcKAAAAwAmVAQAAAMCJzUIdxFQGAAAAAIsiGQAAAAAsimVCAAAAgBPrLBKiMgAAAABYFpUBAAAAwIkHDcQAAAAA3B2VAQAAAMCJdeoCVAYAAAAAyyIZAAAAACyKZUIAAACAEwv1D1MZAAAAAKyKygAAAADgxGah0gCVAQAAAMCiSAYAAAAAi2KZEAAAAODESt+WW+m9AgAAAHBCZQAAAABwQgMxAAAAALdHMgAAAAA4sZl43KkxY8bIZrPp1VdfzdB1JAMAAADAPWz79u366KOPVKVKlQxfSzIAAAAA3KPi4+PVoUMHTZ8+Xf7+/hm+nmQAAAAAcGKz2Uw7EhMTdenSJZcjMTExzVh79+6tJ554Qo0aNbqj90oyAAAAAOQQUVFR8vPzczmioqJSPXfevHnauXNnmq+nB48WBQAAAJyY+W35kCFDFB4e7jJmt9tTnPf777+rX79+WrVqlXx8fO74fiQDAAAAQA5ht9tT/fD/Tz///LPOnDmjGjVqOMaSkpK0YcMGvf/++0pMTJSnp+e/zkMyAAAAANxjHnvsMe3bt89lrEuXLipfvrxef/31dCUCEskAAAAA4OJe2IE4X758euCBB1zG8uTJo0KFCqUYvx0aiAEAAACLojIAAAAAOMn5dYHUrVu3LsPXUBkAAAAALIrKAAAAAODkHmgZyDRUBgAAAACLIhkAAAAALIplQgAAAIATj3u2hTjjqAwAAAAAFkVlAAAAAHBCAzEAAAAAt2d6ZSAxMVHbtm3TyZMnlZCQoMKFC6t69eoqU6aM2aEBAAAAbs20ZODHH3/UpEmTtGTJEt24cUN+fn7y9fXV+fPnlZiYqODgYHXv3l09e/ZUvnz5zAoTAAAAFmOjgThrPfXUU2rbtq1Kly6tlStX6vLlyzp37pz++OMPJSQk6PDhw3rrrbe0Zs0a3X///Vq1apUZYQIAAABuzZTKwBNPPKGFCxcqV65cqb4eHBys4OBgderUSQcOHFBsbGw2RwgAAACrslIDsSnJQI8ePdJ9bsWKFVWxYsUsjAYAAACwJtMbiAEAAICchE3HcoA9e/bI09PT7DAAAAAAt5VjkwFJMgzD7BAAAAAAt2XaMqFWrVrd9vW4uDjZrNS9AQAAgBzBSh9BTUsGlixZoscff1xFihRJ9fWkpKRsjggAAACwFtOSgQoVKqh169bq2rVrqq/v3r1bS5cuzeaoAAAAYHVWqgyY1jPw4IMPaufOnWm+brfbVapUqWyMCAAAALAW0yoD06ZNu+1SoAoVKuj48ePZGBEAAABgLaYlA3a73axbAwAAAGmysc9A1rpy5UqWng8AAADg35mSDISEhGjMmDGKjY1N8xzDMLRq1So1bdpUkydPzsboAAAAYGUeNvOO7GbKMqF169bpjTfeUEREhKpWraqaNWuqWLFi8vHx0YULF3TgwAFt2bJFXl5eGjJkiHr06GFGmAAAAIBbMyUZCA0N1cKFCxUTE6Mvv/xSGzdu1ObNm3X16lXdd999ql69uqZPn66mTZvK09PTjBABAABgUVbqGbAZhmGYHURmu3bT7AgAIHP51+pjdggAkKmu7nrf7BDStPa3c6bd+9HyhbL1fqbtMwAAAADAXKY9WhQAAADIidiBGAAAAIDbozIAAAAAOLFSAzGVAQAAAMCickQysHHjRnXs2FG1a9fWn3/+KUmaM2eONm3aZHJkAAAAgPsyPRlYuHChwsLC5Ovrq127dikxMVGSFBcXp9GjR5scHQAAAKzGSjsQm54MjBw5UtOmTdP06dOVK1cux3jdunW1c+dOEyMDAAAA3JvpDcQHDx5U/fr1U4z7+fnp4sWL2R8QAAAALI0G4mwUGBioI0eOpBjftGmTgoODTYgIAAAAsAbTk4Fu3bqpX79+2rZtm2w2m06dOqXo6GgNHDhQvXr1Mjs8AAAAwG2Zvkxo8ODBSk5O1mOPPaaEhATVr19fdrtdAwcO1CuvvGJ2eAAAALAYK+1AbDMMwzA7CEm6fv26jhw5ovj4eFWsWFF58+a947mu3czEwIB/mDH9I61ZtVLHjx+T3cdH1apV16vhA1W6DMvakHX8a/UxOwS4MQ8Pm97q2UzPNaulIoXyK/ZsnOYs2aYx0783OzS4sau73jc7hDRtOnzBtHs/XM4/W+9nemXg888/V6tWrZQ7d25VrFjR7HCAf7Vj+09q+1wHVapcWUk3kzRl0nj17NZVX3+7TLlz5zY7PADIsAGdH1e3Z+qp29tzdOBorB6sVEofRXTUpfir+vCL9WaHB2Q7CxUGzO8Z6N+/vwICAtS+fXstX75cSUlJZocE3NbUj2eoRctWCgkpp9Dy5TV81BjFxp7Srwf2mx0aANyR/1YN1tL1e/X9pv2KiT2vRat3a83W31SzUpDZoQHIYqYnA7GxsZo3b55sNpvatGmjokWLqnfv3tq8ebPZoQHpEn/5siQpv5+fyZEAwJ3ZuueYGv4nVCGlAiRJle8vrtrVgrXyxwMmRwaYw8NmM+3IbqYvE/Ly8lLz5s3VvHlzJSQkaNGiRZo7d64aNmyoEiVK6OjRo2aHCKQpOTlZ74wdrWrVa6hcufvNDgcA7sh7M1cpf14f7Vn0lpKSDHl62jTsg6Wa990Os0MDkMVMTwac5c6dW2FhYbpw4YJOnjypX3/99V+vSUxMVGJiosuY4WmX3W7PqjABh9EjI3X08GF9Nmeu2aEAwB17pnENtWtaS53fmKUDR2NVJbS43h34jGLPxil6yTazwwOQhUxfJiRJCQkJio6OVrNmzVS8eHFNnDhRLVu21P79/74GOyoqSn5+fi7Hu2OjsiFqWN3okcO1Yf06TZ85S0UCA80OBwDu2OhXn9Z7M1fpyxU/a/+RU/pi2XZNiV6rQV0eNzs0wBQ2E4/sZnploF27dlq6dKly586tNm3aaOjQoapdu3a6rx8yZIjCw8NdxgxPqgLIOoZhKGrUCK1ds0ozPpujEiVKmh0SANwVXx9vJRvJLmNJyYY8PHLEd4YAspDpyYCnp6cWLFigsLAweXp6Zvh6uz3lkiD2GUBWGj0iUt8tX6qJUz5Untx59NfZs5KkvPnyycfHx+ToACDjlm/Yp9e7hun32As6cDRW1cqXUN+ODTV78VazQwPMYaFni+aYTccyE8kAslLVSqGpjg8fGaUWLVtlczSwCjYdQ1bKm9uuYS8311OPVlVh/7yKPRunBd//rNEff6cbN3nkN7JGTt50bOvRi6bd+79lC2Tr/UxJBiZPnqzu3bvLx8dHkydPvu25ffv2zfD8JAMA3A3JAAB3QzKQOkskA2XKlNGOHTtUqFAhlSlTJs3zbDabjh07luH5SQYAuBuSAQDuJicnA9uOxpl274fKZu++Rab0DBw/fjzVPwMAAADIPqY/JmD48OFKSEhIMX716lUNHz7chIgAAABgZTabeUd2Mz0ZiIyMVHx8fIrxhIQERUZGmhARAAAAYA2mP1rUMAzZUkmD9uzZo4IFC5oQEQAAAKzMQk8WNS8Z8Pf3l81mk81m0/333++SECQlJSk+Pl49e/Y0KzwAAADA7ZmWDEycOFGGYejFF19UZGSk/Pz+r3Pa29tbpUuXztBOxAAAAAAyxrRkoFOnTpL+fsxonTp1lCtXLrNCAQAAAP6PhdYJmZIMXLp0Sfnz55ckVa9eXVevXtXVq1dTPffWeQAAAAAylynJgL+/v2JjYxUQEKACBQqk2kB8q7E4KYlt0AEAAJB9bBYqDZiSDKxdu9bxpKAffvjBjBAAAAAAyzMlGWjQoEGqfwYAAACQfUzfdOz777/Xpk2bHD9/8MEHqlatmtq3b68LFy6YGBkAAACsiB2Is9GgQYN06dIlSdK+ffsUHh6uZs2a6fjx4woPDzc5OgAAAMB9mb4D8fHjx1WxYkVJ0sKFC/Xkk09q9OjR2rlzp5o1a2ZydAAAALAa67QP54DKgLe3txISEiRJq1evVuPGjSVJBQsWdFQMAAAAAGQ+0ysDDz/8sMLDw1W3bl399NNPmj9/viTp0KFDKlGihMnRAQAAwHIsVBowvTLw/vvvy8vLS1999ZWmTp2q4sWLS5K+++47NWnSxOToAAAAAPdlMwzDMDuIzHbtptkRAEDm8q/Vx+wQACBTXd31vtkhpGnnSfOWqtcIyp+t9zN9mZAkJSUlafHixfr1118lSZUqVdJTTz0lT09PkyMDAACA1bADcTY6cuSImjVrpj///FOhoaGSpKioKJUsWVLLli1T2bJlTY4QAAAAcE+m9wz07dtXZcuW1e+//66dO3dq586diomJUZkyZdS3b1+zwwMAAIDFWGnTMdMrA+vXr9fWrVtVsGBBx1ihQoU0ZswY1a1b18TIAAAAAPdmemXAbrfr8uXLKcbj4+Pl7e1tQkQAAACANZieDDRv3lzdu3fXtm3bZBiGDMPQ1q1b1bNnTz311FNmhwcAAACLsZl4ZDfTk4HJkyerbNmyql27tnx8fOTj46O6desqJCREkyZNMjs8AAAAwG2Z3jNQoEABffPNNzpy5Ijj0aIVKlRQSEiIyZEBAADAkqzzZFHzkoHk5GS9++67+vbbb3X9+nU99thjGjZsmHx9fc0KCQAAALAU05YJjRo1Sm+88Yby5s2r4sWLa9KkSerdu7dZ4QAAAACS/t50zKz/ZTfTkoHZs2frww8/1IoVK7R48WItWbJE0dHRSk5ONiskAAAAwFJMSwZiYmLUrFkzx8+NGjWSzWbTqVOnzAoJAAAAsBTTegZu3rwpHx8fl7FcuXLpxo0bJkUEAAAAmLMTsFlMSwYMw1Dnzp1lt9sdY9euXVPPnj2VJ08ex9jXX39tRngAAACA2zMtGejUqVOKsY4dO5oQCQAAAPB/LFQYMC8ZmDlzplm3BgAAAKAcsAMxAAAAAHOYvgMxAAAAkKNYaJ0QlQEAAADAoqgMAAAAAE7M2AnYLFQGAAAAAIuiMgAAAAA4sdKmY1QGAAAAAIsiGQAAAADuQVOnTlWVKlWUP39+5c+fX7Vr19Z3332XoTlIBgAAAAAnNhOPjChRooTGjBmjn3/+WTt27NCjjz6qFi1aaP/+/emeg54BAAAA4B705JNPuvw8atQoTZ06VVu3blWlSpXSNQfJAAAAAODMxAbixMREJSYmuozZ7XbZ7fbbXpeUlKQvv/xSV65cUe3atdN9P5YJAQAAADlEVFSU/Pz8XI6oqKg0z9+3b5/y5s0ru92unj17atGiRapYsWK672czDMPIjMBzkms3zY4AADKXf60+ZocAAJnq6q73zQ4hTb/GXjHt3sEFvTJUGbh+/bpiYmIUFxenr776Sp988onWr1+f7oSAZUIAAACAEzN3IE7PkiBn3t7eCgkJkSQ9+OCD2r59uyZNmqSPPvooXdezTAgAAABwE8nJySkqC7dDZQAAAABwcq/sQDxkyBA1bdpUpUqV0uXLlzV37lytW7dOK1asSPccJAMAAADAPejMmTN64YUXFBsbKz8/P1WpUkUrVqzQ448/nu45SAYAAAAAJ/dIYUAzZsy46znoGQAAAAAsimQAAAAAsCiWCQEAAADO7pV1QpmAygAAAABgUVQGAAAAACdmbjqW3agMAAAAABZFMgAAAABYFMuEAAAAACf3yg7EmYHKAAAAAGBRVAYAAAAAJxYqDFAZAAAAAKyKZAAAAACwKJYJAQAAAM4stE6IygAAAABgUVQGAAAAACfsQAwAAADA7VEZAAAAAJyw6RgAAAAAt0cyAAAAAFgUy4QAAAAAJxZaJURlAAAAALAqKgMAAACAMwuVBqgMAAAAABZFMgAAAABYFMuEAAAAACfsQAwAAADA7VEZAAAAAJywAzEAAAAAt0dlAAAAAHBiocIAlQEAAADAqkgGAAAAAItimRAAAADghAZiAAAAAG6PygAAAADgwjqlASoDAAAAgEWRDAAAAAAWxTIhAAAAwAkNxAAAAADcHpUBAAAAwImFCgNUBgAAAACrojIAAAAAOKFnAAAAAIDbIxkAAAAALIplQgAAAIATm4VaiKkMAAAAABZFZQAAAABwZp3CAJUBAAAAwKpIBgAAAACLYpkQAAAA4MRCq4SoDAAAAABWRWUAAAAAcMIOxAAAAADcHpUBAAAAwAmbjgEAAABweyQDAAAAgEWxTAgAAABwZp1VQlQGAAAAAKuiMgAAAAA4sVBhgMoAAAAAYFUkAwAAAIBFsUwIAAAAcMIOxAAAAADcHpUBAAAAwAk7EAMAAABwe1QGAAAAACf0DAAAAABweyQDAAAAgEWRDAAAAAAWRTIAAAAAWBQNxAAAAIATGogBAAAAuD2SAQAAAMCiWCYEAAAAOGEHYgAAAABuj8oAAAAA4IQGYgAAAABuj8oAAAAA4MRChQEqAwAAAIBVkQwAAAAAFsUyIQAAAMCZhdYJURkAAAAALIrKAAAAAOCETccAAAAAuD2SAQAAAMCiWCYEAAAAOGEHYgAAAABuj8oAAAAA4MRChQEqAwAAAIBVkQwAAAAAFsUyIQAAAMCZhdYJURkAAAAALIrKAAAAAOCEHYgBAAAA5GhRUVGqVauW8uXLp4CAAD399NM6ePBghuYgGQAAAACc2GzmHRmxfv169e7dW1u3btWqVat048YNNW7cWFeuXEn/ezUMw8jg7yfHu3bT7AgAIHP51+pjdggAkKmu7nrf7BDSZOZnSZ+7WMR/9uxZBQQEaP369apfv366rqFnAAAAAMghEhMTlZiY6DJmt9tlt9v/9dq4uDhJUsGCBdN9P7esDADZITExUVFRURoyZEi6/g8KADkdf68B5ouIiFBkZKTL2LBhwxQREXHb65KTk/XUU0/p4sWL2rRpU7rvRzIA3KFLly7Jz89PcXFxyp8/v9nhAMBd4+81wHx3Whno1auXvvvuO23atEklSpRI9/1YJgQAAADkEOldEuSsT58+Wrp0qTZs2JChREAiGQAAAADuSYZh6JVXXtGiRYu0bt06lSlTJsNzkAwAAAAA96DevXtr7ty5+uabb5QvXz6dPn1akuTn5ydfX990zcE+A8AdstvtGjZsGE12ANwGf68B95apU6cqLi5OjzzyiIoWLeo45s+fn+45aCAGAAAALIrKAAAAAGBRJAMAAACARZEMAAAAABZFMgDchdKlS2vixIlZfp+DBw8qMDBQly9fTvc1gwcP1iuvvJKFUQEAgHsdyQBypM6dO8tms2nMmDEu44sXL5bNZsv2eD777DMVKFAgxfj27dvVvXv3LL//kCFD9MorryhfvnyOsb1796pevXry8fFRyZIl9c4777hcM3DgQM2aNUvHjh3L8vgA5Czr1q2TzWbTxYsXb3teTv5CY9q0aXryySezMCoAEskAcjAfHx+NHTtWFy5cMDuUNBUuXFi5c+fO0nvExMRo6dKl6ty5s2Ps0qVLaty4sYKCgvTzzz/r3XffVUREhD7++GPHOffdd5/CwsI0derULI0PwJ259aWHzWaTt7e3QkJCNHz4cN28efOu565Tp45iY2Pl5+cnKed9oXHt2jV17txZlStXlpeXl55++ukU17z44ovauXOnNm7cmOXxAVZGMoAcq1GjRgoMDFRUVNRtz9u0aZPq1asnX19flSxZUn379tWVK1ccr8fGxuqJJ56Qr6+vypQpo7lz56b4Nmz8+PGqXLmy8uTJo5IlS+rll19WfHy8pL+/YevSpYvi4uIc/3BHRERIcv1WrX379mrbtq1LbDdu3NB9992n2bNnS5KSk5MVFRWlMmXKyNfXV1WrVtVXX3112/e3YMECVa1aVcWLF3eMRUdH6/r16/r0009VqVIltWvXTn379tX48eNdrn3yySc1b968284PwDxNmjRRbGysDh8+rAEDBigiIkLvvvvuXc/r7e2twMDAf62kmvWFRlJSknx9fdW3b181atQo1eu8vb3Vvn17TZ48OUvjA6yOZAA5lqenp0aPHq0pU6bojz/+SPWco0ePqkmTJmrdurX27t2r+fPna9OmTerTp4/jnBdeeEGnTp3SunXrtHDhQn388cc6c+aMyzweHh6aPHmy9u/fr1mzZmnt2rV67bXXJP39DdvEiROVP39+xcbGKjY2VgMHDkwRS4cOHbRkyRJHEiFJK1asUEJCglq2bClJioqK0uzZszVt2jTt379f/fv3V8eOHbV+/fo0fw8bN25UzZo1Xca2bNmi+vXry9vb2zEWFhamgwcPulRS/vOf/+iPP/7QiRMn0pwfgHnsdrsCAwMVFBSkXr16qVGjRvr2228lSRcuXNALL7wgf39/5c6dW02bNtXhw4cd1548eVJPPvmk/P39lSdPHlWqVEnLly+X5LpMKCd+oZEnTx5NnTpV3bp1U2BgYJrXPvnkk/r222919erV9P1CAWQYyQBytJYtW6patWoaNmxYqq9HRUWpQ4cOevXVV1WuXDnVqVNHkydP1uzZs3Xt2jX99ttvWr16taZPn66HHnpINWrU0CeffJLiH5ZXX31VDRs2VOnSpfXoo49q5MiRWrBggaS/v53y8/OTzWZTYGCgAgMDlTdv3hSxhIWFKU+ePFq0aJFjbO7cuXrqqaeUL18+JSYmavTo0fr0008VFham4OBgde7cWR07dtRHH32U5u/g5MmTKlasmMvY6dOnVaRIEZexWz/f2opckuO6kydPpjk/gJzD19dX169fl/T3MqIdO3bo22+/1ZYtW2QYhpo1a6YbN25Iknr37q3ExERt2LBB+/bt09ixY1P9uyknfqGRXjVr1tTNmze1bdu2O7oewL/zMjsA4N+MHTtWjz76aKr/eO3Zs0d79+5VdHS0Y8wwDCUnJ+v48eM6dOiQvLy8VKNGDcfrISEh8vf3d5ln9erVioqK0m+//aZLly7p5s2bunbtmhISEtJdQvfy8lKbNm0UHR2t559/XleuXNE333zjWKZz5MgRJSQk6PHHH3e57vr166pevXqa8169elU+Pj7piuGffH19JUkJCQl3dD2A7GEYhtasWaMVK1bolVde0eHDh/Xtt9/qxx9/VJ06dST9vTywZMmSWrx4sZ599lnFxMSodevWqly5siQpODg41bn/+YVGWpy/0Hj++eclpf6FxurVq1W7dm3HPTdt2qSPPvpIDRo0SHXekydP3nEykDt3bvn5+fGFBpCFSAaQ49WvX19hYWEaMmSIy5pTSYqPj1ePHj3Ut2/fFNeVKlVKhw4d+tf5T5w4oebNm6tXr14aNWqUChYsqE2bNqlr1666fv16htbTdujQQQ0aNNCZM2e0atUq+fr6qkmTJo5YJWnZsmUu5XLp76UCabnvvvtSNFEHBgbqf//7n8vYrZ+d/7E/f/68pL/XBQPIeZYuXaq8efPqxo0bSk5OVvv27RUREaE1a9bIy8tLDz30kOPcQoUKKTQ0VL/++qskqW/fvurVq5dWrlypRo0aqXXr1qpSpcodx5ITv9CQ/v5Sgy80gKxDMoB7wpgxY1StWjWFhoa6jNeoUUMHDhxQSEhIqteFhobq5s2b2rVrlx588EFJf/+D5vzh+ueff1ZycrLGjRsnD4+/V87dWiJ0i7e3t5KSkv41zjp16qhkyZKaP3++vvvuOz377LPKlSuXJKlixYqy2+2KiYlJ8xu01FSvXl0HDhxwGatdu7befPNN3bhxwzH/qlWrFBoa6lL1+OWXX5QrVy5VqlQp3fcDkH0aNmyoqVOnytvbW8WKFZOXV/r/WX7ppZcUFhamZcuWaeXKlYqKitK4cePuan+R7PpCIyPOnz/PFxpAFqJnAPeEypUrq0OHDimeKvH6669r8+bN6tOnj3bv3q3Dhw/rm2++cTQQly9fXo0aNVL37t31008/adeuXerevbt8fX0dT9kICQnRjRs3NGXKFB07dkxz5szRtGnTXO5TunRpxcfHa82aNfrrr79u+y1V+/btNW3aNK1atUodOnRwjOfLl08DBw5U//79NWvWLB09elQ7d+7UlClTNGvWrDTnCwsL05YtW1ySkfbt28vb21tdu3bV/v37NX/+fE2aNEnh4eEu127cuNHxpCUAOU+ePHkUEhKiUqVKuSQCFSpUSLFW/ty5czp48KAqVqzoGCtZsqR69uypr7/+WgMGDND06dNTvc+dfKERHR2d5hcaISEhLkfJkiXTnDO1LzTS6+jRo7p27dptKw8A7g7JAO4Zw4cPV3JysstYlSpVtH79eh06dEj16tVT9erV9fbbb7s03M6ePVtFihRR/fr11bJlS3Xr1k358uVzlK2rVq2q8ePHa+zYsXrggQcUHR2d4nGmderUUc+ePdW2bVsVLlw4xQZfzjp06KADBw6oePHiqlu3rstrI0aM0NChQxUVFaUKFSqoSZMmWrZsmcqUKZPmfE2bNpWXl5dWr17tGPPz89PKlSt1/PhxPfjggxowYIDefvvtFM8Lnzdvnrp165bm3ABypnLlyqlFixbq1q2bNm3apD179qhjx44qXry4WrRoIenvBx+sWLFCx48f186dO/XDDz+oQoUKqc6X077QkKQDBw5o9+7dOn/+vOLi4rR7927t3r3b5ZyNGzcqODhYZcuW/bdfGYA7ZQAW8/vvvxuSjNWrV5sdSrq9//77RuPGjTN0zfLly40KFSoYN27cyKKoANyNTp06GS1atEjz9fPnzxvPP/+84efnZ/j6+hphYWHGoUOHHK/36dPHKFu2rGG3243ChQsbzz//vPHXX38ZhmEYP/zwgyHJuHDhguP8nj17GoUKFTIkGcOGDTMMwzCCgoKMCRMmuNz3wIEDhiQjKCjISE5OdnktOTnZmDhxohEaGmrkypXLKFy4sBEWFmasX78+zfdx48YNo1ixYsb333/vMh4UFGRISnE4a9y4sREVFZXm3ADuns0wDMO0TATIBmvXrlV8fLwqV66s2NhYvfbaa/rzzz916NAhR/k7p7t586bGjh2rvn37Onbw/DdfffWVSpYs6dKACABm+OCDD/Ttt99qxYoV6b5m//79evTRR3Xo0CHHTsoAMh8NxHB7N27c0BtvvKFjx44pX758qlOnjqKjo++ZRED6+ykfb775ZoaueeaZZ7IoGgDImB49eujixYu6fPlyur/QiI2N1ezZs0kEgCxGZQAAAACwKBqIAQAAAIsiGQAAAAAsimQAAAAAsCiSAQAAAMCiSAYAAAAAiyIZAIC71LlzZz399NOOnx955BG9+uqr2R7HunXrZLPZdPHixSy7xz/f653IjjgBAOlDMgDALXXu3Fk2m002m03e3t4KCQnR8OHDdfPmzSy/99dff60RI0ak69zs/mBcunRpTZw4MVvuBQDI+dh0DIDbatKkiWbOnKnExEQtX75cvXv3Vq5cuTRkyJAU516/fl3e3t6Zct+CBQtmyjwAAGQ1KgMA3JbdbldgYKCCgoLUq1cvNWrUSN9++62k/1vuMmrUKBUrVkyhoaGSpN9//11t2rRRgQIFVLBgQbVo0UInTpxwzJmUlKTw8HAVKFBAhQoV0muvvaZ/7t34z2VCiYmJev3111WyZEnZ7XaFhIRoxowZOnHihBo2bChJ8vf3l81mU+fOnSVJycnJioqKUpkyZeTr66uqVavqq6++crnP8uXLdf/998vX11cNGzZ0ifNOJCUlqWvXro57hoaGatKkSameGxkZqcKFCyt//vzq2bOnrl+/7ngtPbEDAHIGKgMALMPX11fnzp1z/LxmzRrlz59fq1atkiTduHFDYWFhql27tjZu3CgvLy+NHDlSTZo00d69e+Xt7a1x48bps88+06effqoKFSpo3LhxWrRokR599NE07/vCCy9oy5Ytmjx5sqpWrarjx4/rr7/+UsmSJbVw4UK1bt1aBw8eVP78+eXr6ytJioqK0ueff65p06apXLly2rBhgzp27KjChQurQYMG+v3339WqVSv17t1b3bt3144dOzRgwIC7+v0kJyerRIkS+vLLL1WoUCFt3rxZ3bt3V9GiRdWmTRuX35uPj4/WrVunEydOqEuXLipUqJBGjRqVrtgBADmIAQBuqFOnTkaLFi0MwzCM5ORkY9WqVYbdbjcGDhzoeL1IkSJGYmKi45o5c+YYoaGhRnJysmMsMTHR8PX1NVasWGEYhmEULVrUeOeddxyv37hxwyhRooTjXoZhGA0aNDD69etnGIZhHDx40JBkrFq1KtU4f/jhB0OSceHCBcfYtWvXjNy5cxubN292Obdr167Gc889ZxiGYQwZMsSoWLGiy+uvv/56irn+KSgoyJgwYUKar/9T7969jdatWzt+7tSpk1GwYEHjypUrjrGpU6caefPmNZKSktIVe2rvGQBgDioDANzW0qVLlTdvXt24cUPJyclq3769IiIiHK9XrlzZpU9gz549OnLkiPLly+cyz7Vr13T06FHFxcUpNjZWDz30kOM1Ly8v1axZM8VSoVt2794tT0/PDH0jfuTIESUkJOjxxx93Gb9+/bqqV68uSfr1119d4pCk2rVrp/seafnggw/06aefKiYmRlevXtX169dVrVo1l3OqVq2q3Llzu9w3Pj5ev//+u+Lj4/81dgBAzkEyAMBtNWzYUFOnTpW3t7eKFSsmLy/Xv/Ly5Mnj8nN8fLwefPBBRUdHp5ircOHCdxTDrWU/GREfHy9JWrZsmYoXL+7ymt1uv6M40mPevHkaOHCgxo0bp9q1aytfvnx69913tW3btnTPYVbsAIA7QzIAwG3lyZNHISEh6T6/Ro0amj9/vgICApQ/f/5UzylatKi2bdum+vXrS5Ju3rypn3/+WTVq1Ej1/MqVKys5OVnr169Xo0aNUrx+qzKRlJTkGKtYsaLsdrtiYmLSrChUqFDB0Qx9y9atW//9Td7Gjz/+qDp16ujll192jB09ejTFeXv27NHVq1cdic7WrVuVN29elSxZUgULFvzX2AEAOQdPEwKA/69Dhw6677771KJFC23cuFHHjx/XunXr1LdvX/3xxx+SpH79+mnMmDFavHixfvvtN7388su33SOgdOnS6tSpk1588UUtXrzYMeeCBQskSUFBQbLZbFq6dKnOnj2r+Ph45cuXTwMHDlT//v01a9YsHT16VDt37tSUKVM0a9YsSVLPnj11+PBhDRo0SAcPHtTcuXP12Wefpet9/vnnn9q9e7fLceHCBZUrV047duzQihUrdOjQIQ0dOlTbt29Pcf3169fVtWtXHThwQMuXL9ewYcPUp08feXh4pCt2AEDOQTIAAP9f7ty5tWHDBpUqVUqtWrVShQoV1LVrV127ds1RKRgwYICef/55derUybGUpmXLlredd+rUqXrmmWf08ssvq3z58urWrZuuXLkiSSpevLgiIyM1ePBgFSlSRH369JEkjRgxQkOHDlVUVJQqVKigJk2aaNmyZSpTpowkqVSpUlq4cKEWL16sqlWratq0aRo9enS63ud7772n6tWruxzLli1Tjx491KpVK7Vt21YPPfSQzp0751IluOWxxx5TuXLlVL9+fbVt21ZPPfWUSy/Gv8UOAMg5bEZaXW8AAAAA3BqVAQAAAMCiSAYAAAAAiyIZAAAAACyKZAAAAACwKJIBAAAAwKJIBgAAAACLIhkAAAAALIpkAAAAALAokgEAAADAokgGAAAAAIsiGQAAAAAs6v8BjL5L35wo72AAAAAASUVORK5CYII=" alt="Confusion Matrix">
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Current Prompt</h2>
+            <pre class="prompt">You are a sentiment analysis classifier. Your task is to determine whether the provided text expresses a positive sentiment. Analyze the text step by step, focusing on identifying strong positive descriptors (e.g., "masterful," "excellent"), emotional engagement (e.g., expressions of enjoyment), explicit ratings (e.g., "9/10"), and contextual comparisons (e.g., "much better"). Be vigilant about mixed sentiments, sarcasm, and ambiguous language that may mislead your classification. Ensure that you weigh both positive and negative elements effectively, recognizing that humor and contextual nuances can indicate positive sentiment. After your analysis, respond with a strict JSON dictionary containing two keys: "chain_of_thought" (your detailed step-by-step reasoning) and "classification" (1 for positive, 0 for negative). 
+
+Provide your response as a JSON dictionary with the following structure:
+{
+    "chain_of_thought": "Your step-by-step reasoning here",
+    "classification": 0 or 1
+}
+Ensure that "chain_of_thought" contains your comprehensive analysis, and "classification" is strictly 0 or 1.</pre>
+        </div>
+        
+        <div class="section">
+            <h2>Evaluation Results</h2>
+            <div class="table-responsive">
+                <table id="resultsTable" class="display">
+                    <thead>
+                        <tr>
+                            
+                            <th>Text</th>
+                            
+                            <th>True Label</th>
+                            
+                            <th>Predicted</th>
+                            
+                            <th>Chain of Thought</th>
+                            
+                            <th>Raw Output</th>
+                            
+                            <th>Result</th>
+                            
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">I hate guns and have never murdered anyone, but when even half of the events that take place in 'Shuttle' happen to you or close ones and you find a gun, YOU SHOOT YOUR ATTACKER. THREE TIMES. FIVE TIMES. Whatever makes the pulse stop on them and increase on you. I think even God would say, "Good call." In a very 'Hostel'-type film, but more realistic Â? as this really could happen to anyone, well, if you're a pretty young woman, that is Â? 'Shuttle' was a decent film, though on the long side. A few good shocks (always call AAA even just to change a tire), basically just one surprise but for the most part, you could see things coming. And aside from the typical "tie him up" instead of the previously mentioned shooting him, the most annoying part was the revelation towards the closing from one best friend to the other. Getting past those, it's enjoyable for what it is. Basically, we have two unsuspecting females traveling alone from Mexico home (wow, that's original) and one lost her luggage preventing them from leaving the airport until late. And after an obvious foreshadowed sign-language scene, they enter a "too-good-to-be-true" half-price shuttle ride. ClichÃ©d jocks, previously introduced, con their way on the shuttle, to join what appears to be Alan Ruck's stunt double from 'Speed.' From here, it's obvious what happens (I did mention it was a 'Hostel' knock off) but still, I didn't find too much horrible, yet nothing spectacular. Though, it would've served the audience better with roughly 15-20 minutes deleted, I would recommend if you have almost 2 hours to kill and are into sick horror.</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">The text expresses a mix of sentiments regarding the film 'Shuttle.' Initially, the author states a strong aversion to guns and violence but quickly transitions into a discussion of the film's themes, suggesting a level of acceptance for violent actions in a dire situation. This indicates a complex emotional engagement with the subject matter. The phrase 'Shuttle' was a decent film' suggests a lukewarm sentiment—'decent' is not particularly strong, leaning more towards moderate approval rather than outright enthusiasm. The mention of it being 'on the long side' and containing 'clichéd' elements indicates some criticism, which tempers the positive sentiment. However, the author does highlight 'a few good shocks' and acknowledges that it is 'enjoyable for what it is,' which leans towards a positive reception despite the negatives mentioned. The recommendation at the end, suggesting that readers may want to watch it if they are interested in horror, also adds a positive spin. Overall, while there are criticisms and a certain level of sarcasm in the language used, the enjoyment expressed and the recommendation ultimately push the sentiment towards the positive side. The combination of enjoyment and a recommendation for a specific audience suggests a positive sentiment overall.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The text expresses a mix of sentiments regarding the film 'Shuttle.' Initially, the author states a strong aversion to guns and violence but quickly transitions into a discussion of the film's themes, suggesting a level of acceptance for violent actions in a dire situation. This indicates a complex emotional engagement with the subject matter. The phrase 'Shuttle' was a decent film' suggests a lukewarm sentiment—'decent' is not particularly strong, leaning more towards moderate approval rather than outright enthusiasm. The mention of it being 'on the long side' and containing 'clichéd' elements indicates some criticism, which tempers the positive sentiment. However, the author does highlight 'a few good shocks' and acknowledges that it is 'enjoyable for what it is,' which leans towards a positive reception despite the negatives mentioned. The recommendation at the end, suggesting that readers may want to watch it if they are interested in horror, also adds a positive spin. Overall, while there are criticisms and a certain level of sarcasm in the language used, the enjoyment expressed and the recommendation ultimately push the sentiment towards the positive side. The combination of enjoyment and a recommendation for a specific audience suggests a positive sentiment overall.",
+    "classification": 1
+}</td>
+                            
+                            <td title="Click to view full content">❌ (FP)</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">"A Cry in the Dark" is a masterful piece of cinema, haunting, and incredibly though provoking. The true story of Lindy Chamberland, who, in 1980, witnessed a horrific sight, seeing her 3-month-old baby being brutally taken from their family's tent, while camping on the Austrailian outback. Azaria (the baby) was never seen again, and the result of her horrendous disappearance caused a true life frenzy all around the world. Meryl Streep does immaculate justice to the role of Lindy, as she always does. But the one thing that helps "A Cry in the Dark" never fall flat is the brilliant direction. A truly inspired and accurate outlook on this baffeling case, tears are brought to the eyes. The concept is nothing less then terrifying, and afterwards you are left haunted, but also inspired.</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">The text begins with the phrase 'masterful piece of cinema,' which is a strong positive descriptor indicating high praise for the film. The adjectives 'haunting' and 'incredibly thought-provoking' further emphasize the film's impact, suggesting that it leaves a lasting impression on viewers. The mention of a true story adds an emotional layer, as it refers to a tragic event involving a child, which typically evokes strong feelings. The detailing of the horrific event itself serves to enhance the emotional engagement rather than detract from it, as the narrative context is about the film's portrayal rather than being critical of it.
+
+The reference to Meryl Streep doing 'immaculate justice' to her role also indicates a positive sentiment, as it suggests her performance is commendable. The phrase 'brilliant direction' reinforces the positive assessment of the film's quality. Additionally, the comment about the film not 'falling flat' further underscores that it succeeds in its storytelling.
+
+The closing thoughts express that the experience was both 'haunting' and 'inspired,' suggesting that while there are terrifying elements, they lead to a deeper reflection and emotional response. Overall, the text is rich with positive descriptors and emotional engagement, indicating a strong appreciation for the film. There are no mixed sentiments or sarcasm present, and the overall tone is overwhelmingly positive.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The text begins with the phrase 'masterful piece of cinema,' which is a strong positive descriptor indicating high praise for the film. The adjectives 'haunting' and 'incredibly thought-provoking' further emphasize the film's impact, suggesting that it leaves a lasting impression on viewers. The mention of a true story adds an emotional layer, as it refers to a tragic event involving a child, which typically evokes strong feelings. The detailing of the horrific event itself serves to enhance the emotional engagement rather than detract from it, as the narrative context is about the film's portrayal rather than being critical of it.\n\nThe reference to Meryl Streep doing 'immaculate justice' to her role also indicates a positive sentiment, as it suggests her performance is commendable. The phrase 'brilliant direction' reinforces the positive assessment of the film's quality. Additionally, the comment about the film not 'falling flat' further underscores that it succeeds in its storytelling.\n\nThe closing thoughts express that the experience was both 'haunting' and 'inspired,' suggesting that while there are terrifying elements, they lead to a deeper reflection and emotional response. Overall, the text is rich with positive descriptors and emotional engagement, indicating a strong appreciation for the film. There are no mixed sentiments or sarcasm present, and the overall tone is overwhelmingly positive.",
+    "classification": 1
+}</td>
+                            
+                            <td title="Click to view full content">✅ (TP)</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">I was watching the Perfect Storm, and thought about another Wolfgang Peterson film which is much better--this one. Although certainly not based on a true story, In the Line of Fire is how a movie should be made. It has a terrific story with a great cast. Malkovich won a well-deserved Oscar for his performance as the creepy killer with a grudge against the government he served all too well. Eastwood is good as the tortured Secret Service and Russo is easy on the eyes. If you haven't seen this, definitely rent it or buy it as I did. Definitely one of the best crime thrillers of the past decade. 9/10</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">The text begins with a comparison between 'The Perfect Storm' and 'In the Line of Fire'. The author states that 'In the Line of Fire' is 'much better', indicating a strong positive sentiment towards this film. Phrases like 'how a movie should be made' and 'terrific story with a great cast' reinforce the positive evaluation of the film. The mention of Malkovich winning 'a well-deserved Oscar' adds to this positive sentiment, as it praises his performance. The use of 'good' to describe Eastwood and 'easy on the eyes' for Russo continues the positive tone. The author encourages others to 'definitely rent it or buy it', which is a clear endorsement of the film. The concluding statement, 'Definitely one of the best crime thrillers of the past decade. 9/10', provides a strong explicit rating and further emphasizes the positive sentiment. Overall, the text is overwhelmingly positive with no evident mixed sentiments or sarcasm.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The text begins with a comparison between 'The Perfect Storm' and 'In the Line of Fire'. The author states that 'In the Line of Fire' is 'much better', indicating a strong positive sentiment towards this film. Phrases like 'how a movie should be made' and 'terrific story with a great cast' reinforce the positive evaluation of the film. The mention of Malkovich winning 'a well-deserved Oscar' adds to this positive sentiment, as it praises his performance. The use of 'good' to describe Eastwood and 'easy on the eyes' for Russo continues the positive tone. The author encourages others to 'definitely rent it or buy it', which is a clear endorsement of the film. The concluding statement, 'Definitely one of the best crime thrillers of the past decade. 9/10', provides a strong explicit rating and further emphasizes the positive sentiment. Overall, the text is overwhelmingly positive with no evident mixed sentiments or sarcasm.",
+    "classification": 1
+}</td>
+                            
+                            <td title="Click to view full content">✅ (TP)</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">If you ask me the first one was really better one. Look at Sarah M. G., she is real, mean, cruel girl, look at Amy Adams she is just little fool hanging around. She is nothing! People don't adore her! Second, Sebastian was cute and hot in first movie, now he is "baby face". Story is not that good, and i do not understand. Why didn't they make this one first, it is the beginning. Loosy actors, nothing with story. This is not cruel, this is playing. First one has better actors, better story, and its mean. I think that the music is better in cruel intentions 1 and the music is better in cruel intentions 3. It is not the worst movie I saw, but in compaer with first one its one big, big, big nothing.</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">The text expresses a clear negative sentiment towards the second movie in comparison to the first. The author uses strong negative descriptors such as 'mean,' 'cruel,' 'nothing,' and 'big, big, big nothing,' indicating dissatisfaction. They also mention that 'the story is not that good,' which suggests a lack of enjoyment. The comparison to the first movie, labeled as 'really better,' emphasizes the author's negative feelings about the sequel. Additionally, they criticize the actors, calling them 'loose' and implying that the performances were subpar. The use of phrases like 'people don't adore her' reflects a strong dislike for one of the characters, further reinforcing the negative sentiment. Overall, the text is filled with derogatory remarks and unfavorable comparisons, leading to the conclusion that the sentiment expressed is decidedly negative.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The text expresses a clear negative sentiment towards the second movie in comparison to the first. The author uses strong negative descriptors such as 'mean,' 'cruel,' 'nothing,' and 'big, big, big nothing,' indicating dissatisfaction. They also mention that 'the story is not that good,' which suggests a lack of enjoyment. The comparison to the first movie, labeled as 'really better,' emphasizes the author's negative feelings about the sequel. Additionally, they criticize the actors, calling them 'loose' and implying that the performances were subpar. The use of phrases like 'people don't adore her' reflects a strong dislike for one of the characters, further reinforcing the negative sentiment. Overall, the text is filled with derogatory remarks and unfavorable comparisons, leading to the conclusion that the sentiment expressed is decidedly negative.",
+    "classification": 0
+}</td>
+                            
+                            <td title="Click to view full content">✅ (TN)</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">The movie 'Heart of Darkness', based on the 1899 book by Joseph Conrad is one with little to no detail and has an almost schizophrenic like plot line. If you have read the book then you know that little to none of the important "story making" scenes were put into the movie. In the book there is so much that is left up to the imagination and I feel that that is one of the part that make the book what is it. An example would be when Marlow spent timeless hours and days, even months waiting for rivets and that entire scene was left out of the movie. Again if you have read the book then you would know that this scene in the book is one that almost describes the main, theme of futility, best. Finally I feel that the movie was too cut and dry. Not enough though was put in to the original text and how that made the story what it is today. If you have not read the book, 'Heart of Darkness' (preferably, the Norton Critical Edition) then don't waist your time in renting or buying the movie. However if you have read the book then I think that you will appreciate the book a lot more if you decide to watch the movie  Eric 2007</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">The text presents a critical view of the movie 'Heart of Darkness' based on Joseph Conrad's book. The author discusses the lack of detail in the movie and highlights significant omissions from the book that contribute to its richness. Phrases like 'little to no detail' and 'almost schizophrenic like plot line' suggest a negative sentiment towards the film, indicating frustration over its adaptation. The author expresses a belief that the book's depth is not captured in the movie, specifically mentioning important scenes that were left out and describing the movie as 'too cut and dry.' The recommendation to avoid the movie if one hasn't read the book further underscores a negative sentiment. While there is a slight positive note at the end, suggesting that those who have read the book might appreciate the movie more, the overall tone remains critical. The analysis of the movie's failure to capture the essence of the book heavily outweighs the small positive acknowledgment. Therefore, the sentiment expressed in the text is predominantly negative, focusing more on criticism than on any enjoyment or positive attributes of the film.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The text presents a critical view of the movie 'Heart of Darkness' based on Joseph Conrad's book. The author discusses the lack of detail in the movie and highlights significant omissions from the book that contribute to its richness. Phrases like 'little to no detail' and 'almost schizophrenic like plot line' suggest a negative sentiment towards the film, indicating frustration over its adaptation. The author expresses a belief that the book's depth is not captured in the movie, specifically mentioning important scenes that were left out and describing the movie as 'too cut and dry.' The recommendation to avoid the movie if one hasn't read the book further underscores a negative sentiment. While there is a slight positive note at the end, suggesting that those who have read the book might appreciate the movie more, the overall tone remains critical. The analysis of the movie's failure to capture the essence of the book heavily outweighs the small positive acknowledgment. Therefore, the sentiment expressed in the text is predominantly negative, focusing more on criticism than on any enjoyment or positive attributes of the film.",
+    "classification": 0
+}</td>
+                            
+                            <td title="Click to view full content">✅ (TN)</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">This movie treads on very familiar ground -- the confusion of art and reality in the life of actors. It does not have anything particularly novel or interesting to say on this subject and is in fact rather dull. The final scene in particular is interminably tedious. Seeing the audience crying at the "moving" acting they are seeing on the screen made me ask "who do they think they are kidding?" Nevertheless there are some good performances and interesting scenes, particularly from some of the minor characters. Ben Gazzara plays an old and slightly touched actor, who gets a whole posse of policemen clapping his performance when they come to arrest him. Christopher Walken again plays an over-the-top wacko. Remember his character "The Continental" on Saturday Night Live; an aging eurotrash satyr chasing a young woman around the furniture and trying to get her into bed? He does an identical turn in the film, chasing his young (male) prey around an antique table and plying him with champagne. Overall this film was both enchanting and irritating, but mostly irritating.</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">The text begins by describing the movie's theme as 'familiar ground,' suggesting a lack of originality. Words like 'dull' and 'interminably tedious' indicate strong negative sentiments towards the film's pacing and engagement. The author questions the audience's emotional reactions, hinting at a sense of disbelief and sarcasm with the phrase 'who do they think they are kidding?' This further emphasizes the negative point of view. However, there are mentions of 'good performances' and 'interesting scenes,' which introduce a slight positive note, particularly regarding the minor characters. The specific mention of Ben Gazzara and Christopher Walken's performances highlights some redeeming qualities, though they are framed within a context that suggests irritation. The conclusion 'both enchanting and irritating, but mostly irritating' ultimately emphasizes the negative sentiment. Thus, while there are isolated positive descriptors, they do not outweigh the overall negative tone of the review.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The text begins by describing the movie's theme as 'familiar ground,' suggesting a lack of originality. Words like 'dull' and 'interminably tedious' indicate strong negative sentiments towards the film's pacing and engagement. The author questions the audience's emotional reactions, hinting at a sense of disbelief and sarcasm with the phrase 'who do they think they are kidding?' This further emphasizes the negative point of view. However, there are mentions of 'good performances' and 'interesting scenes,' which introduce a slight positive note, particularly regarding the minor characters. The specific mention of Ben Gazzara and Christopher Walken's performances highlights some redeeming qualities, though they are framed within a context that suggests irritation. The conclusion 'both enchanting and irritating, but mostly irritating' ultimately emphasizes the negative sentiment. Thus, while there are isolated positive descriptors, they do not outweigh the overall negative tone of the review.",
+    "classification": 0
+}</td>
+                            
+                            <td title="Click to view full content">✅ (TN)</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">The idea ia a very short film with a lot of information. Interesting, entertaining and leaves the viewer wanting more. The producer has produced a short film of excellent quality that cannot be compared to any other short film that I have seen. I have rated this film at the highest possible rating. I also recommend that it is shown to office managers and business people in any establishment. What comes out of it is the fact that people with ideas are never listened to, their voice is never heard. It is a lesson to be learned by any office that wants to go forward. I hope that the produced will produce a second part to this 'idea'. I look forward to viewing the sequence. Once again congrats to Halaqah media in producing a film of excellence and quality with a lesson in mind.</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">The text expresses a strong positive sentiment throughout. First, it describes the film as 'interesting' and 'entertaining,' which indicates enjoyment and engagement. The phrase 'leaves the viewer wanting more' suggests a strong positive impact on the audience, implying that it was captivating. The use of 'excellent quality' reinforces the positive evaluation of the film. Furthermore, the author mentions that it 'cannot be compared to any other short film' they have seen, indicating a superior quality that emphasizes their admiration. The explicit mention of rating the film at 'the highest possible rating' shows a clear endorsement and high satisfaction. The recommendation for it to be shown to office managers and business people highlights the perceived value and relevance of the film, suggesting it has lessons that could benefit others. The hope for a sequel and looking forward to viewing it further demonstrates positive anticipation. Finally, the congratulatory note to Halaqah media for producing a film of 'excellence and quality with a lesson in mind' sums up the overall positive sentiment in the text. There are no mixed sentiments or negative elements present, and the tone remains consistently positive. Thus, I classify this text as expressing a positive sentiment.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The text expresses a strong positive sentiment throughout. First, it describes the film as 'interesting' and 'entertaining,' which indicates enjoyment and engagement. The phrase 'leaves the viewer wanting more' suggests a strong positive impact on the audience, implying that it was captivating. The use of 'excellent quality' reinforces the positive evaluation of the film. Furthermore, the author mentions that it 'cannot be compared to any other short film' they have seen, indicating a superior quality that emphasizes their admiration. The explicit mention of rating the film at 'the highest possible rating' shows a clear endorsement and high satisfaction. The recommendation for it to be shown to office managers and business people highlights the perceived value and relevance of the film, suggesting it has lessons that could benefit others. The hope for a sequel and looking forward to viewing it further demonstrates positive anticipation. Finally, the congratulatory note to Halaqah media for producing a film of 'excellence and quality with a lesson in mind' sums up the overall positive sentiment in the text. There are no mixed sentiments or negative elements present, and the tone remains consistently positive. Thus, I classify this text as expressing a positive sentiment.",
+    "classification": 1
+}</td>
+                            
+                            <td title="Click to view full content">✅ (TP)</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">I just finished reading a book about Dillinger. This movie was horribly inaccurate. It's like they got a list of names and just made everything up. His robberies and getaways were well planned, down to the second - when the time was up, they left whether they had all of the money or not. They had notes of every road, where to turn, etc. Purvis never saw him at the restaurant, he was told that Dillinger paid for his meal after Dillinger left. Purvis never even SAW Dillinger before the night Dillinger was killed, only photos of him. The way his gang members died were fictitious. Dillinger never robbed a bank by himself, like he did in this movie. If I had never read the book, maybe I could have enjoyed the movie. The acting was a bit over the top in places. The action was overdone as well. On second thought, I doubt if I would have enjoyed it much even if I HADN'T read the book.</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">The text expresses a strong negative sentiment towards the movie based on the author's comparison with the book they read about Dillinger. The author highlights multiple inaccuracies in the film, indicating a deep disappointment. Phrases like 'horribly inaccurate' and 'just made everything up' are clear indicators of frustration and dissatisfaction. The author also notes that the portrayal of Dillinger's robberies and gang interactions in the movie does not align with their understanding from the book, further reinforcing their negative view. The mention of 'over the top' acting and 'overdone' action suggests a lack of enjoyment, and the statement about not being able to enjoy the movie even without having read the book solidifies the negative sentiment. Overall, there are no positive descriptors or expressions of enjoyment present in the text, leading to the conclusion that the sentiment is decidedly negative.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The text expresses a strong negative sentiment towards the movie based on the author's comparison with the book they read about Dillinger. The author highlights multiple inaccuracies in the film, indicating a deep disappointment. Phrases like 'horribly inaccurate' and 'just made everything up' are clear indicators of frustration and dissatisfaction. The author also notes that the portrayal of Dillinger's robberies and gang interactions in the movie does not align with their understanding from the book, further reinforcing their negative view. The mention of 'over the top' acting and 'overdone' action suggests a lack of enjoyment, and the statement about not being able to enjoy the movie even without having read the book solidifies the negative sentiment. Overall, there are no positive descriptors or expressions of enjoyment present in the text, leading to the conclusion that the sentiment is decidedly negative.",
+    "classification": 0
+}</td>
+                            
+                            <td title="Click to view full content">✅ (TN)</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">"Valley Girl" launched Nicolas Cage's career and was an 80's version of "Romeo and Juliet." It is a definite example of an 80's teen classic. Nicolas Cage, Deborah Foreman and Elizabeth Daily all have brilliant portrayals in this movie, but it will never top "Fast Times at Ridgemont High" as the ultimate 80's teen flick because if it weren't for "Fast Times," then the 80's generation of teen flicks would just be a big blow to the head. That's for sure.</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">The text discusses the film "Valley Girl" and its significance in the context of 80's teen movies, specifically comparing it to "Fast Times at Ridgemont High." The phrase 'launched Nicolas Cage's career' is a strong positive descriptor, indicating that the film had a significant and beneficial impact on Cage's career. Describing the film as a 'definite example of an 80's teen classic' further emphasizes its positive reputation within that genre. The use of 'brilliant portrayals' to describe the performances of Cage and others also carries a positive connotation, suggesting high quality. However, the sentiment becomes mixed when it states that "Valley Girl" will 'never top' another film, indicating a comparative negative sentiment towards it. The phrase 'big blow to the head' introduces a more negative context, suggesting disappointment or a lack of quality in the overall genre if not for the referenced film. Overall, while there are positive elements regarding the film's impact and performances, the comparison to another film and the negative remark at the end create a more complex sentiment. Given this analysis, the overall sentiment leans towards negative due to the stronger negative comparisons and implications.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The text discusses the film \"Valley Girl\" and its significance in the context of 80's teen movies, specifically comparing it to \"Fast Times at Ridgemont High.\" The phrase 'launched Nicolas Cage's career' is a strong positive descriptor, indicating that the film had a significant and beneficial impact on Cage's career. Describing the film as a 'definite example of an 80's teen classic' further emphasizes its positive reputation within that genre. The use of 'brilliant portrayals' to describe the performances of Cage and others also carries a positive connotation, suggesting high quality. However, the sentiment becomes mixed when it states that \"Valley Girl\" will 'never top' another film, indicating a comparative negative sentiment towards it. The phrase 'big blow to the head' introduces a more negative context, suggesting disappointment or a lack of quality in the overall genre if not for the referenced film. Overall, while there are positive elements regarding the film's impact and performances, the comparison to another film and the negative remark at the end create a more complex sentiment. Given this analysis, the overall sentiment leans towards negative due to the stronger negative comparisons and implications.",
+    "classification": 0
+}</td>
+                            
+                            <td title="Click to view full content">❌ (FN)</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">The best thing from the American Pie "bakery." I found the humor and the plot to be far more engaging audience than any of the American Pie movies to date. .Also concerning the appropriateness of the content I found this to be acceptable to a much larger audience than any of the previous American Pie movies. I thoroughly enjoyed this movie experience. When the movie first came out I read a number of negative reviews and ended up not going to see it while it was still in the theater...I now regret that decision. The movie far exceeded my expectations in terms of plot, dialog/scripting, and overall quality. I give it two thumbs way up!</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">The text expresses a strong positive sentiment throughout. It begins with 'The best thing from the American Pie bakery,' which indicates a highly favorable opinion. The phrase 'I found the humor and the plot to be far more engaging' suggests an emotional engagement with the content, indicating enjoyment. The comparison to previous American Pie movies, stating this one is 'acceptable to a much larger audience,' reflects a positive assessment of its broader appeal. The explicit expression of enjoyment, 'I thoroughly enjoyed this movie experience,' reinforces the positive sentiment. Additionally, the regret about not seeing the movie sooner due to negative reviews indicates a shift in perception towards a more favorable view after experiencing the film. The final statement, 'the movie far exceeded my expectations in terms of plot, dialog/scripting, and overall quality,' clearly highlights strong positive descriptors about the film's attributes. The phrase 'I give it two thumbs way up!' is a classic positive endorsement. Overall, there are no mixed sentiments or negative elements that would detract from the positive sentiment expressed in the text.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The text expresses a strong positive sentiment throughout. It begins with 'The best thing from the American Pie bakery,' which indicates a highly favorable opinion. The phrase 'I found the humor and the plot to be far more engaging' suggests an emotional engagement with the content, indicating enjoyment. The comparison to previous American Pie movies, stating this one is 'acceptable to a much larger audience,' reflects a positive assessment of its broader appeal. The explicit expression of enjoyment, 'I thoroughly enjoyed this movie experience,' reinforces the positive sentiment. Additionally, the regret about not seeing the movie sooner due to negative reviews indicates a shift in perception towards a more favorable view after experiencing the film. The final statement, 'the movie far exceeded my expectations in terms of plot, dialog/scripting, and overall quality,' clearly highlights strong positive descriptors about the film's attributes. The phrase 'I give it two thumbs way up!' is a classic positive endorsement. Overall, there are no mixed sentiments or negative elements that would detract from the positive sentiment expressed in the text.",
+    "classification": 1
+}</td>
+                            
+                            <td title="Click to view full content">✅ (TP)</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">Was this based on a comic-book? A video-game? A drawing by a 3 year-old?  There is nothing in this movie to be taken seriously at all; not the characters, not the dialog, not the plot, not the action. Nothing. We have high-tech international terrorists/criminals who bicker like pre-school kids, Stallone's man-of-steel-type resilience towards ice-cold weather, dialog so dumb that it's sometimes almost hilarious, and so on. Even the codename that the bad guys use is dumb ("tango-tango"). A film that entertains through some suspense, good action-sequences, and a nice snowy mountainous setting. Oh, yes: and the unintentional humour. The film opens with some truly bad and unconvincing gay banter between our go-lucky and happy characters who are obviously having a "swell" time. Then comes a sweat-inducing failed-rescue part, which should make anyone with fear-of-heights problems want to pull their hair out. And then we have some more bad dialog, and after that some more great action. This is the rhythm of the film in a nutshell.  Stallone's melodramatic exchange with Turner, when they meet after a long time, is so soapy, so clichÃ©d, so fake, and so bad that it should force a chuckle out of any self-respecting viewer. Soon after this display of awful dialog-writing, we are witnesses to a spectacular and excellently shot hijack of an airplane. The entire action is one big absurdity, but it's mindless fun at its best. Although the rest of the action is exciting and fun, the airplane scenes are truly the highlight of the film. After the landing, our master-criminals seek for a guide and end up with Stallone and Rooker. They send Stallone to fetch the first case of money, but somehow they do everything to make it as difficult as possible for him to reach it; they take most of his clothes off (so he can freeze) and they won't give him the equipment he needs (so he can fall off). DO THESE GANGSTERS WANT THEIR MONEY FETCHED OR NOT??? Very silly. Apparently they don't trust Stallone, but surely they know that they can always black-mail him by using Rooker as a hostage. Nevertheless, our gangsters make Stallone's climb difficult, if for no logical reasons then to at least show us how truly evil they are - lest there be any doubts. And for those who might still doubt how evil the bad guys are, they overact, brag, and snicker in a truly evil manner. Everyone convinced? Good. You'd better be. Otherwise the writers will throw in a mass execution of twenty school children, just to make sure that the evilness of the bad guys is crystal-clear to everyone. The old guy who flies the chopper... How the hell did he fall for the trap? Firstly, he must have been warned by the MTV airhead about the criminals, and secondly, he must have heard Stallone's and Rooker's voices on the walkie-talkies. A whole bunch of idiotic verbal exchanges take place, with Lithgow having the questionable honour of getting most of the silly lines. "Get off my back!" Lithgow: "I haven't even started climbing on your back." Or, Lithgow to Stallone: "We had a deal, but now we only have each other!" And as for Lithgow's gang of murderers: these guys never seem to want to kill immediately. They are very creative about it; they philosophize, pretend that they are playing football with your body, and so on.  Stallone co-wrote this thing. I have no idea what drugs he was on when he did it. I'd hate to think the script is this bad because of a low I.Q.</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">The provided text expresses a predominantly negative sentiment towards the movie being reviewed. It contains several strong negative descriptors, such as 'nothing to be taken seriously,' 'dumb,' 'bad and unconvincing,' 'so clichéd,' and 'awful dialog-writing.' The reviewer critiques various aspects of the film, including the characters, dialog, and plot, indicating a lack of enjoyment. Although there are mentions of entertainment through suspense and action sequences, these are overshadowed by the overall negative tone and the sarcasm present in the text. The reviewer employs humor to highlight the absurdity of the film, but this does not translate to a positive sentiment; instead, it reinforces the idea that the film is not well-crafted. Phrases like 'mindless fun at its best' and 'silly' are used, but they suggest a level of irony rather than genuine enjoyment. Additionally, sarcasm is evident in comments about the characters and their actions, further pointing to a disapproving stance. Overall, the text does not convey positive sentiment and leans heavily towards criticism and disappointment.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The provided text expresses a predominantly negative sentiment towards the movie being reviewed. It contains several strong negative descriptors, such as 'nothing to be taken seriously,' 'dumb,' 'bad and unconvincing,' 'so clichéd,' and 'awful dialog-writing.' The reviewer critiques various aspects of the film, including the characters, dialog, and plot, indicating a lack of enjoyment. Although there are mentions of entertainment through suspense and action sequences, these are overshadowed by the overall negative tone and the sarcasm present in the text. The reviewer employs humor to highlight the absurdity of the film, but this does not translate to a positive sentiment; instead, it reinforces the idea that the film is not well-crafted. Phrases like 'mindless fun at its best' and 'silly' are used, but they suggest a level of irony rather than genuine enjoyment. Additionally, sarcasm is evident in comments about the characters and their actions, further pointing to a disapproving stance. Overall, the text does not convey positive sentiment and leans heavily towards criticism and disappointment.",
+    "classification": 0
+}</td>
+                            
+                            <td title="Click to view full content">❌ (FN)</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">I have seen this movie several times, it sure is one of the cheapest action flicks of the eighties. So, I think many viewers would definitely change the channel when they come across this one. But, if you are into great trash, "Dragon Hunt" is made for you. The main characters (the McNamara Twins) are sporting great moustaches and look so ridiculous in their camouflage dresses. One of the best scenes is when one of then gets shot in the leg and is still kicking his enemies into nirvana. This movie is really awful, but then again, it is a great party tape!</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">The text begins with a statement about the movie being seen several times, which could imply some level of enjoyment. However, it quickly shifts to describe it as one of the 'cheapest action flicks of the eighties,' suggesting a negative perspective. The phrase 'many viewers would definitely change the channel' further emphasizes this negativity. Yet, it introduces a nuanced perspective by saying, 'if you are into great trash, "Dragon Hunt" is made for you,' indicating that it could appeal to a specific audience who appreciates low-quality films. The description of the characters 'sporting great moustaches' and looking 'ridiculous' is humorous and suggests a lighthearted take on the film's absurdity, which could be perceived positively. The mention of a character getting shot yet still fighting adds to the absurdity and could be seen as entertaining in its own right. The phrase 'this movie is really awful,' again reinforces the negative sentiment, but it is immediately countered by 'but then again, it is a great party tape!' This suggests that while the movie may be bad, it has a certain charm or entertainment value in a social context, which can be interpreted as a positive sentiment. Ultimately, the overall tone is mixed, combining elements of both enjoyment and critique, but leans more towards the humorous appreciation of the film's flaws. Therefore, the sentiment can be classified as positive due to the humor and enjoyment associated with the film despite its acknowledged shortcomings.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The text begins with a statement about the movie being seen several times, which could imply some level of enjoyment. However, it quickly shifts to describe it as one of the 'cheapest action flicks of the eighties,' suggesting a negative perspective. The phrase 'many viewers would definitely change the channel' further emphasizes this negativity. Yet, it introduces a nuanced perspective by saying, 'if you are into great trash, \"Dragon Hunt\" is made for you,' indicating that it could appeal to a specific audience who appreciates low-quality films. The description of the characters 'sporting great moustaches' and looking 'ridiculous' is humorous and suggests a lighthearted take on the film's absurdity, which could be perceived positively. The mention of a character getting shot yet still fighting adds to the absurdity and could be seen as entertaining in its own right. The phrase 'this movie is really awful,' again reinforces the negative sentiment, but it is immediately countered by 'but then again, it is a great party tape!' This suggests that while the movie may be bad, it has a certain charm or entertainment value in a social context, which can be interpreted as a positive sentiment. Ultimately, the overall tone is mixed, combining elements of both enjoyment and critique, but leans more towards the humorous appreciation of the film's flaws. Therefore, the sentiment can be classified as positive due to the humor and enjoyment associated with the film despite its acknowledged shortcomings.",
+    "classification": 1
+}</td>
+                            
+                            <td title="Click to view full content">❌ (FP)</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">What starts out as a passable movie degenerates into one of the most incoherent, UNscary, incompetently made, stupid attempted horror films of recent years. Absolutely terrible. It's such a derivative mess ripping off every decent fright flick you can think of without successfully producing a single scare. Whether it's copying the recent trend with creepy kids or ghosts walking past the camera or the old school horror of Fulci's Gates of Hell. The worst thing is there's not even a cat jumping out of a cupboard to make you jump. To be avoided.</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">The text begins with a negative assessment, describing the movie as 'passable' but quickly transitions into a strong negative sentiment with descriptors such as 'degenerates,' 'incoherent,' 'UNscary,' 'incompetently made,' and 'stupid attempted horror films.' The phrase 'Absolutely terrible' reinforces the strong dissatisfaction with the film. It continues to criticize the movie for being a 'derivative mess' that fails to create any scares, indicating a lack of originality and effectiveness. The mention of 'creepy kids' and 'ghosts walking past the camera' suggests that the film is trying to utilize familiar horror tropes but does so poorly. The comparison to Fulci's 'Gates of Hell' emphasizes the failure in execution. Finally, the conclusion 'To be avoided' clearly indicates a negative recommendation. Overall, there are no positive descriptors or emotional engagement that would suggest a positive sentiment. Therefore, the text clearly expresses a negative sentiment towards the movie.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The text begins with a negative assessment, describing the movie as 'passable' but quickly transitions into a strong negative sentiment with descriptors such as 'degenerates,' 'incoherent,' 'UNscary,' 'incompetently made,' and 'stupid attempted horror films.' The phrase 'Absolutely terrible' reinforces the strong dissatisfaction with the film. It continues to criticize the movie for being a 'derivative mess' that fails to create any scares, indicating a lack of originality and effectiveness. The mention of 'creepy kids' and 'ghosts walking past the camera' suggests that the film is trying to utilize familiar horror tropes but does so poorly. The comparison to Fulci's 'Gates of Hell' emphasizes the failure in execution. Finally, the conclusion 'To be avoided' clearly indicates a negative recommendation. Overall, there are no positive descriptors or emotional engagement that would suggest a positive sentiment. Therefore, the text clearly expresses a negative sentiment towards the movie.",
+    "classification": 0
+}</td>
+                            
+                            <td title="Click to view full content">✅ (TN)</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">I cannot believe I enjoyed this as much as I did. The anthology stories were better than par, but the linking story and its surprise ending hooked me. Alot of familiar faces will keep you asking yourself "where I have I seen them before?" Forget the running time listed on New Line's tape, this ain't no 103 minutes, according to my VCR timer and IMDB. Space Maggot douses the campfire in his own special way and hikes this an 8.</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">The text opens with a surprising admission of enjoyment, indicating a strong positive sentiment as the speaker expresses disbelief at how much they enjoyed the content. The phrase 'better than par' suggests that the anthology stories exceeded expectations, which is a positive descriptor. The mention of a 'surprise ending' that 'hooked' the speaker also implies a strong emotional engagement and satisfaction with the narrative. The reference to familiar faces adds to the intrigue and enjoyment, suggesting a connection to previous experiences or works, enhancing the positive sentiment. The phrase 'this ain't no 103 minutes' implies a playful tone, which could indicate a positive engagement with the content rather than a negative critique of length. Finally, the mention of 'hikes this an 8' is an explicit rating, clearly indicating a favorable assessment of the work. Overall, the text is infused with positive descriptors and emotional engagement, leading to a strong positive sentiment throughout.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The text opens with a surprising admission of enjoyment, indicating a strong positive sentiment as the speaker expresses disbelief at how much they enjoyed the content. The phrase 'better than par' suggests that the anthology stories exceeded expectations, which is a positive descriptor. The mention of a 'surprise ending' that 'hooked' the speaker also implies a strong emotional engagement and satisfaction with the narrative. The reference to familiar faces adds to the intrigue and enjoyment, suggesting a connection to previous experiences or works, enhancing the positive sentiment. The phrase 'this ain't no 103 minutes' implies a playful tone, which could indicate a positive engagement with the content rather than a negative critique of length. Finally, the mention of 'hikes this an 8' is an explicit rating, clearly indicating a favorable assessment of the work. Overall, the text is infused with positive descriptors and emotional engagement, leading to a strong positive sentiment throughout.",
+    "classification": 1
+}</td>
+                            
+                            <td title="Click to view full content">✅ (TP)</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">Greg Davis and Bryan Daly take some crazed statements by a terrorists, add some commentary by a bunch of uber-right reactionaries, ascribe the most extreme positions of the most fundamentalist Moslems on the planet to everyone who calls themselves a Moslem, and presents this as the theology of Islam. Maybe their next film will involve interviewing Fred Phelps and the congregation of the Westboro Baptist Church, adding commentary by some militant atheist "scholars, and call their film "What the World Needs to Know About Christianity." Ultimately, this film suffers from both poor production values and lack of attention to the most basic standards of journalism. Don't waste your time and money; just turn on your AM radio and listen to Rush Limbaugh for a couple of days for free and you'll get the same message with the same level of intellectual analysis.</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">The text expresses a strong negative sentiment towards a film made by Greg Davis and Bryan Daly, criticizing the filmmakers for their portrayal of Islam and for the film's quality. Key phrases such as 'crazed statements by a terrorists' and 'poor production values' indicate a harsh critique of both content and execution. The mention of 'don't waste your time and money' explicitly discourages engagement with the film, reinforcing the negative sentiment. Additionally, the comparison to listening to Rush Limbaugh reflects a sarcastic tone, suggesting that the film's content is not only unoriginal but also lacking in depth. Overall, the text does not contain any positive descriptors or expressions of enjoyment, and instead focuses on the shortcomings and perceived biases of the film.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The text expresses a strong negative sentiment towards a film made by Greg Davis and Bryan Daly, criticizing the filmmakers for their portrayal of Islam and for the film's quality. Key phrases such as 'crazed statements by a terrorists' and 'poor production values' indicate a harsh critique of both content and execution. The mention of 'don't waste your time and money' explicitly discourages engagement with the film, reinforcing the negative sentiment. Additionally, the comparison to listening to Rush Limbaugh reflects a sarcastic tone, suggesting that the film's content is not only unoriginal but also lacking in depth. Overall, the text does not contain any positive descriptors or expressions of enjoyment, and instead focuses on the shortcomings and perceived biases of the film.",
+    "classification": 0
+}</td>
+                            
+                            <td title="Click to view full content">✅ (TN)</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">I do not have much to say than this is a great finish to the story. Most people have said that there is not enough plot and its just eye candy.But think about it, everything was explained in FFVII you cannot add more plot to such a grand story it would ruin it. They did the best that they could do and I think that this should be taken more as A Final FMV.. the last fight.  Graphics - 10/10, Absolutely amazing  Story 8.5/10 - don't think they could of expanded it that much more. And the stuff they could put in there was clever enough I thought.  Characters 9/10 - Well most of them have already been explained during the game but still could not fit it all into 90 mins.  Sound - 10/10, since i am a metal fan I loved the fight music.. and piano just reaches right in there..It is a great ST and I was not disappointed. Tilt/Replay 10/10 - Enjoyable every time.  Overall- 9/10 (FF Fan View 10/10) I personally think this is what was needed, a fight to end it all.. the plot was already in place. The action was necessary as much as people complained. I loved every second of this movie. It was a pleasure to visit the world of FFVII just one last time. Just remember this.. most movies that have been made form a game have been directed by movie directors i think this is pretty great for a team of game directors.. Don't think I've seen a better game to movie.. Thankyou Square, I think you did it right!</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">The text begins with a clear positive sentiment expressed in the phrase 'this is a great finish to the story,' which sets a positive tone. The author acknowledges criticism regarding the plot, stating that the original game, FFVII, had a comprehensive story that doesn't need additional elements, indicating a defense of the film's approach rather than outright negativity. The author praises the execution with phrases like 'they did the best that they could do' and 'the stuff they could put in there was clever enough I thought,' which reinforces a positive perspective on the film's adaptation. The ratings for graphics (10/10), story (8.5/10), characters (9/10), sound (10/10), tilt/replay (10/10), and an overall score of 9/10 (10/10 from an FF fan perspective) are explicitly positive and showcase strong appreciation for various aspects of the film. The comment about the fight music and piano reaching 'right in there' demonstrates emotional engagement and enjoyment. The author expresses a sense of nostalgia and satisfaction with statements like 'I loved every second of this movie' and 'it was a pleasure to visit the world of FFVII just one last time.' The concluding remarks, especially thanking Square for their efforts, further emphasize the positive sentiment. Overall, despite acknowledging some critiques, the overwhelming tone is one of enthusiasm and satisfaction, leading to a clear classification of positive sentiment.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The text begins with a clear positive sentiment expressed in the phrase 'this is a great finish to the story,' which sets a positive tone. The author acknowledges criticism regarding the plot, stating that the original game, FFVII, had a comprehensive story that doesn't need additional elements, indicating a defense of the film's approach rather than outright negativity. The author praises the execution with phrases like 'they did the best that they could do' and 'the stuff they could put in there was clever enough I thought,' which reinforces a positive perspective on the film's adaptation. The ratings for graphics (10/10), story (8.5/10), characters (9/10), sound (10/10), tilt/replay (10/10), and an overall score of 9/10 (10/10 from an FF fan perspective) are explicitly positive and showcase strong appreciation for various aspects of the film. The comment about the fight music and piano reaching 'right in there' demonstrates emotional engagement and enjoyment. The author expresses a sense of nostalgia and satisfaction with statements like 'I loved every second of this movie' and 'it was a pleasure to visit the world of FFVII just one last time.' The concluding remarks, especially thanking Square for their efforts, further emphasize the positive sentiment. Overall, despite acknowledging some critiques, the overwhelming tone is one of enthusiasm and satisfaction, leading to a clear classification of positive sentiment.",
+    "classification": 1
+}</td>
+                            
+                            <td title="Click to view full content">✅ (TP)</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">As a writer I find films this bad making it into production a complete slap in the face. Talk about insulting. I was writing better stories than this in 8th grade. Bad acting, bad writing, bad directing and when added all together the result is complete and total failure.  The only thing this movie manages to accomplish is tricking the unsuspecting consumer into wasting their time. Who would green light something so poorly written? It's not artistic, clever, smart, suspenseful, mysterious, scary, dramatic-NOTHING. The characters are flat and boring with no development. The plot is as recycled as an aluminum can. They somehow managed to cast a few very familiar actors who all must be pretty desperate for work or hoping one of these low budget independent movies will turn out to be the next "Pulp Fiction". This script should have been used to line a bird cage, not a movie.  Oh and last but not least, a 5'2 105 lb woman of course has the strength to kill men and women twice her size without a struggle and in a single blow.  Avoid this bomb like it will infect you with an STD.</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">The text expresses a strongly negative sentiment towards a film. The writer uses harsh language such as 'complete slap in the face,' 'insulting,' and 'complete and total failure' which indicates extreme dissatisfaction. The descriptors 'bad acting,' 'bad writing,' and 'bad directing' are repeated, emphasizing the writer's discontent. The phrase 'tricking the unsuspecting consumer into wasting their time' suggests a feeling of betrayal towards the audience, further solidifying the negative tone. The writer compares the film unfavorably to their own middle school writing, which shows a lack of respect for the film's quality. The use of 'NOTHING' in capital letters signifies a strong dismissal of any redeeming qualities of the film. The description of the characters as 'flat and boring' and the plot as 'recycled' further reinforces the writer's critical stance. The metaphor of the script being suitable only for 'lining a bird cage' indicates a complete lack of value attributed to the movie. Finally, the closing remark about the absurdity of a small woman overpowering larger individuals portrays disbelief and ridicule towards the film's narrative. Overall, the text is overwhelmingly negative with no positive sentiment present, leading to the conclusion that the sentiment is decidedly negative.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The text expresses a strongly negative sentiment towards a film. The writer uses harsh language such as 'complete slap in the face,' 'insulting,' and 'complete and total failure' which indicates extreme dissatisfaction. The descriptors 'bad acting,' 'bad writing,' and 'bad directing' are repeated, emphasizing the writer's discontent. The phrase 'tricking the unsuspecting consumer into wasting their time' suggests a feeling of betrayal towards the audience, further solidifying the negative tone. The writer compares the film unfavorably to their own middle school writing, which shows a lack of respect for the film's quality. The use of 'NOTHING' in capital letters signifies a strong dismissal of any redeeming qualities of the film. The description of the characters as 'flat and boring' and the plot as 'recycled' further reinforces the writer's critical stance. The metaphor of the script being suitable only for 'lining a bird cage' indicates a complete lack of value attributed to the movie. Finally, the closing remark about the absurdity of a small woman overpowering larger individuals portrays disbelief and ridicule towards the film's narrative. Overall, the text is overwhelmingly negative with no positive sentiment present, leading to the conclusion that the sentiment is decidedly negative.",
+    "classification": 0
+}</td>
+                            
+                            <td title="Click to view full content">✅ (TN)</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">When I was a kid, I loved "Tiny Toons". I especially loved "Tiny Toons: How I spent my Summer Vacation". I thought it was laughs on the floor funny. A few years later, my friend had the video. And I figured I'd watch it for the good old days. I was still on the floors laughing. My opinion, the Plucky and Hampton skit is the best. They decide to go to "Happy World Land". And they end up having a crazy adventure to get there. All the skits are funny. I'm still looking for the video. So, if anyone has any tips. Please write me.  This is one of the funniest cartoons I have ever seen. 10/10</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">The text expresses a strong positive sentiment towards 'Tiny Toons' and specifically the episode 'Tiny Toons: How I Spent My Summer Vacation'. The use of phrases like 'I loved', 'laughs on the floor funny', and 'I'm still on the floors laughing' indicates high emotional engagement and enjoyment. The author also rates the cartoon a '10/10', which is an explicit positive rating. Additionally, the description of the content, mentioning that all the skits are funny and highlighting a specific skit as the best, reinforces the positive sentiment. There are no negative descriptors or mixed sentiments present in the text. Overall, the text clearly conveys a fondness and appreciation for the cartoon, indicating a positive sentiment.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The text expresses a strong positive sentiment towards 'Tiny Toons' and specifically the episode 'Tiny Toons: How I Spent My Summer Vacation'. The use of phrases like 'I loved', 'laughs on the floor funny', and 'I'm still on the floors laughing' indicates high emotional engagement and enjoyment. The author also rates the cartoon a '10/10', which is an explicit positive rating. Additionally, the description of the content, mentioning that all the skits are funny and highlighting a specific skit as the best, reinforces the positive sentiment. There are no negative descriptors or mixed sentiments present in the text. Overall, the text clearly conveys a fondness and appreciation for the cartoon, indicating a positive sentiment.",
+    "classification": 1
+}</td>
+                            
+                            <td title="Click to view full content">✅ (TP)</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">Caution: May contain spoilers... I've seen this movie 3 times & I've liked it every time. Upon seeing it again, I'm always reminded of how good it is. An HBO TV movie- very well done like most of their movies are- this would've gotten Oscars for it's performances had it been released for general distribution instead of made for TV. As I'm sure anyone knows from reading other reviews here, this is the story of serial murderer, Andrei Chikatilo. He murdered 56 people over 8 years in the former Soviet Union. (3 victims were buried & couldn't be found so he was only convicted of 52 out of 53 of his murders.) The story actually focuses more on the forensic analyst, Victor Burakov played to perfection by Stephen Rea. A man that becomes tortured and obsessed with finding this killer despite the additional obstacles placed by party hacks, his part is essential to be sure. There is a very touching scene towards the end of the movie that mentions how in America, investigators are routinely taken off serial killer cases after 18 months whether they want to or not due to the mental strain & frustration. According to this acct, Burakov worked for over 5 years before getting his first break from it. He followed the case to its conclusion, 3 years later. In this scene, his superior, General Fetisov, played by Donald Sutherland, actually tells him he admires his dedication and apologizes for not knowing he should've given him a break sooner. Rea's performance is so well done, he doesn't overact, chew up the scenery or do anything that distracts from his portrayal of a man who is hell bent on finding his killer. He is a man with passion, but doesn't show it in the same manner as is so usually portrayed in detective movies. He only occasionally gives outbursts after quietly putting up with more than most could stand under such circumstances. Rea does so much with his face, his eyes, he doesn't need to overact. He just *is* - His character, so frustrated after so long, at one point, driven to frustration, he actually says he'd rather find 3 at one time than none in a year. Of course what he means is not that he wants more people to die, he just wants some clues to catch this man. Rea makes us feel for this man. He makes us understand but a glimpse of what it is to live with such horror and futility. A mutant to be sure, Chikatilo's childhood was one which produces such "monsters." The character of Chikatilo is very well done by Jeffrey DeMunn. He somehow (impossible though it may seem) elicits some modicum of sympathy for himself. Perhaps he is the worst of us gone terribly wrong? Either way, his performance is very well done. Donald Sutherland as Colonel Fetisov (later promoted to General) also does a great job. He starts out seeming to be a cynical worldly official that doesn't seem much more interested in helping the investigation than anyone else blocking Burakov. But he eventually becomes more than just an assistant, he actually actively participates in helping Burakov. There is also a very nice turn by Max Von Sydow as the psychiatrist brought in to help profile and figure out what kind of deviant they are looking for. Although this movie deals with a morbid, grotesque and violent story, it really is more about what it takes to catch a killer than the killer himself. All around a very well done movie with fine performances and a great screenplay. The screenplay manages to do what the best of this type of movie does: give factual events & place them meaningfully inside a dramatic framework that makes you feel like you know the people *behind* the facts. 9 out of 10 stars</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">Positive (1)</td>
+                            
+                            <td title="Click to view full content">The text begins with a personal endorsement of the movie, stating that the reviewer has seen it three times and liked it each time. This indicates a strong positive sentiment from the outset. The phrase 'I’m always reminded of how good it is' further emphasizes their appreciation. The reviewer acknowledges the quality of HBO productions, asserting that this film is 'very well done,' which is a strong positive descriptor. They suggest that the film could have won Oscars if it were released in theaters, indicating high regard for the performances. The review goes into detail about the characters and actors, praising Stephen Rea’s portrayal of Victor Burakov as being 'played to perfection' and noting that he doesn’t overact, which suggests a nuanced appreciation of the performance. The emotional engagement is present in the description of Burakov’s frustrations and dedication, further supported by the touching scene mentioned. The reviewer effectively conveys a sense of sympathy towards the characters, especially Burakov, indicating that the emotional depth of the story resonates positively with them. The mention of 'very well done' performances by Jeffrey DeMunn and Donald Sutherland adds to the overall positive sentiment. The reviewer concludes with a high rating of '9 out of 10 stars,' which is an explicit indicator of their positive sentiment towards the film. Despite the dark subject matter, the review focuses on the quality of the storytelling and performances, reinforcing a positive sentiment throughout. There are no mixed sentiments or sarcasm present in the review, and the overall tone is one of enthusiasm and appreciation for the film’s artistic merit.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The text begins with a personal endorsement of the movie, stating that the reviewer has seen it three times and liked it each time. This indicates a strong positive sentiment from the outset. The phrase 'I’m always reminded of how good it is' further emphasizes their appreciation. The reviewer acknowledges the quality of HBO productions, asserting that this film is 'very well done,' which is a strong positive descriptor. They suggest that the film could have won Oscars if it were released in theaters, indicating high regard for the performances. The review goes into detail about the characters and actors, praising Stephen Rea’s portrayal of Victor Burakov as being 'played to perfection' and noting that he doesn’t overact, which suggests a nuanced appreciation of the performance. The emotional engagement is present in the description of Burakov’s frustrations and dedication, further supported by the touching scene mentioned. The reviewer effectively conveys a sense of sympathy towards the characters, especially Burakov, indicating that the emotional depth of the story resonates positively with them. The mention of 'very well done' performances by Jeffrey DeMunn and Donald Sutherland adds to the overall positive sentiment. The reviewer concludes with a high rating of '9 out of 10 stars,' which is an explicit indicator of their positive sentiment towards the film. Despite the dark subject matter, the review focuses on the quality of the storytelling and performances, reinforcing a positive sentiment throughout. There are no mixed sentiments or sarcasm present in the review, and the overall tone is one of enthusiasm and appreciation for the film’s artistic merit.",
+    "classification": 1
+}</td>
+                            
+                            <td title="Click to view full content">✅ (TP)</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            
+                            <td title="Click to view full content">This film is a mediocre, low-budget flick. I've seen much worse on MST3K, let me assure you, but this is still a pretty crappy film. The film is about Clonus, a top-secret government facility in which clones are used to give organs to politicians. It's an almost Orwellian society, actually: almost (but not quite) effective. The film starts to roll downhill when the head clone (Tim Connely of `Emergency' fame) falls in love with a female clone (Paulette Breen, who appeared in this and at most four other films {and this was not her first film}). They begin to suspect something. After finding a beer can in the nearby river, the plot starts to unravel. The clone receives no answers from either the head scientist (Dick Sargent from `Bewitched') or the `Confessional', a computer which supposedly knows everything, so he breaks into the main Clonus building and (in a scene hilariously destroyed by Mike and the Bots) finds out the truth (including a clone video which, eerily, shows the exact same method that was used to clone Dolly five years ago . .. and this film was made over twenty years ago . . .) about Clonus. He breaks free, pursued by two guards. He has one hell of a time breaking through the two-foot high fences, though he has a considerably harder time climbing up some boulders. From there it continues to slide. Also appearing are Peter Graves (`Beginning of the End', `It Conquered The World') as the Presidential candidate and Keenan Wynn (`Dr. Strangelove', `Piranha', `Once Upon A Time In The West') and Lurleen Tuttle (`Ma Barker's Killer Brood', `Psycho') as the elderly couple who help Clony after he escapes. The MST3K version was priceless; one of the best episodes ever. Four stars for the film;10 for the MST3K version.</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">Negative (0)</td>
+                            
+                            <td title="Click to view full content">The text presents a critical review of a film, describing it as a 'mediocre, low-budget flick' which implies a negative sentiment. The reviewer notes having seen worse films, suggesting that while this film is not the worst, it is still not good, as indicated by phrases like 'pretty crappy film'. The description of the plot and characters does not include strong positive language; rather, it conveys a sense of disappointment and frustration, especially with phrases like 'the film starts to roll downhill' and 'it continues to slide'. However, there is a notable positive sentiment regarding the MST3K version of the film, described as 'priceless' and 'one of the best episodes ever', which is highly positive. The explicit ratings given (four stars for the film and ten for the MST3K version) show a distinction in quality perception, suggesting the MST3K version is much better appreciated. The overall tone of the review leans more towards negative due to the consistent use of critical language towards the film itself, despite the mention of a positive experience with the MST3K version. Therefore, while there are positive elements, they are overshadowed by the overall negative sentiment expressed towards the film itself.</td>
+                            
+                            <td title="Click to view full content">{
+    "chain_of_thought": "The text presents a critical review of a film, describing it as a 'mediocre, low-budget flick' which implies a negative sentiment. The reviewer notes having seen worse films, suggesting that while this film is not the worst, it is still not good, as indicated by phrases like 'pretty crappy film'. The description of the plot and characters does not include strong positive language; rather, it conveys a sense of disappointment and frustration, especially with phrases like 'the film starts to roll downhill' and 'it continues to slide'. However, there is a notable positive sentiment regarding the MST3K version of the film, described as 'priceless' and 'one of the best episodes ever', which is highly positive. The explicit ratings given (four stars for the film and ten for the MST3K version) show a distinction in quality perception, suggesting the MST3K version is much better appreciated. The overall tone of the review leans more towards negative due to the consistent use of critical language towards the film itself, despite the mention of a positive experience with the MST3K version. Therefore, while there are positive elements, they are overshadowed by the overall negative sentiment expressed towards the film itself.",
+    "classification": 0
+}</td>
+                            
+                            <td title="Click to view full content">✅ (TN)</td>
+                            
+                        </tr>
+                        
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="myModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <pre class="modal-text" id="modalText"></pre>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Analysis</h2>
+            <div class="analysis-section">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // Initialize DataTable
+            var table = $('#resultsTable').DataTable({
+                pageLength: 10,
+                lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+                order: [[0, 'asc']],
+                scrollX: true,
+                autoWidth: false,
+                columnDefs: [{
+                    targets: 5,  // Result column
+                    render: function(data, type, row) {
+                        if (type === 'display') {
+                            // Extract the prediction type from the result
+                            var match = data.match(/\(([^)]+)\)/);
+                            if (match) {
+                                var predType = match[1].toLowerCase();
+                                var icon = data.includes('✅') ? '✅' : '❌';
+                                return icon + ' <span class="result-type ' + predType + '">(' + match[1] + ')</span>';
+                            }
+                            return data;
+                        }
+                        return data;
+                    }
+                }]
+            });
+
+            // Modal functionality
+            var modal = document.getElementById("myModal");
+            var modalText = document.getElementById("modalText");
+            var span = document.getElementsByClassName("close")[0];
+
+            // Click handler for table cells
+            $('#resultsTable tbody').on('click', 'td', function() {
+                var cellContent = table.cell(this).data();
+                if (cellContent) {
+                    modalText.textContent = cellContent;
+                    modal.style.display = "block";
+                }
+            });
+
+            // Close modal handlers
+            span.onclick = function() {
+                modal.style.display = "none";
+            }
+
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = "none";
+                }
+            }
+
+            $(document).keydown(function(e) {
+                if (e.key === "Escape") {
+                    modal.style.display = "none";
+                }
+            });
+
+            // Adjust table column widths on window resize
+            $(window).resize(function() {
+                table.columns.adjust();
+            });
+        });
+    </script>
+</body>
+</html>
