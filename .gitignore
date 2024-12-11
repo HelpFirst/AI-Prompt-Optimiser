@@ -16,8 +16,10 @@ __pycache__/
 /src/iterative_prompt_optimization/__pycache__
 /examples/binary_classifier/model_cache
 /examples/multiclass_classifier/model_cache
-/examples/binary_classifier/runs
+/examples/binary_classifier/runs/*
 /examples/multiclass_classifier/runs
 /examples/muticlass_classifier/model_cache
 /examples/single_evaluation/experiments
 /examples/single_evaluation/model_cache
+examples/muticlass_classifier/example_news copy.ipynb
+examples/binary_classifier/example_sentiments copy.ipynb
