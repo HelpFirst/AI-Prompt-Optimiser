@@ -14,12 +14,15 @@ from .utils import (
 from . import config
 from rich import print as rprint
 from rich.panel import Panel
-from .dashboard_generator import generate_iteration_dashboard, generate_combined_dashboard
-from .model_interface import get_model_output, get_analysis
-from .dashboard_generator_multiclass import (
+from .dashboard_generator import (
+    generate_iteration_dashboard,
+    generate_combined_dashboard,
+    generate_iteration_dashboard_binary,
     generate_iteration_dashboard_multiclass,
+    generate_combined_dashboard_binary,
     generate_combined_dashboard_multiclass
 )
+from .model_interface import get_model_output, get_analysis
 
 def optimize_prompt(initial_prompt: str, output_format_prompt: str, eval_data: pd.DataFrame, 
                    iterations: int, eval_provider: str = None, eval_model: str = None, 

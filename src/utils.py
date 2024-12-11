@@ -10,6 +10,10 @@ from .config import PRICING, MODEL_OPTIONS, SELECTED_PROVIDER, MODEL_NAME
 from pathlib import Path
 import ast
 import pandas as pd
+from .dashboard_generator import (
+    generate_iteration_dashboard,
+    generate_combined_dashboard
+)
 
 console = Console()
 
@@ -609,146 +613,59 @@ def log_prompt_generation_multiclass(log_dir: str, iteration: int, initial_promp
     with open(log_file_path, 'w') as f:
         json.dump(log_data, f, indent=2)
 
-def regenerate_dashboards(experiment_dir: str):
-    """Regenerate dashboards from existing JSON files."""
-    import json
-    import os
-    from .dashboard_generator import generate_iteration_dashboard, generate_combined_dashboard
-    from .dashboard_generator_multiclass import (
-        generate_iteration_dashboard_multiclass,
-        generate_combined_dashboard_multiclass
-    )
+def regenerate_dashboards(path_to_data: str, is_binary: bool = True):
+    """
+    Regenerate dashboards for a specific experiment.
     
-    # Load initial setup
-    with open(os.path.join(experiment_dir, 'initial_setup.json'), 'r') as f:
-        initial_setup = json.load(f)
-        initial_prompt = initial_setup['initial_prompt']
-        output_format_prompt = initial_setup['output_format_prompt']
-        output_schema = initial_setup['output_schema']
+    Args:
+        path_to_data: Path to the experiment data directory
+        is_binary: Whether this is a binary classification problem
+    """
+    # Load experiment data
+    with open(os.path.join(path_to_data, 'experiment_config.json'), 'r') as f:
+        config = json.load(f)
     
-    # Load final results
-    with open(os.path.join(experiment_dir, 'final_results.json'), 'r') as f:
-        final_results = json.load(f)
-        best_prompt = final_results['best_prompt']
-        all_metrics = final_results['all_metrics']
+    # Get number of iterations from directory contents
+    iteration_files = [f for f in os.listdir(path_to_data) 
+                      if f.startswith('iteration_') and f.endswith('_evaluation.json')]
+    num_iterations = len(iteration_files)
     
-    # Determine problem type from output schema
-    value_mapping = output_schema.get('value_mapping', {})
-    problem_type = 'multiclass' if len(value_mapping) > 2 else 'binary'
+    # Load metrics for all iterations
+    all_metrics = []
+    for i in range(1, num_iterations + 1):
+        with open(os.path.join(path_to_data, f'iteration_{i}_evaluation.json'), 'r') as f:
+            metrics = json.load(f)
+            metrics['iteration'] = i
+            all_metrics.append(metrics)
     
-    print(f"Detected problem type: {problem_type}")
-    
-    # Generate iteration dashboards
-    iteration = 1
-    while True:
-        eval_file = os.path.join(experiment_dir, f'iteration_{iteration}_evaluation.json')
-        if not os.path.exists(eval_file):
-            break
-            
-        with open(eval_file, 'r') as f:
+    # Regenerate individual dashboards
+    for i in range(1, num_iterations + 1):
+        # Load iteration data
+        with open(os.path.join(path_to_data, f'iteration_{i}_evaluation.json'), 'r') as f:
             results = json.load(f)
-            
-        # Restructure results to match expected format
-        # Move metrics to top level for template access
-        results.update(results.get('metrics', {}))
         
-        # For multiclass, extract labels, predictions, and texts from evaluations
-        if problem_type == 'multiclass':
-            evaluations = results.get('evaluations', [])
-            results['labels'] = []
-            results['predictions'] = []
-            results['texts'] = []
-            results['chain_of_thought'] = []
-            results['raw_outputs'] = []
-            
-            for eval_item in evaluations:
-                results['texts'].append(eval_item.get('text', ''))
-                results['labels'].append(eval_item.get('label'))
-                results['predictions'].append(eval_item.get('transformed_output'))
-                results['chain_of_thought'].append(eval_item.get('chain_of_thought', 'N/A'))
-                results['raw_outputs'].append(eval_item.get('raw_output', 'N/A'))
+        with open(os.path.join(path_to_data, f'iteration_{i}_prompt_generation.json'), 'r') as f:
+            prompt_data = json.load(f)
         
-        # Load prompt generation results if they exist
-        prompt_gen_file = os.path.join(experiment_dir, f'iteration_{iteration}_prompt_generation.json')
-        if os.path.exists(prompt_gen_file):
-            with open(prompt_gen_file, 'r') as f:
-                prompt_gen = json.load(f)
-                if problem_type == 'binary':
-                    results.update({
-                        'analysis_results': prompt_gen.get('analysis_results', {}),
-                        'prompts_for_analysis': prompt_gen.get('prompts_for_analysis', {}),
-                        'initial_prompt': prompt_gen.get('initial_prompt', ''),
-                        'new_prompt': prompt_gen.get('new_prompt', '')
-                    })
-                else:
-                    # For multiclass, structure the prompts and analyses
-                    results.update({
-                        'correct_analysis': prompt_gen.get('correct_analysis', ''),
-                        'incorrect_analysis': prompt_gen.get('incorrect_analysis', ''),
-                        'initial_prompt': prompt_gen.get('initial_prompt', ''),
-                        'new_prompt': prompt_gen.get('new_prompt', ''),
-                        'prompts_used': {
-                            'correct_prompt': prompt_gen.get('prompts_for_analysis', {}).get('correct_prompt', ''),
-                            'incorrect_prompt': prompt_gen.get('prompts_for_analysis', {}).get('incorrect_prompt', ''),
-                            'prompt_engineer_input': prompt_gen.get('prompts_for_analysis', {}).get('prompt_engineer_input', '')
-                        }
-                    })
-        else:
-            # Initialize empty prompts_used if no prompt generation file exists
-            if problem_type == 'multiclass':
-                results['prompts_used'] = {
-                    'correct_prompt': '',
-                    'incorrect_prompt': '',
-                    'prompt_engineer_input': ''
-                }
-        
-        # Print debug information
-        print(f"\nIteration {iteration} data:")
-        print("Available keys:", list(results.keys()))
-        print("Metrics:", results.get('metrics', {}))
-        print("Number of samples:", len(results.get('evaluations', [])))
-        
-        # Generate appropriate dashboard
-        if problem_type == 'binary':
-            generate_iteration_dashboard(
-                experiment_dir, 
-                iteration,
-                results,
-                results.get('initial_prompt', ''),
-                output_format_prompt,
-                initial_prompt
-            )
-        else:
-            generate_iteration_dashboard_multiclass(
-                experiment_dir, 
-                iteration,
-                results,
-                results.get('initial_prompt', ''),
-                output_format_prompt,
-                initial_prompt
-            )
-        
-        iteration += 1
-    
-    # Generate appropriate combined dashboard based on problem type
-    if problem_type == 'binary':
-        generate_combined_dashboard(
-            experiment_dir,
-            all_metrics,
-            best_prompt,
-            output_format_prompt
-        )
-    else:
-        generate_combined_dashboard_multiclass(
-            experiment_dir,
-            all_metrics,
-            best_prompt,
-            output_format_prompt
+        # Generate dashboard
+        generate_iteration_dashboard(
+            log_dir=path_to_data,
+            iteration=i,
+            results=results,
+            current_prompt=prompt_data['initial_prompt'],
+            output_format_prompt=config['output_format_prompt'],
+            initial_prompt=config['initial_prompt'],
+            is_binary=is_binary
         )
     
-    print(f"Successfully regenerated dashboards for {experiment_dir}")
-    print(f"Problem type: {problem_type}")
-    print(f"Number of iterations processed: {iteration-1}")
+    # Generate combined dashboard
+    generate_combined_dashboard(
+        log_dir=path_to_data,
+        all_metrics=all_metrics,
+        best_prompt=prompt_data['new_prompt'],  # Use the last generated prompt
+        output_format_prompt=config['output_format_prompt'],
+        is_binary=is_binary
+    )
 
 def get_result_symbol(is_correct: bool, is_valid: bool, true_label: int, pred_label: int, problem_type: str = "binary") -> str:
     """
