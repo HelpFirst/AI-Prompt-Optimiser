@@ -1,0 +1,1087 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Iteration 2 Dashboard</title>
+    
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 15px;
+            background-color: #f8f9fa;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+        .metrics { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.8rem;
+            margin: 1rem 0;
+        }
+        .metric { 
+            text-align: center; 
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .metric strong {
+            display: block;
+            color: #34495e;
+            font-size: 0.85rem;
+            margin-bottom: 0.3rem;
+        }
+        .metric span {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #3498db;
+        }
+        .prompt, .analysis { 
+            background-color: #fff; 
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 0.8rem 0;
+            font-family: monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            border: 1px solid #eee;
+            max-width: 100%;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+        .confusion-matrix { 
+            width: 45%; 
+            margin: 15px auto; 
+            text-align: center; 
+            background: white;
+            padding: 0.8rem;
+            border-radius: 6px;
+        }
+        .confusion-matrix img { 
+            max-width: 100%; 
+            height: auto; 
+        }
+        table { 
+            width: 100%; 
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 1rem 0;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+            table-layout: fixed;
+            font-size: 0.85rem;
+        }
+        th, td { 
+            padding: 0.7rem;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 300px;
+        }
+        /* Column widths for evaluation table */
+        table#resultsTable th:nth-child(1), 
+        table#resultsTable td:nth-child(1) { width: 25%; } /* Text */
+        table#resultsTable th:nth-child(2),
+        table#resultsTable td:nth-child(2) { width: 10%; } /* True Label */
+        table#resultsTable th:nth-child(3),
+        table#resultsTable td:nth-child(3) { width: 10%; } /* Predicted */
+        table#resultsTable th:nth-child(4),
+        table#resultsTable td:nth-child(4) { width: 8%; } /* Result */
+        table#resultsTable th:nth-child(5),
+        table#resultsTable td:nth-child(5) { width: 25%; } /* Chain of Thought */
+        table#resultsTable th:nth-child(6),
+        table#resultsTable td:nth-child(6) { width: 22%; } /* Raw Output */
+        
+        th { 
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #34495e;
+            font-size: 0.85rem;
+        }
+        .section {
+            background: white;
+            border-radius: 6px;
+            padding: 1.2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 6px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-text {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-width: 100%;
+            font-family: monospace;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: #666;
+        }
+        .chart-container {
+            margin: 15px 0;
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        .best-value {
+            color: #2ecc71;
+            font-weight: 600;
+        }
+        .dataTables_wrapper {
+            padding: 0.8rem;
+            background: white;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            overflow-x: auto;
+            font-size: 0.85rem;
+        }
+        .dataTables_filter input,
+        .dataTables_length select {
+            padding: 0.4rem;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            margin: 0 0.4rem;
+            font-size: 0.85rem;
+        }
+        h1 {
+            color: #34495e;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 1.2rem;
+            margin-bottom: 0.8rem;
+            font-size: 1.4rem;
+        }
+        h3 {
+            color: #34495e;
+            margin-top: 1rem;
+            margin-bottom: 0.6rem;
+            font-size: 1.2rem;
+        }
+        h4 {
+            color: #34495e;
+            margin-top: 0.8rem;
+            margin-bottom: 0.4rem;
+            font-size: 1rem;
+        }
+        .result-icon {
+            font-weight: bold;
+        }
+        .result-success {
+            color: #2ecc71;
+        }
+        .result-failure {
+            color: #e74c3c;
+        }
+        .analysis-section {
+            margin-top: 0.8rem;
+        }
+        .analysis-section h3 {
+            margin-top: 1rem;
+            margin-bottom: 0.4rem;
+            color: #34495e;
+            font-size: 1.1rem;
+        }
+        .analysis-section h3:first-child {
+            margin-top: 0;
+        }
+        /* Custom scrollbar for better UX */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0.8rem;
+            }
+            .metrics {
+                grid-template-columns: 1fr;
+            }
+            .confusion-matrix {
+                width: 100%;
+            }
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+            th, td {
+                min-width: 100px;
+            }
+            body {
+                font-size: 13px;
+            }
+            h1 { font-size: 1.6rem; }
+            h2 { font-size: 1.3rem; }
+            h3 { font-size: 1.1rem; }
+            h4 { font-size: 0.95rem; }
+        }
+        /* Prediction type styles */
+        .result-type {
+            font-size: 0.8rem;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            margin-left: 0.3rem;
+            font-weight: normal;
+        }
+        .result-type.tp {
+            background-color: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+        }
+        .result-type.tn {
+            background-color: rgba(0, 123, 255, 0.2);
+            color: #007bff;
+        }
+        .result-type.fp {
+            background-color: rgba(255, 140, 0, 0.2);
+            color: #ff8c00;
+        }
+        .result-type.fn {
+            background-color: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+        }
+        .result-type.invalid {
+            background-color: #e2e3e5;
+            color: #383d41;
+        }
+        /* Combined Dashboard specific styles */
+        .combined-dashboard {
+            font-size: 0.85rem;
+        }
+        .combined-dashboard h1 {
+            font-size: 1.6rem;
+            margin: 1rem 0;
+        }
+        .combined-dashboard h2 {
+            font-size: 1.2rem;
+            margin: 0.8rem 0;
+        }
+        .combined-dashboard h3 {
+            font-size: 1rem;
+            margin: 0.6rem 0;
+        }
+        .combined-dashboard h4 {
+            font-size: 0.9rem;
+            margin: 0.4rem 0;
+        }
+        .combined-dashboard .section {
+            padding: 0.8rem;
+            margin-bottom: 1rem;
+        }
+        .combined-dashboard .metrics {
+            gap: 0.6rem;
+            margin: 0.8rem 0;
+        }
+        .combined-dashboard .metric {
+            padding: 0.8rem;
+        }
+        .combined-dashboard .metric strong {
+            font-size: 0.8rem;
+            margin-bottom: 0.2rem;
+        }
+        .combined-dashboard .metric span {
+            font-size: 1rem;
+        }
+        .combined-dashboard .prompt {
+            font-size: 0.8rem;
+            padding: 0.8rem;
+            margin: 0.6rem 0;
+        }
+        .combined-dashboard .analysis {
+            font-size: 0.8rem;
+            padding: 0.8rem;
+            margin: 0.6rem 0;
+        }
+        .combined-dashboard .chart-container {
+            margin: 0.8rem 0;
+            padding: 0.8rem;
+        }
+        /* Combined Dashboard table styles */
+        .combined-dashboard .prompt-cell {
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: pointer;
+            color: #2980b9;
+            text-decoration: underline;
+        }
+        .combined-dashboard .prompt-cell:hover {
+            color: #3498db;
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+        .combined-dashboard #summaryTable th:nth-child(1) { width: 8%; } /* Iteration */
+        .combined-dashboard #summaryTable th:nth-child(2) { width: 20%; } /* Prompt */
+        .combined-dashboard #summaryTable th:nth-child(3) { width: 12%; } /* Precision */
+        .combined-dashboard #summaryTable th:nth-child(4) { width: 12%; } /* Recall */
+        .combined-dashboard #summaryTable th:nth-child(5) { width: 12%; } /* Accuracy */
+        .combined-dashboard #summaryTable th:nth-child(6) { width: 12%; } /* F1-score */
+        .combined-dashboard #summaryTable th:nth-child(7) { width: 10%; } /* Valid Predictions */
+        .combined-dashboard #summaryTable th:nth-child(8) { width: 10%; } /* Invalid Predictions */
+        
+        .combined-dashboard #summaryTable td {
+            padding: 0.7rem;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 300px;
+        }
+        
+        .combined-dashboard #summaryTable td:hover {
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+    </style>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.24/css/jquery.dataTables.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Iteration 2 Results</h1>
+        
+        <!-- Metrics Section -->
+        <div class="section">
+            <h2>Metrics</h2>
+            <div class="metrics">
+                <div class="metric">
+                    <strong>Precision</strong>
+                    <span>0.8920</span>
+                </div>
+                <div class="metric">
+                    <strong>Recall</strong>
+                    <span>0.8750</span>
+                </div>
+                <div class="metric">
+                    <strong>Accuracy</strong>
+                    <span>0.8750</span>
+                </div>
+                <div class="metric">
+                    <strong>F1 Score</strong>
+                    <span>0.8779</span>
+                </div>
+                <div class="metric">
+                    <strong>Valid Predictions</strong>
+                    <span>40</span>
+                </div>
+                <div class="metric">
+                    <strong>Invalid Predictions</strong>
+                    <span>0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confusion Matrix -->
+        <div class="section">
+            <h2>Confusion Matrix</h2>
+            <div class="confusion-matrix">
+                <img src="data:image/png;base64,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B+q5557T9OnTtXv3bm3YsEFvvvmmpk+fLknq06ePdu7cqUGDBmn79u2aNWuWPvroI6++58GDB5WQkOBxnDp1SrfeeqvWrVunRYsWaceOHRoyZIji4+PTff7ixYvq2bOnfv/9dy1YsEBDhw5V37595efn51XsAIDsg2QAAP6/vHnzasWKFSpTpow6duyo8PBw9ezZUxcuXEirFAwYMECPPfaYIiMj01ppOnTocM15p0yZooceekhPP/20KleurCeeeEJJSUmSpFtuuUXDhw/XCy+8oGLFiqlv376SpFdffVVDhgxRXFycwsPDdc8992j+/PkqX768JKlMmTL66quvNHfuXNWsWVNTp07VqFGjvPqeY8eOVe3atT2O+fPnq3fv3urYsaM6d+6s+vXr68SJEx5VgstatGihW2+9VU2aNFHnzp31wAMPeKzFuF7sAIDsw+G+2qo3AAAAAJZGZQAAAACwKZIBAAAAwKZIBgAAAACbIhkAAAAAbIpkAAAAALApkgEAAADApkgGAAAAAJsiGQAAAABsimQAAAAAsCmSAQAAAMCmSAYAAAAAm/p/Xqgm1qsqSCUAAAAASUVORK5CYII=" alt="Confusion Matrix">
+            </div>
+        </div>
+
+        <!-- Current Prompt -->
+        <div class="section">
+            <h2>Current Prompt</h2>
+            <div class="prompt">## Improved Prompt:
+
+Your goal is to classify the following news headlines into one of the following categories:
+1- World
+2- Sports
+3- Business
+4- Sci/Tech
+
+When classifying, adhere to the following guidelines:
+
+- **World**: Look for geopolitical events, conflicts, or significant social issues. Be cautious of geographical references that may relate to sports. Avoid classifying headlines as 'World' if they primarily discuss competitive events or sports terminology.
+
+- **Sports**: Identify terms related to teams, players, or specific sports terminology. If a headline includes geographical mentions but focuses on competition (e.g., "fighting chance"), classify it as 'Sports' rather than 'World'.
+
+- **Business**: Focus on financial terminology, corporate actions, and economic indicators. If a headline discusses economic issues with geopolitical implications (e.g., oil exports), classify it as 'World' instead of 'Business'.
+
+- **Sci/Tech**: Look for terms related to technology, scientific exploration, or digital advancements. If economic discussions are framed in a technological context, classify them as 'Sci/Tech' rather than 'Business'.
+
+Provide your response as a JSON dictionary with the following structure:
+{
+    "chain_of_thought": "Your step-by-step reasoning here, breaking down the headline into its components and assessing the implications of each term. Ensure your reasoning avoids overgeneralization and aligns closely with the specific context of the headline.",
+    "topic": "The identified topic - the ONLY possible topics are 'World', 'Sports', 'Business', 'Sci/Tech'. Output just one single category."
+}</div>
+        </div>
+
+        <!-- Evaluation Results -->
+        <div class="section">
+            <h2>Evaluation Results</h2>
+            <table id="resultsTable" class="display">
+                <thead>
+                    <tr>
+                        
+                        <th>Text</th>
+                        
+                        <th>True Label</th>
+                        
+                        <th>Predicted</th>
+                        
+                        <th>Result</th>
+                        
+                        <th>Chain of Thought</th>
+                        
+                        <th>Raw Output</th>
+                        
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                    <tr>
+                        <td class="clickable">Greenspan: Debt, home prices not dangerous</td>
+                        <td class="clickable">Sci/Tech</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">❌</td>
+                        <td class="clickable">The headline mentions 'Greenspan', who is a well-known figure in economics, specifically related to monetary policy and financial markets. The terms 'debt' and 'home prices' are associated with economic discussions and financial stability. Therefore, the focus is on economic conditions and indicators rather than any specific geopolitical event or technological advancement. This suggests that the headline is best categorized under 'Business'.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions 'Greenspan', who is a well-known figure in economics, specifically related to monetary policy and financial markets. The terms 'debt' and 'home prices' are associated with economic discussions and financial stability. Therefore, the focus is on economic conditions and indicators rather than any specific geopolitical event or technological advancement. This suggests that the headline is best categorized under 'Business'.",
+    "topic": "Business"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Explorers Find Ancient City in Remote Peru Jungle (Reuters)</td>
+                        <td class="clickable">Sci/Tech</td>
+                        <td class="clickable">Sci/Tech</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline discusses explorers discovering an ancient city, which indicates a focus on historical and archaeological aspects. The phrase 'ancient city' suggests a significant finding that aligns with scientific exploration rather than a current geopolitical issue or conflict. The mention of 'remote Peru jungle' provides a geographical context but does not imply a sports or business context. Therefore, this headline is best categorized under Sci/Tech as it relates to exploration and discoveries in archaeology.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline discusses explorers discovering an ancient city, which indicates a focus on historical and archaeological aspects. The phrase 'ancient city' suggests a significant finding that aligns with scientific exploration rather than a current geopolitical issue or conflict. The mention of 'remote Peru jungle' provides a geographical context but does not imply a sports or business context. Therefore, this headline is best categorized under Sci/Tech as it relates to exploration and discoveries in archaeology.",
+    "topic": "Sci/Tech"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Countdown to Deep Impact</td>
+                        <td class="clickable">Sci/Tech</td>
+                        <td class="clickable">Sci/Tech</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline 'Countdown to Deep Impact' suggests a significant event related to scientific exploration or technology, particularly in the context of space. The term 'Deep Impact' could relate to a space mission or experiment, indicating a focus on astronomical phenomena or advancements in space technology. Therefore, this headline aligns closely with the category of Sci/Tech, as it deals with a scientific initiative rather than any of the other categories.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline 'Countdown to Deep Impact' suggests a significant event related to scientific exploration or technology, particularly in the context of space. The term 'Deep Impact' could relate to a space mission or experiment, indicating a focus on astronomical phenomena or advancements in space technology. Therefore, this headline aligns closely with the category of Sci/Tech, as it deals with a scientific initiative rather than any of the other categories.",
+    "topic": "Sci/Tech"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Ali gives Iraq fighting chance</td>
+                        <td class="clickable">Sports</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">❌</td>
+                        <td class="clickable">The headline mentions 'Iraq', which could imply a geopolitical context. The phrase 'fighting chance' suggests a struggle or competition, which may relate to a sports scenario or a significant world issue. However, without specific sports terminology or references to sporting events, and considering the mention of Iraq, this is likely a reference to a geopolitical issue or conflict, making it more suitable for the 'World' category rather than 'Sports'.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions 'Iraq', which could imply a geopolitical context. The phrase 'fighting chance' suggests a struggle or competition, which may relate to a sports scenario or a significant world issue. However, without specific sports terminology or references to sporting events, and considering the mention of Iraq, this is likely a reference to a geopolitical issue or conflict, making it more suitable for the 'World' category rather than 'Sports'.",
+    "topic": "World"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Lloyds TSB to Move More Than 1,000 UK Jobs to Asia (Update1)</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline discusses Lloyds TSB, a financial institution, making a decision to relocate a significant number of jobs from the UK to Asia. This indicates a corporate action that directly relates to business operations, employment, and potentially financial implications of such a move. The phrase 'Move More Than 1,000 UK Jobs' suggests a focus on workforce management, while 'to Asia' indicates geographical economic strategy rather than a geopolitical issue, which would be more aligned with world news. Therefore, the emphasis on job relocation and its corporate context leads to a classification under business.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline discusses Lloyds TSB, a financial institution, making a decision to relocate a significant number of jobs from the UK to Asia. This indicates a corporate action that directly relates to business operations, employment, and potentially financial implications of such a move. The phrase 'Move More Than 1,000 UK Jobs' suggests a focus on workforce management, while 'to Asia' indicates geographical economic strategy rather than a geopolitical issue, which would be more aligned with world news. Therefore, the emphasis on job relocation and its corporate context leads to a classification under business.",
+    "topic": "Business"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Free Windows doesn #39;t stop Linux rush</td>
+                        <td class="clickable">Sci/Tech</td>
+                        <td class="clickable">Sci/Tech</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline discusses the impact of free Windows operating systems on the popularity of Linux. The focus on operating systems and the mention of Linux indicates a discussion around technology, specifically regarding software and operating system choices. The term 'rush' implies a trend or movement in the tech community towards Linux, which aligns it with technological advancements and shifts in user preferences. Since the primary focus is on operating systems and their implications in the tech landscape, this headline falls under the category of Sci/Tech.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline discusses the impact of free Windows operating systems on the popularity of Linux. The focus on operating systems and the mention of Linux indicates a discussion around technology, specifically regarding software and operating system choices. The term 'rush' implies a trend or movement in the tech community towards Linux, which aligns it with technological advancements and shifts in user preferences. Since the primary focus is on operating systems and their implications in the tech landscape, this headline falls under the category of Sci/Tech.",
+    "topic": "Sci/Tech"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Iraqi oil exports slump: report</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">❌</td>
+                        <td class="clickable">The headline mentions 'Iraqi oil exports', which directly relates to the oil industry and indicates a focus on economic performance. The term 'slump' suggests a decline, which further emphasizes the business aspect of oil exports. There are no references to geopolitical events or sports, and the mention of oil exports is primarily a financial issue, making it appropriate for the Business category.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions 'Iraqi oil exports', which directly relates to the oil industry and indicates a focus on economic performance. The term 'slump' suggests a decline, which further emphasizes the business aspect of oil exports. There are no references to geopolitical events or sports, and the mention of oil exports is primarily a financial issue, making it appropriate for the Business category.",
+    "topic": "Business"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Robson  #39; Massively Disappointed #39; at Newcastle Exit</td>
+                        <td class="clickable">Sports</td>
+                        <td class="clickable">Sports</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions 'Robson' and 'Newcastle', which indicates a connection to a sports context, likely referring to a player or a coach associated with Newcastle United, a football club. The phrase 'Massively Disappointed' suggests an emotional reaction typical in sports narratives, especially regarding player transfers or exits from a team. Given that the terms and context are clearly related to the sports world rather than any geopolitical, economic, or scientific issues, this headline fits firmly within the sports category.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions 'Robson' and 'Newcastle', which indicates a connection to a sports context, likely referring to a player or a coach associated with Newcastle United, a football club. The phrase 'Massively Disappointed' suggests an emotional reaction typical in sports narratives, especially regarding player transfers or exits from a team. Given that the terms and context are clearly related to the sports world rather than any geopolitical, economic, or scientific issues, this headline fits firmly within the sports category.",
+    "topic": "Sports"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Gay Marriage Issue Motivates Conservatives</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline discusses 'Gay Marriage Issue', which indicates a social and political topic rather than a sporting event, business activity, or a scientific/technological development. The term 'Motivates Conservatives' suggests engagement in a sociopolitical context, likely related to debates around rights and legislation. This aligns with significant social issues that impact societies and political landscapes, thus categorizing it under World news.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline discusses 'Gay Marriage Issue', which indicates a social and political topic rather than a sporting event, business activity, or a scientific/technological development. The term 'Motivates Conservatives' suggests engagement in a sociopolitical context, likely related to debates around rights and legislation. This aligns with significant social issues that impact societies and political landscapes, thus categorizing it under World news.",
+    "topic": "World"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Indexes in Japan fall short of hype</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions 'Indexes in Japan', which indicates a focus on financial markets. The term 'fall short of hype' suggests a discussion surrounding market performance, expectations, and potentially economic indicators. This aligns with financial and business-related terminology rather than a specific sports event or scientific advancement.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions 'Indexes in Japan', which indicates a focus on financial markets. The term 'fall short of hype' suggests a discussion surrounding market performance, expectations, and potentially economic indicators. This aligns with financial and business-related terminology rather than a specific sports event or scientific advancement.",
+    "topic": "Business"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Schumacher escapes high-speed practice crash</td>
+                        <td class="clickable">Sports</td>
+                        <td class="clickable">Sports</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions 'Schumacher' which likely refers to a well-known figure in motorsports, specifically Formula 1. The term 'high-speed practice crash' indicates an event related to racing, where practice sessions are common occurrences. The focus on a crash during practice further emphasizes that this is related to a sporting event rather than any geopolitical issue, financial news, or scientific advancement. Therefore, the context strongly aligns with sports.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions 'Schumacher' which likely refers to a well-known figure in motorsports, specifically Formula 1. The term 'high-speed practice crash' indicates an event related to racing, where practice sessions are common occurrences. The focus on a crash during practice further emphasizes that this is related to a sporting event rather than any geopolitical issue, financial news, or scientific advancement. Therefore, the context strongly aligns with sports.",
+    "topic": "Sports"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">US Airways Pilots Approve 18 Pay Cut</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions 'US Airways Pilots,' which indicates a focus on the airline industry and likely relates to business operations. The term 'Pay Cut' suggests an economic decision affecting the pilots, implying a corporate financial move. This does not pertain to sports or world events, nor does it involve scientific or technological advancements. Therefore, this headline is best classified under the Business category.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions 'US Airways Pilots,' which indicates a focus on the airline industry and likely relates to business operations. The term 'Pay Cut' suggests an economic decision affecting the pilots, implying a corporate financial move. This does not pertain to sports or world events, nor does it involve scientific or technological advancements. Therefore, this headline is best classified under the Business category.",
+    "topic": "Business"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Media center at your fingertips</td>
+                        <td class="clickable">Sci/Tech</td>
+                        <td class="clickable">Sci/Tech</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The phrase 'Media center at your fingertips' suggests an emphasis on accessibility and convenience in relation to media consumption. This strongly implies a technological advancement or a digital service that allows users to easily access various media content. The use of the term 'media center' indicates a focus on technology and how it can enhance user experience, which aligns with the Sci/Tech category. There are no references to geopolitical events, sports, or business financial terms that would suggest a classification in those areas.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The phrase 'Media center at your fingertips' suggests an emphasis on accessibility and convenience in relation to media consumption. This strongly implies a technological advancement or a digital service that allows users to easily access various media content. The use of the term 'media center' indicates a focus on technology and how it can enhance user experience, which aligns with the Sci/Tech category. There are no references to geopolitical events, sports, or business financial terms that would suggest a classification in those areas.",
+    "topic": "Sci/Tech"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Israel OKs More West Bank Settlement Homes</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline discusses Israel's decision to approve additional settlement homes in the West Bank, which is a significant geopolitical issue. The reference to 'Israel' and 'West Bank' indicates a focus on regional politics and social issues surrounding settlements, which are often contentious in the context of international relations and human rights. This does not relate to sports, business, or technology, as it centers on a world event concerning land and governance.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline discusses Israel's decision to approve additional settlement homes in the West Bank, which is a significant geopolitical issue. The reference to 'Israel' and 'West Bank' indicates a focus on regional politics and social issues surrounding settlements, which are often contentious in the context of international relations and human rights. This does not relate to sports, business, or technology, as it centers on a world event concerning land and governance.",
+    "topic": "World"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Israel, Egypt in Prisoner Swap</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions Israel and Egypt, which are countries involved in a significant geopolitical event related to a prisoner swap. This suggests a focus on international relations and diplomatic efforts, fitting into the 'World' category. There are no references to sports, business, or technology in this headline, which further confirms that the topic is primarily about a geopolitical issue.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions Israel and Egypt, which are countries involved in a significant geopolitical event related to a prisoner swap. This suggests a focus on international relations and diplomatic efforts, fitting into the 'World' category. There are no references to sports, business, or technology in this headline, which further confirms that the topic is primarily about a geopolitical issue.",
+    "topic": "World"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Cablevision Narrows Loss on Revenue Surge</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions 'Cablevision', which suggests a focus on a media or telecommunications company. The term 'narrows loss' indicates a financial context, typically associated with business performance. Additionally, 'revenue surge' further emphasizes the financial aspect, highlighting an increase in earnings. Therefore, the headline primarily deals with business performance rather than technology or sports.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions 'Cablevision', which suggests a focus on a media or telecommunications company. The term 'narrows loss' indicates a financial context, typically associated with business performance. Additionally, 'revenue surge' further emphasizes the financial aspect, highlighting an increase in earnings. Therefore, the headline primarily deals with business performance rather than technology or sports.",
+    "topic": "Business"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Blu-ray group mandates Microsoft codec for BD-ROM</td>
+                        <td class="clickable">Sci/Tech</td>
+                        <td class="clickable">Sci/Tech</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions 'Blu-ray group' which relates to a technology standard for optical disc storage. The term 'codec' indicates a technological aspect related to digital media, specifically how audio and video are compressed and decompressed. This suggests that the focus is on advancements or standards in technology rather than business dealings or geopolitical events. Therefore, the context of the headline aligns closely with technological developments.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions 'Blu-ray group' which relates to a technology standard for optical disc storage. The term 'codec' indicates a technological aspect related to digital media, specifically how audio and video are compressed and decompressed. This suggests that the focus is on advancements or standards in technology rather than business dealings or geopolitical events. Therefore, the context of the headline aligns closely with technological developments.",
+    "topic": "Sci/Tech"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Surrey poised to sign Harbhajan</td>
+                        <td class="clickable">Sports</td>
+                        <td class="clickable">Sports</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline refers to Surrey, likely a cricket team, and mentions Harbhajan, who is known as a professional cricketer. The use of the word 'sign' indicates a contract or agreement related to sports, specifically in the context of team rosters. Therefore, this headline is focused on a sports event involving a team and a player, which is a clear indicator of the sports category.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline refers to Surrey, likely a cricket team, and mentions Harbhajan, who is known as a professional cricketer. The use of the word 'sign' indicates a contract or agreement related to sports, specifically in the context of team rosters. Therefore, this headline is focused on a sports event involving a team and a player, which is a clear indicator of the sports category.",
+    "topic": "Sports"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Ford: Monthly Sales Drop, Company Looks To New Vehicles</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions 'Ford', which is a well-known automotive company, indicating a focus on corporate performance. The terms 'Monthly Sales Drop' and 'Company Looks To New Vehicles' suggest a discussion about business performance and strategies for growth in the automotive sector. There's no mention of sports, world events, or scientific/technological advancements directly, making it clear that the primary focus is on business dynamics within the automotive industry.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions 'Ford', which is a well-known automotive company, indicating a focus on corporate performance. The terms 'Monthly Sales Drop' and 'Company Looks To New Vehicles' suggest a discussion about business performance and strategies for growth in the automotive sector. There's no mention of sports, world events, or scientific/technological advancements directly, making it clear that the primary focus is on business dynamics within the automotive industry.",
+    "topic": "Business"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">At least 20 dead in Kurkik bombing</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions a bombing in Kurkik, which indicates a violent event likely related to a conflict or geopolitical issue. The phrase 'At least 20 dead' suggests significant casualties, pointing towards a serious social issue. The geographical reference to Kurkik does not relate to sports or business but rather to a world event. Therefore, this headline clearly falls under the category of World news as it addresses a tragic event impacting human life and safety.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions a bombing in Kurkik, which indicates a violent event likely related to a conflict or geopolitical issue. The phrase 'At least 20 dead' suggests significant casualties, pointing towards a serious social issue. The geographical reference to Kurkik does not relate to sports or business but rather to a world event. Therefore, this headline clearly falls under the category of World news as it addresses a tragic event impacting human life and safety.",
+    "topic": "World"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">SEC Adopts New Rules for Hedge Funds</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions the SEC, which refers to the Securities and Exchange Commission, a key regulatory body in the financial sector. The term 'new rules for hedge funds' indicates a focus on financial regulations and governance pertaining to investment funds. This strongly suggests that the headline relates to changes in business practices and regulations, rather than geopolitical issues, sports events, or scientific advancements. Therefore, the context clearly points towards a business-related topic.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions the SEC, which refers to the Securities and Exchange Commission, a key regulatory body in the financial sector. The term 'new rules for hedge funds' indicates a focus on financial regulations and governance pertaining to investment funds. This strongly suggests that the headline relates to changes in business practices and regulations, rather than geopolitical issues, sports events, or scientific advancements. Therefore, the context clearly points towards a business-related topic.",
+    "topic": "Business"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Obesity Solution: Nuke It</td>
+                        <td class="clickable">Sci/Tech</td>
+                        <td class="clickable">Sci/Tech</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline 'Obesity Solution: Nuke It' suggests a potential approach to addressing the issue of obesity, which is a significant public health topic. The use of the word 'nuke' can imply a drastic or radical solution, perhaps referencing controversial methods or technologies in the realm of health and science. This headline does not reference any specific geopolitical events, sports, or financial aspects, but rather hints at a scientific or technological approach to a health issue. Given this context, it aligns most closely with the Sci/Tech category as it involves potential technological solutions to a health problem.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline 'Obesity Solution: Nuke It' suggests a potential approach to addressing the issue of obesity, which is a significant public health topic. The use of the word 'nuke' can imply a drastic or radical solution, perhaps referencing controversial methods or technologies in the realm of health and science. This headline does not reference any specific geopolitical events, sports, or financial aspects, but rather hints at a scientific or technological approach to a health issue. Given this context, it aligns most closely with the Sci/Tech category as it involves potential technological solutions to a health problem.",
+    "topic": "Sci/Tech"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">United #39;s pension dilemma</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline 'United's pension dilemma' refers to a financial issue concerning United, likely a corporation or organization, and its pension plans. The term 'pension' indicates a discussion about retirement benefits, which falls under financial and corporate matters. There is no indication of sports, geopolitical events, or scientific exploration in the wording. Thus, it directly relates to business.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline 'United's pension dilemma' refers to a financial issue concerning United, likely a corporation or organization, and its pension plans. The term 'pension' indicates a discussion about retirement benefits, which falls under financial and corporate matters. There is no indication of sports, geopolitical events, or scientific exploration in the wording. Thus, it directly relates to business.",
+    "topic": "Business"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Ortiz, Sox rally to fight another day: Sink Yanks in 14, send &lt;b&gt;...&lt;/b&gt;</td>
+                        <td class="clickable">Sports</td>
+                        <td class="clickable">Sports</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions 'Ortiz' and 'Sox,' which directly refer to a player (likely David Ortiz) and a sports team (Boston Red Sox). The phrase 'rally to fight another day' implies a competitive sports context, specifically in a game situation. Additionally, 'Sink Yanks' refers to defeating the New York Yankees, a well-known rival in baseball. The use of terms like 'rally' and the context of '14' likely refers to an extra innings game, common in baseball reporting. Therefore, this headline is clearly related to sports.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions 'Ortiz' and 'Sox,' which directly refer to a player (likely David Ortiz) and a sports team (Boston Red Sox). The phrase 'rally to fight another day' implies a competitive sports context, specifically in a game situation. Additionally, 'Sink Yanks' refers to defeating the New York Yankees, a well-known rival in baseball. The use of terms like 'rally' and the context of '14' likely refers to an extra innings game, common in baseball reporting. Therefore, this headline is clearly related to sports.",
+    "topic": "Sports"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Cycling: Ulmer #39;s scorching times in secret rides</td>
+                        <td class="clickable">Sports</td>
+                        <td class="clickable">Sports</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions 'Cycling' which directly indicates that the topic is sports-related. The reference to 'Ulmer #39' suggests a specific cyclist and their performance, which is a key aspect of sports news. The term 'scorching times' further emphasizes athletic performance, reinforcing that this is about sports rather than any other category.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions 'Cycling' which directly indicates that the topic is sports-related. The reference to 'Ulmer #39' suggests a specific cyclist and their performance, which is a key aspect of sports news. The term 'scorching times' further emphasizes athletic performance, reinforcing that this is about sports rather than any other category.",
+    "topic": "Sports"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Comcast part of group wanting to buy MGM</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions 'Comcast', which is a major telecommunications and media company, and 'MGM', referring to the entertainment company Metro-Goldwyn-Mayer. The phrase 'wanting to buy' indicates a business transaction or acquisition, which falls under financial activities and corporate strategies. This clearly aligns with the business sector as it deals with corporate entities and market dynamics rather than geopolitical issues, sports events, or technological advancements.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions 'Comcast', which is a major telecommunications and media company, and 'MGM', referring to the entertainment company Metro-Goldwyn-Mayer. The phrase 'wanting to buy' indicates a business transaction or acquisition, which falls under financial activities and corporate strategies. This clearly aligns with the business sector as it deals with corporate entities and market dynamics rather than geopolitical issues, sports events, or technological advancements.",
+    "topic": "Business"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Large Explosion Heard in Central Baghdad (Reuters)</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions a 'Large Explosion' occurring in 'Central Baghdad', which indicates a significant event that is likely related to conflict or a geopolitical issue. The mention of a specific location (Baghdad) further suggests a world news event, as it pertains to a city known for its historical and political significance. There are no references to sports, business, or technology in this headline, reinforcing the classification as a world news event.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions a 'Large Explosion' occurring in 'Central Baghdad', which indicates a significant event that is likely related to conflict or a geopolitical issue. The mention of a specific location (Baghdad) further suggests a world news event, as it pertains to a city known for its historical and political significance. There are no references to sports, business, or technology in this headline, reinforcing the classification as a world news event.",
+    "topic": "World"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Georgian Troops Leave South Ossetia</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions 'Georgian Troops', which indicates a military and geopolitical context. The term 'South Ossetia' refers to a region that has been a site of conflict and significant political tension, particularly between Georgia and Russia. This implies that the news is related to international relations and likely involves issues of territorial disputes or military actions. Therefore, this headline fits within the category of World news, as it deals with an event that has implications for global politics and regional stability.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions 'Georgian Troops', which indicates a military and geopolitical context. The term 'South Ossetia' refers to a region that has been a site of conflict and significant political tension, particularly between Georgia and Russia. This implies that the news is related to international relations and likely involves issues of territorial disputes or military actions. Therefore, this headline fits within the category of World news, as it deals with an event that has implications for global politics and regional stability.",
+    "topic": "World"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Treasuries Tussle with Profit-Takers</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline discusses 'Treasuries', which refers to government debt securities, indicating a financial context. The term 'Profit-Takers' suggests that investors are selling their holdings to secure gains, which is a common practice in the business and finance sector. The focus here is clearly on market dynamics rather than any geopolitical or technological issues. Therefore, this headline is primarily related to financial markets and should be classified under the Business category.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline discusses 'Treasuries', which refers to government debt securities, indicating a financial context. The term 'Profit-Takers' suggests that investors are selling their holdings to secure gains, which is a common practice in the business and finance sector. The focus here is clearly on market dynamics rather than any geopolitical or technological issues. Therefore, this headline is primarily related to financial markets and should be classified under the Business category.",
+    "topic": "Business"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">MEPs threaten to sink commission over Buttiglione</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline references MEPs (Members of the European Parliament) and their threat regarding the commission, indicating a political context. The mention of Buttiglione suggests a figure involved in European politics. This suggests a geopolitical event related to governance and political dynamics within the European framework, rather than any sports, business, or technological themes. Therefore, it falls under the category of World news.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline references MEPs (Members of the European Parliament) and their threat regarding the commission, indicating a political context. The mention of Buttiglione suggests a figure involved in European politics. This suggests a geopolitical event related to governance and political dynamics within the European framework, rather than any sports, business, or technological themes. Therefore, it falls under the category of World news.",
+    "topic": "World"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Charlestown opens up in OT</td>
+                        <td class="clickable">Sports</td>
+                        <td class="clickable">Sports</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline 'Charlestown opens up in OT' suggests a context related to a sports event, particularly a game that has gone into overtime (OT). The term 'Charlestown' likely refers to a sports team or location associated with a sporting event, as OT is commonly used in sports terminology to indicate an extension of play when the score is tied. There are no indications of geopolitical issues, financial discussions, or technological advancements in this headline.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline 'Charlestown opens up in OT' suggests a context related to a sports event, particularly a game that has gone into overtime (OT). The term 'Charlestown' likely refers to a sports team or location associated with a sporting event, as OT is commonly used in sports terminology to indicate an extension of play when the score is tied. There are no indications of geopolitical issues, financial discussions, or technological advancements in this headline.",
+    "topic": "Sports"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Scores of Iraqis die in 3 days of attacks</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions 'Iraqis' and 'attacks', which indicates a context of violence and conflict. This suggests that the events described are related to geopolitical issues or significant social unrest occurring in Iraq. Given that the headline does not reference sports, business, or technology, and focuses on a serious issue involving loss of life in a specific geographic area, it clearly aligns with the 'World' category.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions 'Iraqis' and 'attacks', which indicates a context of violence and conflict. This suggests that the events described are related to geopolitical issues or significant social unrest occurring in Iraq. Given that the headline does not reference sports, business, or technology, and focuses on a serious issue involving loss of life in a specific geographic area, it clearly aligns with the 'World' category.",
+    "topic": "World"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">China Closes 1,600 Internet Cafes in Crackdown</td>
+                        <td class="clickable">Sci/Tech</td>
+                        <td class="clickable">Sci/Tech</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions 'China' which indicates a geographic location, but it also refers to the closure of '1,600 Internet Cafes' in a context that suggests a regulatory or governmental action. This action likely pertains to internet regulations or censorship, which are relevant to the realm of technology and internet use. There are no references to sports, business transactions, or broader world conflicts beyond this specific regulatory action. Therefore, the most appropriate classification for this headline is 'Sci/Tech' due to its focus on internet infrastructure and implications of a crackdown on technology usage.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions 'China' which indicates a geographic location, but it also refers to the closure of '1,600 Internet Cafes' in a context that suggests a regulatory or governmental action. This action likely pertains to internet regulations or censorship, which are relevant to the realm of technology and internet use. There are no references to sports, business transactions, or broader world conflicts beyond this specific regulatory action. Therefore, the most appropriate classification for this headline is 'Sci/Tech' due to its focus on internet infrastructure and implications of a crackdown on technology usage.",
+    "topic": "Sci/Tech"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Guyanese Batsmen Lead Windies Into Semis Of ICC Champions Trophy</td>
+                        <td class="clickable">Sports</td>
+                        <td class="clickable">Sports</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions 'Guyanese Batsmen', which refers to cricket players from Guyana, indicating a sports context. It also states 'Windies', a common nickname for the West Indies cricket team, and mentions 'ICC Champions Trophy', a specific cricket tournament. These elements are all clearly related to sports, specifically cricket, rather than any geopolitical, business, or scientific context.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions 'Guyanese Batsmen', which refers to cricket players from Guyana, indicating a sports context. It also states 'Windies', a common nickname for the West Indies cricket team, and mentions 'ICC Champions Trophy', a specific cricket tournament. These elements are all clearly related to sports, specifically cricket, rather than any geopolitical, business, or scientific context.",
+    "topic": "Sports"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">IBM to commercialize Blue Gene supercomputer</td>
+                        <td class="clickable">Sci/Tech</td>
+                        <td class="clickable">Sci/Tech</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions IBM, which is a technology company, and references the commercialization of the Blue Gene supercomputer. The term 'supercomputer' is clearly associated with technology and scientific advancements. The focus on commercialization indicates a business angle, but since it primarily relates to a technological product, the context leans more towards Sci/Tech. Additionally, the emphasis on the supercomputer suggests advancements in computational capabilities, which align with scientific and technological themes.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions IBM, which is a technology company, and references the commercialization of the Blue Gene supercomputer. The term 'supercomputer' is clearly associated with technology and scientific advancements. The focus on commercialization indicates a business angle, but since it primarily relates to a technological product, the context leans more towards Sci/Tech. Additionally, the emphasis on the supercomputer suggests advancements in computational capabilities, which align with scientific and technological themes.",
+    "topic": "Sci/Tech"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Agassi Overcomes Verdasco Power</td>
+                        <td class="clickable">Sports</td>
+                        <td class="clickable">Sports</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline 'Agassi Overcomes Verdasco Power' clearly references two tennis players: Agassi and Verdasco. The use of the term 'Overcomes' suggests a competitive sports context, indicating a match or rivalry. The mention of 'Power' could refer to Verdasco's playing style, which is often characterized as powerful. Therefore, the terms and context indicate that this headline pertains to a sports event rather than any geopolitical, business, or technological issue.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline 'Agassi Overcomes Verdasco Power' clearly references two tennis players: Agassi and Verdasco. The use of the term 'Overcomes' suggests a competitive sports context, indicating a match or rivalry. The mention of 'Power' could refer to Verdasco's playing style, which is often characterized as powerful. Therefore, the terms and context indicate that this headline pertains to a sports event rather than any geopolitical, business, or technological issue.",
+    "topic": "Sports"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">World briefs</td>
+                        <td class="clickable">Business</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">❌</td>
+                        <td class="clickable">The term 'World briefs' suggests a summary or collection of news related to global events or issues. The word 'World' indicates a focus on international news, which is consistent with geopolitical events and significant social issues. There are no specific indicators of sports, business, or science and technology in this phrase. Therefore, the most appropriate classification for this headline is under the 'World' category.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The term 'World briefs' suggests a summary or collection of news related to global events or issues. The word 'World' indicates a focus on international news, which is consistent with geopolitical events and significant social issues. There are no specific indicators of sports, business, or science and technology in this phrase. Therefore, the most appropriate classification for this headline is under the 'World' category.",
+    "topic": "World"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Flat-screen TV</td>
+                        <td class="clickable">Sci/Tech</td>
+                        <td class="clickable">Sci/Tech</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The term 'Flat-screen TV' primarily relates to technology and consumer electronics. It suggests a discussion about advancements in television design and technology, potentially addressing topics such as display technology, market trends, or innovations in home entertainment. There are no indications of geopolitical events, sports, or business financial discussions in this phrase. Therefore, the most appropriate classification for this headline is under the Sci/Tech category.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The term 'Flat-screen TV' primarily relates to technology and consumer electronics. It suggests a discussion about advancements in television design and technology, potentially addressing topics such as display technology, market trends, or innovations in home entertainment. There are no indications of geopolitical events, sports, or business financial discussions in this phrase. Therefore, the most appropriate classification for this headline is under the Sci/Tech category.",
+    "topic": "Sci/Tech"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Melvin Faces Major Challenge in Arizona (AP)</td>
+                        <td class="clickable">Sports</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">❌</td>
+                        <td class="clickable">The headline mentions 'Melvin' and 'Arizona', which suggests a geographical reference. However, without additional context about who Melvin is or what the challenge pertains to, it's difficult to classify. The term 'challenge' could imply a political, social, or competitive aspect, but it lacks specifics. Given that it does not clearly indicate a sports event, a business context, or a scientific/technological issue, it leans more towards a world event, particularly if the challenge is political or social in nature. However, since the category is not explicitly defined, I will categorize it as 'World'.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions 'Melvin' and 'Arizona', which suggests a geographical reference. However, without additional context about who Melvin is or what the challenge pertains to, it's difficult to classify. The term 'challenge' could imply a political, social, or competitive aspect, but it lacks specifics. Given that it does not clearly indicate a sports event, a business context, or a scientific/technological issue, it leans more towards a world event, particularly if the challenge is political or social in nature. However, since the category is not explicitly defined, I will categorize it as 'World'.",
+    "topic": "World"
+}</td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="clickable">Ivory Coast's Army Bombs Rebel Towns (Reuters)</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">World</td>
+                        <td class="clickable">✅</td>
+                        <td class="clickable">The headline mentions 'Ivory Coast's Army', which indicates a military action related to a specific nation. The term 'bombs' suggests a conflict or violence, and 'Rebel Towns' indicates an ongoing geopolitical issue. The context is clearly about military operations within a country, focusing on a conflict between the state and rebel forces. Overall, this aligns with significant social and geopolitical events rather than sports, business, or sci/tech.</td>
+                        <td class="clickable">{
+    "chain_of_thought": "The headline mentions 'Ivory Coast's Army', which indicates a military action related to a specific nation. The term 'bombs' suggests a conflict or violence, and 'Rebel Towns' indicates an ongoing geopolitical issue. The context is clearly about military operations within a country, focusing on a conflict between the state and rebel forces. Overall, this aligns with significant social and geopolitical events rather than sports, business, or sci/tech.",
+    "topic": "World"
+}</td>
+                    </tr>
+                    
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Analysis Section -->
+        <div class="section">
+            <h2>Analysis</h2>
+            
+            <!-- Multiclass Classification Analysis -->
+            <div class="analysis-section">
+                
+                <h3>Correct Predictions Analysis</h3>
+                <div class="analysis">### Analysis of Correct Predictions in Multiclass Classification
+
+1. **Common Patterns in Reasoning**:
+   - Successful classifications often stem from a clear identification of key terms and phrases that signal the context of the headline. For instance, terms like "explorers," "ancient city," and "scientific exploration" consistently lead to the Sci/Tech category, while "job relocation" and "corporate actions" are strong indicators for Business. This pattern highlights the importance of contextual keywords in guiding classification.
+
+2. **Key Features Mapping to Categories**:
+   - Each category has distinct linguistic markers:
+     - **World**: Geopolitical terms (e.g., "troops," "settlement," "bombing") and references to significant social issues.
+     - **Sports**: Names of teams, players, and sports terminology (e.g., "rally," "batsmen," "practice crash").
+     - **Business**: Financial terminology, corporate actions, and economic indicators (e.g., "pay cut," "revenue surge").
+     - **Sci/Tech**: References to technology, scientific advancements, and digital innovations (e.g., "supercomputer," "internet cafes").
+   - Recognizing these features helps in accurately categorizing headlines.
+
+3. **Clear Category Boundaries**:
+   - The analysis reveals that while some terms may overlap (e.g., economic discussions in Sci/Tech), the context in which they are used is crucial. For example, discussions about technology's impact on business should be classified as Sci/Tech, while corporate financial decisions should be categorized as Business. This distinction emphasizes the need for careful contextual interpretation to avoid misclassification.
+
+4. **Effective Reasoning Strategies**:
+   - Successful reasoning often involves breaking down the headline into its components and assessing the implications of each term. This method allows classifiers to avoid overgeneralization and ensures that the reasoning aligns closely with the specific context of the headline. For instance, recognizing that "Gay Marriage Issue" pertains to social and political contexts rather than sports or business is a critical reasoning strategy.
+
+5. **Reinforcement Suggestions**:
+   - To reinforce successful patterns, training could focus on enhancing the recognition of key terms and their contextual implications through examples and counterexamples. Additionally, developing a more robust framework for distinguishing between overlapping categories could further improve classification accuracy. Regularly updating the training data with recent headlines can also help maintain relevance in classification.
+
+By focusing on these key points, classifiers can enhance their accuracy and consistency in multiclass classification tasks.</div>
+                
+                
+                
+                <h3>Incorrect Predictions Analysis</h3>
+                <div class="analysis">### Analysis of Incorrect Predictions
+
+1. **Common Patterns in Misclassifications**:
+   - **Geographical References**: Several misclassifications stem from the presence of geographical terms (e.g., "Iraq," "Arizona") that led to confusion between 'World' and 'Sports' categories. For instance, "Ali gives Iraq fighting chance" was misclassified as 'World' instead of 'Sports' due to the geographical mention overshadowing the competitive context implied by "fighting chance."
+   - **Economic vs. Geopolitical Context**: The distinction between economic discussions and geopolitical events is often blurred. For example, "Iraqi oil exports slump: report" was misclassified as 'Business' instead of 'World' because the economic implications of oil exports were interpreted without considering the geopolitical significance of Iraq's oil industry.
+
+2. **Ambiguous Elements Leading to Incorrect Classifications**:
+   - **Vague Terminology**: Terms like "challenge" in "Melvin Faces Major Challenge in Arizona" lack specificity, making it difficult to ascertain whether the context is political, social, or sports-related. This ambiguity can lead to misclassification, as seen when it was categorized as 'World' instead of 'Sports'.
+   - **Generalized Phrasing**: Headlines like "World briefs" can be interpreted in multiple ways. The term "World" suggests international news, but without specific indicators, it was misclassified as 'Business'. This highlights the need for clearer context in ambiguous phrases.
+
+3. **Chain of Thought Errors**:
+   - **Overgeneralization**: In several cases, the reasoning process involved overgeneralizing the implications of terms. For instance, the chain of thought for "Greenspan: Debt, home prices not dangerous" focused too heavily on economic terminology without adequately considering the broader implications of these terms in a technological context, leading to a misclassification of 'Business' instead of 'Sci/Tech'.
+   - **Misinterpretation of Context**: The reasoning for "Ali gives Iraq fighting chance" misinterpreted the competitive nature of the phrase, leaning towards a geopolitical interpretation rather than recognizing it as a sports context. This misinterpretation reflects a failure to adequately assess the implications of the terms used.
+
+4. **Potential Category Boundary Confusion Points**:
+   - **Overlap Between Business and World**: The distinction between 'Business' and 'World' can be particularly challenging, especially when economic issues have geopolitical implications. The misclassification of "Iraqi oil exports slump: report" as 'Business' instead of 'World' illustrates this confusion, as the economic aspect is deeply intertwined with global politics.
+   - **Sports and World Intersections**: The overlap between 'Sports' and 'World' categories can lead to confusion, especially when headlines reference countries or regions. The misclassification of "Melvin Faces Major Challenge in Arizona" as 'World' instead of 'Sports' highlights the need for clearer guidelines on how to interpret competitive language in a geopolitical context.
+
+### Recommendations for Improvement
+- **Enhance Contextual Clarity**: Provide clearer definitions and examples for ambiguous terms that could belong to multiple categories. This will help classifiers better understand the context and implications of the language used.
+- **Refine Guidelines for Geographical References**: Develop specific guidelines on how to handle geographical mentions, particularly in relation to sports and world events, to reduce misclassification.
+- **Encourage Specificity in Reasoning**: Train classifiers to avoid overgeneralization and to focus on the specific context of terms used in headlines. This could involve emphasizing the importance of understanding the nuances of language in different contexts.
+- **Implement Cross-Category Training**: Provide training that emphasizes the intersections between categories, particularly between 'Business' and 'World', as well as 'Sports' and 'World', to help classifiers recognize when a headline may straddle multiple categories.</div>
+                
+                
+                
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Modal for displaying cell content -->
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <pre id="modalText" class="modal-text"></pre>
+        </div>
+    </div>
+
+    <!-- Initialize DataTable and Modal -->
+    <script>
+        $(document).ready(function() {
+            // Initialize DataTable
+            $('#resultsTable').DataTable({
+                pageLength: 10,
+                order: [],
+                scrollX: true
+            });
+
+            // Modal functionality
+            var modal = document.getElementById("myModal");
+            var modalText = document.getElementById("modalText");
+            var span = document.getElementsByClassName("close")[0];
+
+            // Click handler for table cells
+            $('.clickable').click(function() {
+                var cellContent = $(this).text();
+                modalText.textContent = cellContent;
+                modal.style.display = "block";
+            });
+
+            // Close modal when clicking on X
+            span.onclick = function() {
+                modal.style.display = "none";
+            }
+
+            // Close modal when clicking outside
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = "none";
+                }
+            }
+
+            // Close modal with Escape key
+            $(document).keydown(function(e) {
+                if (e.key === "Escape") {
+                    modal.style.display = "none";
+                }
+            });
+        });
+    </script>
+</body>
+</html>
