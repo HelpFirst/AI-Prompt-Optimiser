@@ -240,6 +240,11 @@ def generate_combined_dashboard(
         is_binary: Whether this is a binary classification problem
     """
     try:
+        # Ensure each metrics dict has an iteration number
+        for i, metrics in enumerate(all_metrics):
+            if 'iteration' not in metrics:
+                metrics['iteration'] = i + 1  # Add iteration number if missing
+        
         # Find the best metrics (highest F1 score)
         best_metrics = max(all_metrics, key=lambda x: x.get('f1', 0))
         best_iteration = best_metrics.get('iteration', 1)
@@ -266,12 +271,43 @@ def generate_combined_dashboard(
             'invalid_predictions': min(m.get('invalid_predictions', float('inf')) for m in all_metrics)
         }
 
+        # Sort metrics by iteration number
+        sorted_metrics = sorted(all_metrics, key=lambda x: x.get('iteration', float('inf')))
+
         # Prepare visualization data
-        metrics_data = prepare_metrics_visualization(all_metrics)
-        validity_data = prepare_validity_visualization(all_metrics)
+        metrics_data = prepare_metrics_visualization(sorted_metrics)
+        validity_data = prepare_validity_visualization(sorted_metrics)
         
         # Collect iteration data
-        iterations = collect_iteration_data(log_dir, all_metrics, is_binary)
+        iterations = []
+        for metrics in sorted_metrics:
+            iteration_data = {
+                'number': metrics.get('iteration'),  # Use the iteration number here
+                'precision': metrics.get('precision'),
+                'recall': metrics.get('recall'),
+                'accuracy': metrics.get('accuracy'),
+                'f1': metrics.get('f1'),
+                'prompt': metrics.get('prompt', 'N/A'),
+                'valid_predictions': metrics.get('valid_predictions'),
+                'invalid_predictions': metrics.get('invalid_predictions')
+            }
+            
+            # Load analysis data
+            prompt_gen_file = os.path.join(log_dir, f'iteration_{metrics.get("iteration")}_prompt_generation.json')
+            if os.path.exists(prompt_gen_file):
+                with open(prompt_gen_file, 'r') as f:
+                    prompt_data = json.load(f)
+                    if 'analysis_results' in prompt_data:
+                        iteration_data.update({
+                            'correct_analysis': prompt_data['analysis_results'].get('correct_analysis', ''),
+                            'incorrect_analysis': prompt_data['analysis_results'].get('incorrect_analysis', ''),
+                            'fp_analysis': prompt_data['analysis_results'].get('false_positives', ''),
+                            'fn_analysis': prompt_data['analysis_results'].get('false_negatives', ''),
+                            'tp_analysis': prompt_data['analysis_results'].get('true_positives', ''),
+                            'invalid_analysis': prompt_data['analysis_results'].get('invalid_outputs', '')
+                        })
+            
+            iterations.append(iteration_data)
         
         # Generate HTML content
         html_content = COMBINED_TEMPLATE.render(
@@ -281,7 +317,7 @@ def generate_combined_dashboard(
             iterations=iterations,
             best_metrics=best_metrics,
             best_iteration=best_iteration,
-            all_metrics=all_metrics,
+            all_metrics=sorted_metrics,  # Use sorted metrics here
             max_values=max_values,
             min_values=min_values
         )
