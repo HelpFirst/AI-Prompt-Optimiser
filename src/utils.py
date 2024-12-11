@@ -417,9 +417,8 @@ def transform_and_compare_output(raw_output, label, output_schema):
         tuple: (transformed_output, is_correct, is_valid, chain_of_thought)
     """
     # Extract necessary information from the output schema
-    # These values will be used throughout the function for parsing and transformation
     key_to_extract = output_schema.get('key_to_extract')
-    value_mapping = output_schema.get('value_mapping')
+    value_mapping = output_schema.get('value_mapping', {})
     regex_pattern = output_schema.get('regex_pattern')
     chain_of_thought_key = output_schema.get('chain_of_thought_key')
     chain_of_thought_regex = output_schema.get('chain_of_thought_regex')
@@ -465,7 +464,7 @@ def transform_and_compare_output(raw_output, label, output_schema):
         Attempt to extract values using regex patterns
         This method is used as a last resort if other parsing methods fail.
         """
-        value_match = re.search(regex_pattern, raw_output)
+        value_match = re.search(regex_pattern, raw_output) if regex_pattern else None
         cot_match = re.search(chain_of_thought_regex, raw_output) if chain_of_thought_regex else None
         if value_match:
             extracted_value = value_match.group(1)
@@ -475,63 +474,63 @@ def transform_and_compare_output(raw_output, label, output_schema):
         return None, "N/A"
 
     # Try each parsing method in order
-    # This allows for flexibility in handling different output formats
     for parse_method in [try_ast_literal_eval, try_json_loads, try_json_like_structure, try_regex_extraction]:
         parsed_output, chain_of_thought = parse_method()
         if parsed_output is not None:
-            # print(f"Parsing successful using {parse_method.__name__}")
-            break  # Exit the loop if parsing is successful
+            break
     else:
-        # This block will only execute if the loop completes without a break
-        print("All parsing methods failed!")
         return None, False, False, "N/A"
 
-    # If we've reached this point, parsing was successful
-    # print(f"Final parsed output: {parsed_output}")
-
     # Extract the relevant value and chain of thought
-    # Handle both dictionary and non-dictionary parsed outputs
     if isinstance(parsed_output, dict):
         extracted_value = parsed_output.get(key_to_extract)
         chain_of_thought = parsed_output.get(chain_of_thought_key, chain_of_thought or "N/A")
     else:
         extracted_value = parsed_output
-        # chain_of_thought is already set by try_regex_extraction if applicable
-
+        
     # Handle cases where extraction failed
     if extracted_value is None:
         print(f"Extracted value is None. Raw output: {raw_output}")
         return None, False, False, chain_of_thought
 
     # Transform the extracted value
-    # This step maps the extracted value to the desired output format
     if value_mapping:
-        if isinstance(extracted_value, str):
-            # Check the value directly first
-            transformed_output = value_mapping.get(extracted_value)
+        # First try direct mapping
+        transformed_output = value_mapping.get(extracted_value)
+        
+        if transformed_output is None and isinstance(extracted_value, str):
+            # Try normalized version (lowercase and underscores)
+            normalized_value = extracted_value.lower().replace(" ", "_")
+            transformed_output = value_mapping.get(normalized_value)
+            
             if transformed_output is None:
-                # If not found, try normalized version
-                normalized_value = extracted_value.lower().replace(" ", "_")
-                transformed_output = value_mapping.get(normalized_value)
-        elif isinstance(extracted_value, int):
-            # If the extracted value is already an integer, use it directly
-            transformed_output = extracted_value
-        else:
-            print(f"Unexpected value type: {type(extracted_value)}. Value: {extracted_value}")
-            return None, False, False, chain_of_thought
+                # Try case-insensitive match
+                for key, value in value_mapping.items():
+                    if isinstance(key, str) and key.lower() == extracted_value.lower():
+                        transformed_output = value
+                        break
     else:
-        # If no value mapping is provided, attempt to convert the extracted value to an integer
-        if isinstance(extracted_value, int):
-            transformed_output = extracted_value
-        else:
+        # If no value mapping is provided, use the extracted value directly
+        transformed_output = extracted_value
+        # Only try to convert to int if it's not already an int and looks like a number
+        if not isinstance(transformed_output, int):
             try:
-                transformed_output = int(extracted_value)
-            except ValueError:
-                print(f"Invalid output: Unable to convert '{extracted_value}' to int")
+                if isinstance(transformed_output, str) and transformed_output.strip().isdigit():
+                    transformed_output = int(transformed_output)
+            except (ValueError, TypeError):
+                print(f"Could not convert '{transformed_output}' to int")
                 return None, False, False, chain_of_thought
 
     # Final validity check and comparison with the label
     if transformed_output is not None:
+        # Convert label to int if transformed_output is int
+        if isinstance(transformed_output, int) and not isinstance(label, int):
+            try:
+                label = int(label)
+            except (ValueError, TypeError):
+                print(f"Could not convert label '{label}' to int")
+                return None, False, False, chain_of_thought
+        
         is_correct = (transformed_output == label)
         return transformed_output, is_correct, True, chain_of_thought
     else:
@@ -613,13 +612,14 @@ def log_prompt_generation_multiclass(log_dir: str, iteration: int, initial_promp
     with open(log_file_path, 'w') as f:
         json.dump(log_data, f, indent=2)
 
-def calculate_metrics(labels, predictions):
+def calculate_metrics(labels, predictions, is_binary=True):
     """
     Calculate classification metrics from labels and predictions.
     
     Args:
-        labels: List of true labels
-        predictions: List of predicted labels
+        labels: List of true labels (can be strings or numbers)
+        predictions: List of predicted labels (can be strings or numbers)
+        is_binary: Whether this is a binary classification problem
         
     Returns:
         dict: Dictionary containing precision, recall, accuracy, and f1 score
@@ -631,11 +631,11 @@ def calculate_metrics(labels, predictions):
             'accuracy': 0,
             'f1': 0,
             'valid_predictions': 0,
-            'invalid_predictions': 0
+            'invalid_predictions': len(predictions) if predictions else 0
         }
     
     # Count valid and invalid predictions
-    valid_pairs = [(l, p) for l, p in zip(labels, predictions) if p is not None]
+    valid_pairs = [(str(l), str(p)) for l, p in zip(labels, predictions) if p is not None]
     if not valid_pairs:
         return {
             'precision': 0,
@@ -649,16 +649,51 @@ def calculate_metrics(labels, predictions):
     valid_labels, valid_predictions = zip(*valid_pairs)
     invalid_count = len(predictions) - len(valid_pairs)
     
-    # Calculate metrics
-    tp = sum(1 for l, p in zip(valid_labels, valid_predictions) if l == 1 and p == 1)
-    fp = sum(1 for l, p in zip(valid_labels, valid_predictions) if l == 0 and p == 1)
-    fn = sum(1 for l, p in zip(valid_labels, valid_predictions) if l == 1 and p == 0)
-    tn = sum(1 for l, p in zip(valid_labels, valid_predictions) if l == 0 and p == 0)
+    if is_binary:
+        # For binary classification, convert string labels to 0/1
+        try:
+            # Try to convert to integers first
+            valid_labels = [int(l) for l in valid_labels]
+            valid_predictions = [int(p) for p in valid_predictions]
+        except ValueError:
+            # If conversion fails, assume string labels like "true"/"false" or "positive"/"negative"
+            valid_labels = [1 if str(l).lower() in ['1', 'true', 'positive', 'yes'] else 0 for l in valid_labels]
+            valid_predictions = [1 if str(p).lower() in ['1', 'true', 'positive', 'yes'] else 0 for p in valid_predictions]
+        
+        # Calculate binary metrics
+        tp = sum(1 for l, p in zip(valid_labels, valid_predictions) if l == 1 and p == 1)
+        fp = sum(1 for l, p in zip(valid_labels, valid_predictions) if l == 0 and p == 1)
+        fn = sum(1 for l, p in zip(valid_labels, valid_predictions) if l == 1 and p == 0)
+        tn = sum(1 for l, p in zip(valid_labels, valid_predictions) if l == 0 and p == 0)
+        
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+    else:
+        # Multiclass classification metrics
+        class_metrics = {}
+        unique_labels = set(valid_labels)  # Use string labels directly
+        
+        for class_label in unique_labels:
+            # Calculate per-class metrics using string comparison
+            tp = sum(1 for l, p in zip(valid_labels, valid_predictions) if l == class_label and p == class_label)
+            fp = sum(1 for l, p in zip(valid_labels, valid_predictions) if l != class_label and p == class_label)
+            fn = sum(1 for l, p in zip(valid_labels, valid_predictions) if l == class_label and p != class_label)
+            
+            if (tp + fp) > 0 or (tp + fn) > 0:  # Only include classes with predictions
+                class_metrics[class_label] = {
+                    'precision': tp / (tp + fp) if (tp + fp) > 0 else 0,
+                    'recall': tp / (tp + fn) if (tp + fn) > 0 else 0
+                }
+        
+        # Macro-averaging for overall metrics
+        if class_metrics:  # Only calculate if we have valid class metrics
+            precision = sum(m['precision'] for m in class_metrics.values()) / len(class_metrics)
+            recall = sum(m['recall'] for m in class_metrics.values()) / len(class_metrics)
+        else:
+            precision = recall = 0
     
-    # Calculate derived metrics
-    precision = tp / (tp + fp) if (tp + fp) > 0 else 0
-    recall = tp / (tp + fn) if (tp + fn) > 0 else 0
-    accuracy = (tp + tn) / len(valid_pairs) if valid_pairs else 0
+    # Common metrics for both binary and multiclass
+    accuracy = sum(1 for l, p in zip(valid_labels, valid_predictions) if l == p) / len(valid_pairs)
     f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
     
     return {
@@ -688,6 +723,10 @@ def regenerate_dashboards(path_to_data: str, is_binary: bool = True):
                           if f.startswith('iteration_') and f.endswith('_evaluation.json')]
         num_iterations = len(iteration_files)
         
+        if num_iterations == 0:
+            print("No iteration files found in the specified directory")
+            return
+        
         # Keep track of the last valid prompt for final iteration
         last_valid_prompt = config.get('initial_prompt', '')
         
@@ -709,7 +748,12 @@ def regenerate_dashboards(path_to_data: str, is_binary: bool = True):
         for i in range(1, num_iterations + 1):
             try:
                 # Load iteration data
-                with open(os.path.join(path_to_data, f'iteration_{i}_evaluation.json'), 'r') as f:
+                eval_file_path = os.path.join(path_to_data, f'iteration_{i}_evaluation.json')
+                if not os.path.exists(eval_file_path):
+                    print(f"Skipping iteration {i}: Evaluation file not found")
+                    continue
+                    
+                with open(eval_file_path, 'r') as f:
                     results = json.load(f)
                 
                 # Try to load prompt generation data, use defaults if not found
@@ -740,21 +784,26 @@ def regenerate_dashboards(path_to_data: str, is_binary: bool = True):
                 raw_outputs = []
                 
                 for eval_item in results.get('evaluations', []):
-                    labels.append(int(eval_item.get('label', 0)))
+                    labels.append(eval_item.get('label', ''))  # Use empty string as default for labels
                     predictions.append(eval_item.get('transformed_output'))
                     texts.append(eval_item.get('text', ''))
                     chain_of_thoughts.append(eval_item.get('chain_of_thought', ''))
                     raw_outputs.append(eval_item.get('raw_output', ''))
                 
-                # Calculate metrics for this iteration
-                metrics = calculate_metrics(labels, predictions)
-                metrics['iteration'] = i
-                all_metrics.append(metrics)
+                if not labels or not predictions:
+                    print(f"Skipping iteration {i}: No valid labels or predictions found")
+                    continue
                 
-                # Track best metrics
-                if metrics['f1'] > best_f1:
-                    best_f1 = metrics['f1']
-                    best_metrics = metrics.copy()
+                # Calculate metrics for this iteration
+                metrics = calculate_metrics(labels, predictions, is_binary)
+                if metrics['valid_predictions'] > 0:  # Only include iterations with valid predictions
+                    metrics['iteration'] = i
+                    all_metrics.append(metrics)
+                    
+                    # Track best metrics
+                    if metrics['f1'] > best_f1:
+                        best_f1 = metrics['f1']
+                        best_metrics = metrics.copy()
                 
                 # Update results with extracted data
                 results.update(metrics)
@@ -772,7 +821,7 @@ def regenerate_dashboards(path_to_data: str, is_binary: bool = True):
                     log_dir=path_to_data,
                     iteration=i,
                     results=results,
-                    current_prompt=current_prompt,  # Use the determined prompt
+                    current_prompt=current_prompt,
                     output_format_prompt=config.get('output_format_prompt', ''),
                     initial_prompt=config.get('initial_prompt', ''),
                     is_binary=is_binary
@@ -781,6 +830,10 @@ def regenerate_dashboards(path_to_data: str, is_binary: bool = True):
                 print(f"Error processing iteration {i}: {str(e)}")
                 continue
         
+        if not all_metrics:
+            print("No valid metrics found across any iterations")
+            return
+            
         # Generate combined dashboard
         generate_combined_dashboard(
             log_dir=path_to_data,

@@ -99,11 +99,11 @@ COMMON_STYLES = '''
         table#resultsTable th:nth-child(3),
         table#resultsTable td:nth-child(3) { width: 10%; } /* Predicted */
         table#resultsTable th:nth-child(4),
-        table#resultsTable td:nth-child(4) { width: 25%; } /* Chain of Thought */
+        table#resultsTable td:nth-child(4) { width: 8%; } /* Result */
         table#resultsTable th:nth-child(5),
-        table#resultsTable td:nth-child(5) { width: 22%; } /* Raw Output */
+        table#resultsTable td:nth-child(5) { width: 25%; } /* Chain of Thought */
         table#resultsTable th:nth-child(6),
-        table#resultsTable td:nth-child(6) { width: 8%; } /* Result */
+        table#resultsTable td:nth-child(6) { width: 22%; } /* Raw Output */
         
         th { 
             background-color: #f8f9fa;
@@ -389,54 +389,53 @@ COMMON_STYLES = '''
     </style>
 '''
 
-# Template for both binary and multiclass iteration dashboards
+# Template for individual iteration dashboards
 ITERATION_TEMPLATE = Template('''
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Classification Dashboard - Iteration {{ iteration }}</title>
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.css">
-    <script type="text/javascript" src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    ''' + COMMON_STYLES + '''
+    <title>Iteration {{ iteration }} Dashboard</title>
+    {{ COMMON_STYLES }}
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.24/css/jquery.dataTables.min.css">
 </head>
 <body>
     <div class="container">
-        <h1>Iteration {{ iteration }} Dashboard</h1>
+        <h1>Iteration {{ iteration }} Results</h1>
         
+        <!-- Metrics Section -->
         <div class="section">
-            <h2>Evaluation Metrics</h2>
+            <h2>Metrics</h2>
             <div class="metrics">
                 <div class="metric">
-                    <strong>Precision</strong> 
-                    <span>{{ "%.4f"|format(results.get('precision', 0)) if results.get('precision') is not none else 'N/A' }}</span>
+                    <strong>Precision</strong>
+                    <span>{{ "%.4f"|format(results.precision) }}</span>
                 </div>
                 <div class="metric">
-                    <strong>Recall</strong> 
-                    <span>{{ "%.4f"|format(results.get('recall', 0)) if results.get('recall') is not none else 'N/A' }}</span>
+                    <strong>Recall</strong>
+                    <span>{{ "%.4f"|format(results.recall) }}</span>
                 </div>
                 <div class="metric">
-                    <strong>Accuracy</strong> 
-                    <span>{{ "%.4f"|format(results.get('accuracy', 0)) if results.get('accuracy') is not none else 'N/A' }}</span>
+                    <strong>Accuracy</strong>
+                    <span>{{ "%.4f"|format(results.accuracy) }}</span>
                 </div>
                 <div class="metric">
-                    <strong>F1 Score</strong> 
-                    <span>{{ "%.4f"|format(results.get('f1', 0)) if results.get('f1') is not none else 'N/A' }}</span>
+                    <strong>F1 Score</strong>
+                    <span>{{ "%.4f"|format(results.f1) }}</span>
                 </div>
                 <div class="metric">
-                    <strong>Valid Predictions</strong> 
-                    <span>{{ results.get('valid_predictions', 'N/A') }}</span>
+                    <strong>Valid Predictions</strong>
+                    <span>{{ results.valid_predictions }}</span>
                 </div>
                 <div class="metric">
-                    <strong>Invalid Predictions</strong> 
-                    <span>{{ results.get('invalid_predictions', 'N/A') }}</span>
+                    <strong>Invalid Predictions</strong>
+                    <span>{{ results.invalid_predictions }}</span>
                 </div>
             </div>
         </div>
 
+        <!-- Confusion Matrix -->
         <div class="section">
             <h2>Confusion Matrix</h2>
             <div class="confusion-matrix">
@@ -444,103 +443,102 @@ ITERATION_TEMPLATE = Template('''
             </div>
         </div>
 
+        <!-- Current Prompt -->
         <div class="section">
             <h2>Current Prompt</h2>
-            <pre class="prompt">{{ current_prompt }}</pre>
+            <div class="prompt">{{ current_prompt }}</div>
         </div>
-        
+
+        <!-- Evaluation Results -->
         <div class="section">
             <h2>Evaluation Results</h2>
-            <div class="table-responsive">
-                <table id="resultsTable" class="display">
-                    <thead>
-                        <tr>
-                            {% for header in table_headers %}
-                            <th>{{ header }}</th>
-                            {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for eval in evaluation_results %}
-                        <tr>
-                            {% for header in table_headers %}
-                            <td title="Click to view full content">{{ eval.get(header, 'N/A') }}</td>
-                            {% endfor %}
-                        </tr>
+            <table id="resultsTable" class="display">
+                <thead>
+                    <tr>
+                        {% for header in table_headers %}
+                        <th>{{ header }}</th>
                         {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in evaluation_results %}
+                    <tr>
+                        <td class="clickable">{{ result.Text }}</td>
+                        <td class="clickable">{{ result['True Label'] }}</td>
+                        <td class="clickable">{{ result.Predicted }}</td>
+                        <td class="clickable">{{ result.Result }}</td>
+                        <td class="clickable">{{ result['Chain of Thought'] }}</td>
+                        <td class="clickable">{{ result['Raw Output'] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
 
-        <div id="myModal" class="modal">
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <pre class="modal-text" id="modalText"></pre>
-            </div>
-        </div>
-
+        <!-- Analysis Section -->
         <div class="section">
             <h2>Analysis</h2>
+            {% if is_binary %}
+            <!-- Binary Classification Analysis -->
             <div class="analysis-section">
-                {% if results.get('correct_analysis') %}
-                <h3>Correct Predictions Analysis</h3>
-                <pre class="analysis">{{ results.get('correct_analysis') }}</pre>
+                {% if results.tp_analysis %}
+                <h3>True Positives Analysis</h3>
+                <div class="analysis">{{ results.tp_analysis }}</div>
                 {% endif %}
                 
-                {% if results.get('incorrect_analysis') %}
-                <h3>Incorrect Predictions Analysis</h3>
-                <pre class="analysis">{{ results.get('incorrect_analysis') }}</pre>
-                {% endif %}
-
-                {% if results.get('fp_analysis') %}
+                {% if results.fp_analysis %}
                 <h3>False Positives Analysis</h3>
-                <pre class="analysis">{{ results.get('fp_analysis') }}</pre>
+                <div class="analysis">{{ results.fp_analysis }}</div>
                 {% endif %}
-
-                {% if results.get('fn_analysis') %}
+                
+                {% if results.fn_analysis %}
                 <h3>False Negatives Analysis</h3>
-                <pre class="analysis">{{ results.get('fn_analysis') }}</pre>
+                <div class="analysis">{{ results.fn_analysis }}</div>
                 {% endif %}
-
-                {% if results.get('tp_analysis') %}
-                <h3>True Positives Analysis</h3>
-                <pre class="analysis">{{ results.get('tp_analysis') }}</pre>
-                {% endif %}
-
-                {% if results.get('invalid_analysis') %}
+                
+                {% if results.invalid_analysis %}
                 <h3>Invalid Outputs Analysis</h3>
-                <pre class="analysis">{{ results.get('invalid_analysis') }}</pre>
+                <div class="analysis">{{ results.invalid_analysis }}</div>
                 {% endif %}
             </div>
+            {% else %}
+            <!-- Multiclass Classification Analysis -->
+            <div class="analysis-section">
+                {% if results.correct_analysis %}
+                <h3>Correct Predictions Analysis</h3>
+                <div class="analysis">{{ results.correct_analysis }}</div>
+                {% endif %}
+                
+                {% if results.incorrect_analysis %}
+                <h3>Incorrect Predictions Analysis</h3>
+                <div class="analysis">{{ results.incorrect_analysis }}</div>
+                {% endif %}
+                
+                {% if results.invalid_analysis %}
+                <h3>Invalid Outputs Analysis</h3>
+                <div class="analysis">{{ results.invalid_analysis }}</div>
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
     </div>
 
+    <!-- Modal for displaying cell content -->
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <pre id="modalText" class="modal-text"></pre>
+        </div>
+    </div>
+
+    <!-- Initialize DataTable and Modal -->
     <script>
         $(document).ready(function() {
             // Initialize DataTable
-            var table = $('#resultsTable').DataTable({
+            $('#resultsTable').DataTable({
                 pageLength: 10,
-                lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
-                order: [[0, 'asc']],
-                scrollX: true,
-                autoWidth: false,
-                columnDefs: [{
-                    targets: 5,  // Result column
-                    render: function(data, type, row) {
-                        if (type === 'display') {
-                            // Extract the prediction type from the result
-                            var match = data.match(/\\(([^)]+)\\)/);
-                            if (match) {
-                                var predType = match[1].toLowerCase();
-                                var icon = data.includes('✅') ? '✅' : '❌';
-                                return icon + ' <span class="result-type ' + predType + '">(' + match[1] + ')</span>';
-                            }
-                            return data;
-                        }
-                        return data;
-                    }
-                }]
+                order: [],
+                scrollX: true
             });
 
             // Modal functionality
@@ -549,34 +547,29 @@ ITERATION_TEMPLATE = Template('''
             var span = document.getElementsByClassName("close")[0];
 
             // Click handler for table cells
-            $('#resultsTable tbody').on('click', 'td', function() {
-                var cellContent = table.cell(this).data();
-                if (cellContent) {
-                    modalText.textContent = cellContent;
-                    modal.style.display = "block";
-                }
+            $('.clickable').click(function() {
+                var cellContent = $(this).text();
+                modalText.textContent = cellContent;
+                modal.style.display = "block";
             });
 
-            // Close modal handlers
+            // Close modal when clicking on X
             span.onclick = function() {
                 modal.style.display = "none";
             }
 
+            // Close modal when clicking outside
             window.onclick = function(event) {
                 if (event.target == modal) {
                     modal.style.display = "none";
                 }
             }
 
+            // Close modal with Escape key
             $(document).keydown(function(e) {
                 if (e.key === "Escape") {
                     modal.style.display = "none";
                 }
-            });
-
-            // Adjust table column widths on window resize
-            $(window).resize(function() {
-                table.columns.adjust();
             });
         });
     </script>
@@ -584,7 +577,7 @@ ITERATION_TEMPLATE = Template('''
 </html>
 ''')
 
-# Template for combined dashboard (works for both binary and multiclass)
+# Template for combined dashboard
 COMBINED_TEMPLATE = Template('''
 <!DOCTYPE html>
 <html lang="en">
@@ -592,11 +585,11 @@ COMBINED_TEMPLATE = Template('''
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Combined Classification Dashboard</title>
+    {{ COMMON_STYLES }}
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.css">
     <script type="text/javascript" src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    ''' + COMMON_STYLES + '''
 </head>
 <body>
     <div class="container combined-dashboard">

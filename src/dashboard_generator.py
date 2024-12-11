@@ -17,7 +17,8 @@ import numpy as np
 from typing import List, Dict, Union, Optional
 from .dashboard_templates import (
     ITERATION_TEMPLATE,
-    COMBINED_TEMPLATE
+    COMBINED_TEMPLATE,
+    COMMON_STYLES
 )
 
 def create_error_visualization(error_message: str) -> str:
@@ -140,12 +141,25 @@ def generate_iteration_dashboard(
                 if prompt_data.get('new_prompt'):
                     last_valid_prompt = prompt_data['new_prompt']
                 
-                # Extract analysis results
-                if 'analysis_results' in prompt_data:
-                    results['tp_analysis'] = prompt_data['analysis_results'].get('true_positives', '')
-                    results['fp_analysis'] = prompt_data['analysis_results'].get('false_positives', '')
-                    results['fn_analysis'] = prompt_data['analysis_results'].get('false_negatives', '')
-                    results['invalid_analysis'] = prompt_data['analysis_results'].get('invalid_outputs', '')
+                # Extract analysis results based on classification type
+                if is_binary:
+                    if 'analysis_results' in prompt_data:
+                        results['tp_analysis'] = prompt_data['analysis_results'].get('true_positives', '')
+                        results['fp_analysis'] = prompt_data['analysis_results'].get('false_positives', '')
+                        results['fn_analysis'] = prompt_data['analysis_results'].get('false_negatives', '')
+                        results['invalid_analysis'] = prompt_data['analysis_results'].get('invalid_outputs', '')
+                else:
+                    # For multiclass, use correct/incorrect analysis
+                    results['correct_analysis'] = prompt_data.get('correct_analysis', '')
+                    results['incorrect_analysis'] = prompt_data.get('incorrect_analysis', '')
+                    results['invalid_analysis'] = prompt_data.get('invalid_analysis', '')
+                    # Also try alternate locations for the analysis
+                    if not results['correct_analysis']:
+                        results['correct_analysis'] = prompt_data.get('analysis_results', {}).get('correct_analysis', '')
+                    if not results['incorrect_analysis']:
+                        results['incorrect_analysis'] = prompt_data.get('analysis_results', {}).get('incorrect_analysis', '')
+                    if not results['invalid_analysis']:
+                        results['invalid_analysis'] = prompt_data.get('analysis_results', {}).get('invalid_outputs', '')
         
         # Generate confusion matrix
         confusion_matrix_image = generate_confusion_matrix(
@@ -178,14 +192,14 @@ def generate_iteration_dashboard(
                 result = {
                     'Text': text,
                     'True Label': str(label),
-                    'Predicted': str(pred),
+                    'Predicted': str(pred) if pred is not None else 'Invalid',
+                    'Result': '✅' if label == pred else '❌',
                     'Chain of Thought': cot,
-                    'Raw Output': raw,
-                    'Result': '✅' if label == pred else '❌'
+                    'Raw Output': raw
                 }
             evaluation_results.append(result)
         
-        table_headers = ['Text', 'True Label', 'Predicted', 'Chain of Thought', 'Raw Output', 'Result']
+        table_headers = ['Text', 'True Label', 'Predicted', 'Result', 'Chain of Thought', 'Raw Output']
         
         # Prepare template data
         template_data = {
@@ -197,16 +211,27 @@ def generate_iteration_dashboard(
                 'f1': results.get('f1'),
                 'valid_predictions': results.get('valid_predictions'),
                 'invalid_predictions': results.get('invalid_predictions'),
-                'tp_analysis': results.get('tp_analysis'),
-                'tn_analysis': results.get('tn_analysis'),
-                'fp_analysis': results.get('fp_analysis'),
-                'fn_analysis': results.get('fn_analysis'),
-                'invalid_analysis': results.get('invalid_analysis')
+                # Include analysis based on classification type
+                **(
+                    {
+                        'tp_analysis': results.get('tp_analysis', ''),
+                        'tn_analysis': results.get('tn_analysis', ''),
+                        'fp_analysis': results.get('fp_analysis', ''),
+                        'fn_analysis': results.get('fn_analysis', ''),
+                        'invalid_analysis': results.get('invalid_analysis', '')
+                    } if is_binary else {
+                        'correct_analysis': results.get('correct_analysis', ''),
+                        'incorrect_analysis': results.get('incorrect_analysis', ''),
+                        'invalid_analysis': results.get('invalid_analysis', '')
+                    }
+                )
             },
             'current_prompt': current_prompt,
             'evaluation_results': evaluation_results,
             'table_headers': table_headers,
-            'confusion_matrix_image': confusion_matrix_image
+            'confusion_matrix_image': confusion_matrix_image,
+            'is_binary': is_binary,  # Pass this to the template
+            'COMMON_STYLES': COMMON_STYLES  # Add COMMON_STYLES to template data
         }
         
         # Generate HTML content
@@ -319,7 +344,8 @@ def generate_combined_dashboard(
             best_iteration=best_iteration,
             all_metrics=sorted_metrics,  # Use sorted metrics here
             max_values=max_values,
-            min_values=min_values
+            min_values=min_values,
+            COMMON_STYLES=COMMON_STYLES  # Add COMMON_STYLES to template data
         )
         
         # Save the combined dashboard
