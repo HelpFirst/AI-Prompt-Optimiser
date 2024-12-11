@@ -1,11 +1,19 @@
-pandas
-numpy
-requests
-ollama
-openai==1.3.0  # or the latest version that includes Azure OpenAI support
-anthropic
-google-generativeai
-scikit-learn
-tiktoken
-rich
-jinja2
+numpy==2.2.0
+requests==2.32.3
+ollama==0.4.4
+openai==1.55.3  # or the latest version that includes Azure OpenAI support
+anthropic==0.40.0
+google-generativeai==0.8.3
+scikit-learn==1.6.0
+tiktoken==0.8.0
+rich==13.9.4
+jinja2==3.1.4
+pandas==2.2.3
+plotly==5.24.1
+python-dotenv==1.0.1
+seaborn==0.13.2
+matplotlib==3.9.3
+jupyter==1.1.1
+
+## Make sure to run 
+## py -m ipykernel install --user --name=your-virtualenv-name
