@@ -8,11 +8,15 @@
 > This library originated from internal R&D efforts at HelpFirst.ai to improve our LLM-based classification systems. While we've found it valuable in our work and are excited to share it with the community, please note:
 > - This is actively used but still evolving
 > - Some edge cases may not be fully handled
-> - Documentation is being improved
+> - Documentation and codebase are being improved
 > 
-> **We welcome contributions!** See [Contributing](#contributing) below.
+> **We welcome contributions!** See [Contributing](##-contributing) below.
 
 This repository hosts the Iterative Prompt Optimization Framework, an open-source Python library developed by Daniel Fiuza, from the HelpFirst.ai team. It automates the process of refining prompts to improve text classification performance with Large Language Models (LLMs), without requiring access to the model's internal parameters or fine-tuning.
+
+> **Note**  
+> - **Requirements**: this framework only work for binary and multiclass classification tasks. Currently only supports JSON output-like format with a chain of thought output to capture model reasoning steps.
+
 
 ---
 ## 🔍 Introduction
@@ -23,54 +27,62 @@ Traditional machine learning (ML) classification models often require extensive 
 However, prompt engineering can be time-consuming and relies heavily on trial and error. To address this challenge, we introduce an automated iterative approach to refine prompts systematically.
 
 ### ⚙️ How Does It Work?
-Our framework implements a sophisticated meta-prompting approach with reflection capabilities. Here's the detailed workflow:
+Our framework implements a meta-prompting approach with self-reflection capabilities, attempting to imitate a human's iterative process of refining a prompt. Here's the detailed workflow:
 
-1. **Dual LLM Setup**  
-   - **Evaluator Model**: Tests the current prompt against your dataset
-   - **Optimizer Model**: Analyzes results and generates improved prompts
-
-2. **Evaluation Phase**  
-   The evaluator LLM processes each text sample using the current prompt, while we:
-   - Track valid/invalid outputs using regex pattern matching
-   - Calculate precision, recall, accuracy, and F1 score
-   - Identify misclassification patterns (FP/FN) and successful cases (TP)
-
-3. **Meta-Prompt Construction**  
-   We create a rich context for the optimizer LLM containing:
+1. **Dual Model Setup**  
+   - **Evaluator Model**: Tests current prompt against dataset (handled by `evaluation.evaluate_prompt()`)
+   - **Optimizer Model**: Generates improved prompts (via `prompt_generation.generate_new_prompt*`)
+   
    ```python
-   {
-       "current_prompt": "Your classification instructions...",
-       "performance_metrics": {precision: 0.85, recall: 0.78, ...},
-       "misclassification_examples": [
-           {
-               "text": "sample text",
-               "chain_of_thought": "model's reasoning steps",
-               "true_label": 1,
-               "predicted_label": 0
-           }
-       ],
-       "validation_errors": ["missing formatting", "invalid syntax"]
-   }
+   # Actual code flow in optimize.py:
+   set_models(
+       eval_provider=eval_provider,  # From config
+       eval_model=eval_model,
+       optim_provider=optim_provider,
+       optim_model=optim_model
+   )
    ```
 
-4. **Prompt Optimization Cycle**  
-   The optimizer LLM uses special tools to refine prompts:
-   - `analyze_patterns()`: Identifies systematic errors in classifications
-   - `suggest_clarifications()`: Proposes instruction improvements
-   - `validate_formatting()`: Ensures output schema compliance
-   - `reflect()`: Internal "thinking" process to critique previous attempts
+2. **Evaluation Phase**  
+   The evaluator processes each text sample using:
+   ```python
+   # evaluation.py
+   results = get_model_output(provider, model, temperature, full_prompt, text)
+   metrics = calculate_metrics(y_true, y_pred, problem_type)
+   ```
 
-5. **Validation & Reflection**  
-   Before finalizing new prompts, we:
-   - Check adherence to prompt engineering best practices
-   - Verify compatibility with output format requirements
-   - Maintain version history of prompt iterations
+3. **Context Construction**  
+   We create analysis context through:
+   ```python
+   # prompt_generation.py
+   fp_prompt = config.FALSE_POSITIVES_ANALYSIS_PROMPT.format(...)
+   fn_prompt = config.FALSE_NEGATIVES_ANALYSIS_PROMPT.format(...)
+   # Passed to PROMPT_ENGINEER_INPUT template
+   ```
+
+4. **Prompt Optimization Process**  
+   The optimizer uses specialized prompt templates:
+   - Analysis handled by `prompt_generation_multiclass.analyze_predictions()`
+   - Validation via `prompt_generation.validate_and_improve_prompt()`
+   - Formatting checks in `evaluation.transform_and_compare_output()`
+
+5. **Validation & Improvement**  
+   Uses chain-of-thought validation:
+   ```python
+   # prompt_generation.py
+   validation_prompt = config.VALIDATION_AND_IMPROVEMENT_PROMPT.format(...)
+   validation_result = get_analysis(...)  # Not automatic schema checks
+   ```
 
 6. **Iterative Refinement**  
-   This process repeats, with each iteration:
-   - Testing the most promising prompt variations
-   - Focusing improvements on previous failure modes
-   - Maintaining successful classification patterns
+   Main optimization loop in `optimize.py`:
+   ```python
+   for iteration in range(iterations):
+       evaluate_prompt()
+       generate_new_prompt*()
+       validate_and_improve_prompt()
+       generate_iteration_dashboard()
+   ```
 
 ---
 
@@ -114,7 +126,7 @@ GOOGLE_API_KEY="your-key-here"
 from iterative_prompt_optimization import optimize_prompt
 import pandas as pd
 
-# Data format requirements:
+# Data format requirements (validated by utils.validate_input_data()):
 # - DataFrame must contain 'text' and 'label' columns
 # - Labels should be integers (0/1 for binary)
 eval_data = pd.DataFrame({
@@ -170,9 +182,19 @@ config.set_model(
 
 ## 📊 Dashboard Preview
 
-![Optimization Dashboard](https://via.placeholder.com/800x400.png?text=Optimization+Dashboard+Preview)
-
-View iteration history, metrics trends, and prompt evolution.
+Generated through:
+```python
+# dashboard_generator.py
+generate_iteration_dashboard(
+    log_dir, 
+    iteration, 
+    results,  # From evaluation.py
+    current_prompt,
+    output_format_prompt,
+    initial_prompt
+)
+```
+Uses Jinja2 templates from dashboard_templates.py
 
 ---
 
@@ -203,10 +225,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ## 🧭 Roadmap
 
-- [x] Core optimization workflow
-- [x] Multi-provider support
+- [x] Core optimization workflow (optimize.py)
+- [x] Multi-provider support (model_interface.py)
 - [ ] Automated hyperparameter tuning
-- [ ] Prompt version diff visualization
+- [x] Prompt version history (logging in utils.py)
 - [ ] Interactive optimization dashboard
 
 [View full roadmap](ROADMAP.md)
