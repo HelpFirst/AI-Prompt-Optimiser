@@ -23,3 +23,4 @@ __pycache__/
 /examples/single_evaluation/model_cache
 examples/muticlass_classifier/example_news copy.ipynb
 examples/binary_classifier/example_sentiments copy.ipynb
+/examples/muticlass_classifier/data/medical_notes/raw/data
