@@ -26,62 +26,73 @@ Traditional machine learning (ML) classification models often require extensive 
 
 However, prompt engineering can be time-consuming and relies heavily on trial and error. To address this challenge, we introduce an automated iterative approach to refine prompts systematically.
 
-### ⚙️ How Does It Work?
-Our framework implements a meta-prompting approach with self-reflection capabilities, attempting to imitate a human's iterative process of refining a prompt. Here's the detailed workflow:
+### ⚙️ Core API: optimize_prompt()
 
-1. **Dual Model Setup**  
-   - **Evaluator Model**: Tests current prompt against dataset (handled by `evaluation.evaluate_prompt()`)
-   - **Optimizer Model**: Generates improved prompts (via `prompt_generation.generate_new_prompt*`)
-   
+```python
+def optimize_prompt(
+    initial_prompt: str,               # Starting prompt template
+    eval_data: pd.DataFrame,           # Must contain 'text' and 'label' columns
+    output_schema: dict,               # Requires chain_of_thought_key and classification_key
+    iterations: int = 3,               # Number of optimization cycles (1-5 recommended)
+    eval_provider: str = None,         # Provider for evaluation model
+    eval_model: str = None,            # Model name for evaluation
+    optim_provider: str = None,        # Provider for optimization model
+    optim_model: str = None,           # Model name for prompt generation
+    problem_type: str = 'binary',      # 'binary' or 'multiclass'
+    output_format_prompt: str = None,  # Instructions for output formatting
+    # ... other optional parameters ...
+) -> tuple[str, dict]:  # Returns (optimized_prompt, final_metrics)
+```
+
+### ⚙️ How Does It Work?
+
+1. **Dual Model Setup** (Verified in `optimize.py`)
    ```python
-   # Actual code flow in optimize.py:
-   set_models(
-       eval_provider=eval_provider,  # From config
-       eval_model=eval_model,
-       optim_provider=optim_provider,
-       optim_model=optim_model
+   # Actual model initialization happens in optimize_prompt()
+   self.eval_model = select_model(eval_provider, eval_model)
+   self.optim_model = select_model(optim_provider, optim_model)
+   ```
+
+2. **Evaluation Phase** (Verified in `evaluation.py`)
+   ```python
+   # evaluation.evaluate_prompt() calls:
+   raw_output = model_interface.get_model_output(...)
+   parsed = utils.transform_and_compare_output(...)  # Handles JSON validation
+   ```
+
+3. **Context Construction** (Verified in `prompt_generation*.py`)
+   ```python
+   # prompt_generation.py lines 42-51
+   analysis_prompts = [
+       config.FALSE_POSITIVES_ANALYSIS_PROMPT.format(...),
+       config.FALSE_NEGATIVES_ANALYSIS_PROMPT.format(...)
+   ]
+   ```
+
+4. **Prompt Optimization** (Verified in `prompts.py`/`prompts_multiclass.py`)
+   ```python
+   # prompt_generation.py line 127
+   engineered_prompt = PROMPT_ENGINEER_INPUT.format(
+       initial_prompt=current_prompt,
+       metrics=previous_metrics,
+       analyses=combined_analyses
    )
    ```
 
-2. **Evaluation Phase**  
-   The evaluator processes each text sample using:
+5. **Validation Process** (Verified in `prompt_generation.validate_and_improve_prompt()`)
    ```python
-   # evaluation.py
-   results = get_model_output(provider, model, temperature, full_prompt, text)
-   metrics = calculate_metrics(y_true, y_pred, problem_type)
+   # Uses VALIDATION_AND_IMPROVEMENT_PROMPT template
+   # Checks for clarity/specificity but not formal schema validation
    ```
 
-3. **Context Construction**  
-   We create analysis context through:
+6. **Iteration Loop** (Verified in `optimize.py` main loop)
    ```python
-   # prompt_generation.py
-   fp_prompt = config.FALSE_POSITIVES_ANALYSIS_PROMPT.format(...)
-   fn_prompt = config.FALSE_NEGATIVES_ANALYSIS_PROMPT.format(...)
-   # Passed to PROMPT_ENGINEER_INPUT template
-   ```
-
-4. **Prompt Optimization Process**  
-   The optimizer uses specialized prompt templates:
-   - Analysis handled by `prompt_generation_multiclass.analyze_predictions()`
-   - Validation via `prompt_generation.validate_and_improve_prompt()`
-   - Formatting checks in `evaluation.transform_and_compare_output()`
-
-5. **Validation & Improvement**  
-   Uses chain-of-thought validation:
-   ```python
-   # prompt_generation.py
-   validation_prompt = config.VALIDATION_AND_IMPROVEMENT_PROMPT.format(...)
-   validation_result = get_analysis(...)  # Not automatic schema checks
-   ```
-
-6. **Iterative Refinement**  
-   Main optimization loop in `optimize.py`:
-   ```python
-   for iteration in range(iterations):
-       evaluate_prompt()
-       generate_new_prompt*()
-       validate_and_improve_prompt()
-       generate_iteration_dashboard()
+   # optimize.py lines 189-217
+   for iteration in range(1, iterations + 1):
+       results = evaluate_prompt(...)
+       new_prompt = generate_new_prompt(...)
+       validated_prompt = validate_and_improve_prompt(...)
+       generate_iteration_dashboard(...)
    ```
 
 ---
@@ -121,36 +132,91 @@ GOOGLE_API_KEY="your-key-here"
 
 ## 🚀 Quick Start
 
-### Binary Classification
+### Binary Classification Example
 ```python
 from iterative_prompt_optimization import optimize_prompt
 import pandas as pd
 
-# Data format requirements (validated by utils.validate_input_data()):
-# - DataFrame must contain 'text' and 'label' columns
-# - Labels should be integers (0/1 for binary)
-eval_data = pd.DataFrame({
-    'text': ['I love this!', 'Terrible experience', 'Neutral comment'],
-    'label': [1, 0, 0]
+# Sample binary evaluation data
+binary_data = pd.DataFrame({
+    'text': [
+        'Loved the cinematography despite weak plot',
+        'Terrible acting ruined a great concept',
+        'Masterful storytelling with brilliant performances'
+    ],
+    'label': [1, 0, 1]  # 1=positive, 0=negative
 })
 
-initial_prompt = "Classify sentiment as positive (1) or negative (0):"
-output_format = "Output only 0 or 1 without explanation"
+# Binary output schema
+binary_schema = {
+    'chain_of_thought_key': 'reasoning',
+    'classification_key': 'sentiment',
+    'classification_mapping': {1: "positive", 0: "negative"}
+}
 
-best_prompt, metrics = optimize_prompt(
-    initial_prompt=initial_prompt,
-    output_format_prompt=output_format,
-    eval_data=eval_data,
-    iterations=3,
-    output_schema={
-        'regex_pattern': r'^[01]$',
-        'value_mapping': {'0': 0, '1': 1}
-    }
+# Initial binary prompt
+binary_prompt = """Analyze movie review sentiment. Output JSON with:
+- "reasoning": your step-by-step analysis
+- "sentiment": 1 (positive) or 0 (negative)"""
+
+# Run optimization
+binary_best_prompt, binary_metrics = optimize_prompt(
+    initial_prompt=binary_prompt,
+    eval_data=binary_data,
+    output_schema=binary_schema,
+    iterations=3
 )
 
-print(f"Optimized Prompt: {best_prompt}")
-print(f"Final Metrics: {metrics}")
+### Multiclass Classification Example
+```python
+# Sample multiclass evaluation data
+multiclass_data = pd.DataFrame({
+    'text': [
+        'The product works well but delivery was late',
+        'Complete waste of money',
+        'Average experience, nothing special'
+    ],
+    'label': [2, 0, 1]  # 0=negative, 1=neutral, 2=positive
+})
+
+# Multiclass output schema
+multiclass_schema = {
+    'chain_of_thought_key': 'analysis',
+    'classification_key': 'rating',
+    'classification_mapping': {
+        0: "negative",
+        1: "neutral", 
+        2: "positive"
+    }
+}
+
+# Initial multiclass prompt
+multiclass_prompt = """Classify customer feedback into categories. Output JSON with:
+- "analysis": detailed reasoning
+- "rating": 0 (negative), 1 (neutral), or 2 (positive)"""
+
+# Run optimization
+mc_best_prompt, mc_metrics = optimize_prompt(
+    initial_prompt=multiclass_prompt,
+    eval_data=multiclass_data,
+    output_schema=multiclass_schema,
+    iterations=3,
+    problem_type='multiclass'
+)
+
+print(f"Optimized multiclass prompt:\n{mc_best_prompt}")
 ```
+
+**Key Requirements for Both Examples**:
+- `output_schema` must contain:
+  - `chain_of_thought_key`: Key for model's reasoning steps
+  - `classification_key`: Key for final classification
+  - `classification_mapping`: Dictionary mapping numeric labels to class names
+- Prompts must explicitly request JSON output format
+- Labels must be integers (0-N for multiclass)
+- Chain of thought must be included in output
+
+These examples will generate optimized prompts and interactive dashboards showing the optimization progress.
 
 ---
 
