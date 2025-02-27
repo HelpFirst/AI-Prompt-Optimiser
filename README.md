@@ -1,7 +1,7 @@
 # Iterative Prompt Optimization
 
 [![Project Status: WIP – Initial development is in progress, but there has not yet been a stable, usable release suitable for the public.](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#wip)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.6+](https://img.shields.io/badge/python-3.6%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 
@@ -10,14 +10,14 @@ This repository hosts the Iterative Prompt Optimization Framework, an open-sourc
 
 > **Note**  
 > - **Requirements**: this framework only work for binary and multiclass classification tasks. Currently only supports JSON output-like format with a chain of thought output to capture model reasoning steps.
-
-> **Note**  
+>
 > This library originated from internal R&D efforts at HelpFirst.ai to improve our LLM-based classification systems. While we've found it valuable in our work and are excited to share it with the community, please note:
 > - This is actively used but still evolving
 > - Some edge cases may not be fully handled
 > - Documentation and codebase are being improved
 > 
-> **We welcome contributions!** See [Contributing] section below.
+
+**We welcome contributions!** See [Contributing] section at the end.
 
 ---
 ## 🔍 Introduction
@@ -51,17 +51,17 @@ def optimize_prompt(
 
 ### ⚙️ How Does It Work? (Teacher-Student Framework)
 
-This framework improves LLM classification through iterative prompt refinement, mimicking how educators enhance exam instructions:
+This framework improves LLM classification through iterative prompt refinement, mimicking a teacher-student relationship.
 
 **1. Student's Initial Exam Attempt**  
 *(Handled by `evaluation.evaluate_prompt()`)*  
-The student model (evaluation LLM) executes the current prompt:
+The student model (evaluation LLM - the production model) executes the current prompt:
 - **Input**: Prompt (exam instructions) + Text samples (test questions)
 - **Output**: Predictions with chain-of-thought reasoning
 
 **2. Teacher's Error Diagnosis**  
 *(Implemented in `prompt_generation*.py`)*  
-The teacher model (optimization LLM) analyzes errors:
+The teacher model (optimization LLM - usually a more powerful model) analyzes errors:
 - **True Positives**: Reinforces effective reasoning strategies
 - **False Positives**: Tightens classification boundaries
 - **False Negatives**: Clarifies edge case handling
@@ -119,24 +119,34 @@ With fixed model weights, better prompts enable:
 
 ---
 
-## 📦 Installation
+## 📦 Installation & Setup
 
-To install the package:
+1. Clone the repository:
 ```bash
-pip install iterative-prompt-optimization
+git clone https://github.com/HelpFirst/AI-Prompt-Optimiser.git
+cd AI-Prompt-Optimiser
 ```
 
-**Requirements**:
-- Python 3.8+
-- Create a `.env` file with your API keys:
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-```env
-# .env.example
-OPENAI_API_KEY="your-key-here"
-ANTHROPIC_API_KEY="your-key-here" 
-AZURE_OPENAI_API_KEY="your-key-here"
-AZURE_OPENAI_ENDPOINT="your-endpoint-here"
-GOOGLE_API_KEY="your-key-here"
+3. Set up environment variables:
+```bash
+cp .env.example .env
+# Edit .env with your API keys
+```
+
+4. Verify installation:
+```python
+python -c "from iterative_prompt_optimization import optimize_prompt; print('Installation successful!')"
+```
+
+### Development Installation
+```bash
+pip install -e .[dev]  # Editable install with development dependencies
+pytest tests/ -v       # Run test suite
 ```
 
 ---
@@ -233,20 +243,7 @@ These examples will generate optimized prompts and interactive dashboards showin
 
 ## 🔧 Configuration
 
-Configure providers via environment variables or code:
-
-```python
-from iterative_prompt_optimization import config
-import os
-
-# Example: Azure OpenAI setup
-config.set_model(
-    provider="azure_openai",
-    model="gpt-4",
-    api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-    base_url=os.getenv("AZURE_OPENAI_ENDPOINT")
-)
-```
+Configure providers via environment variables (`.env`) or as input to the `optimize_prompt()` function.
 
 **Supported Providers**:
 - OpenAI
@@ -288,8 +285,8 @@ We welcome contributions! Here's how to help:
 3. :computer: **Code Contributions**  
    ```bash
    # Development setup
-   git clone https://github.com/your-repo/iterative-prompt-optimization.git
-   cd iterative-prompt-optimization
+   git clone https://github.com/HelpFirst/AI-Prompt-Optimiser.git
+   cd AI-Prompt-Optimiser
    python -m venv venv
    source venv/bin/activate
    pip install -e .[dev]
@@ -315,10 +312,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 ## 📧 Contact
 
 For support and questions:
-- [Open a Discussion](https://github.com/your-repo/discussions)
-- Email: team@helpfirst.ai
+- [Open a Discussion](https://github.com/HelpFirst/AI-Prompt-Optimiser/discussions)
+- Email: [daniel@helpfirst.ai](mailto:daniel@helpfirst.ai)
 
-**Security Note**: Never share API keys or sensitive information in public channels.
+
+**Email Requirements**:
+Subject line: "[Prompt-Opt] <Your Topic>"
 
 ---
 
