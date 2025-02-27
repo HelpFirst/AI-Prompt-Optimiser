@@ -44,9 +44,10 @@ def optimize_prompt(
     # ... other optional parameters ...
 ) -> tuple[str, dict]:  # Returns (optimized_prompt, final_metrics)
 ```
-[TODO: add a link here to the examples:
-- binary: /Users/danielfiuzadosil/Documents/GitHub/AI-Prompt-Optimiser/examples/binary_classifier/example_sentiments.ipynb
-- multiclass: /Users/danielfiuzadosil/Documents/GitHub/AI-Prompt-Optimiser/examples/muticlass_classifier/example_news.ipynb]
+
+**Examples**:
+- [Binary Classification Example](examples/binary_classifier/example_sentiments.ipynb) - LLMS for Sentiment analysis optimization
+- [Multiclass Classification Example](examples/multiclass_classifier/example_news.ipynb) - LLMS for News category classification
 
 ### ⚙️ How Does It Work? (Teacher-Student Framework)
 
@@ -57,23 +58,10 @@ This framework improves LLM classification through iterative prompt refinement, 
 The student model (evaluation LLM) executes the current prompt:
 - **Input**: Prompt (exam instructions) + Text samples (test questions)
 - **Output**: Predictions with chain-of-thought reasoning
-- **Error Types**:
-  - 🚫 False Positives: Incorrect positive classifications
-  - 🚫 False Negatives: Missed true positives
-  - ❌ Invalid Outputs: Formatting mistakes
 
 **2. Teacher's Error Diagnosis**  
 *(Implemented in `prompt_generation*.py`)*  
 The teacher model (optimization LLM) analyzes errors:
-```python
-# Core analysis pattern
-analysis = {
-    'true_positives': analyze_success_patterns(true_positives),
-    'false_positives': find_overly_broad_criteria(false_positives),
-    'false_negatives': identify_missed_patterns(false_negatives),
-    'invalid_outputs': detect_format_ambiguities(invalid_outputs)
-}
-```
 - **True Positives**: Reinforces effective reasoning strategies
 - **False Positives**: Tightens classification boundaries
 - **False Negatives**: Clarifies edge case handling
@@ -82,16 +70,15 @@ analysis = {
 **3. Instruction Refinement**  
 *(Optimization loop in `optimize.py`)*  
 The teacher updates the exam guidelines:
-
-- Preserves successful elements
-- Adds targeted error examples
-- Specifies output constraints
+- Preserves successful elements (using the true positives analysis)
+- Specifies output constraints (using the invalid output analysis)
 - Clarifies ambiguous instructions
+- Adds examples
 
 **4. Quality Assurance Check** *(Optional)*  
 *(Via `VALIDATION_AND_IMPROVEMENT_PROMPT`)*  
 
-Ensures new prompts:
+Ensures new prompts follow best-practices:
 1. Maintain task focus and clarity
 2. Follow format requirements
 3. Avoid unintended biases
