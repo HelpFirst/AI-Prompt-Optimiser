@@ -4,19 +4,20 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> **Note**  
-> This library originated from internal R&D efforts at HelpFirst.ai to improve our LLM-based classification systems. While we've found it valuable in our work and are excited to share it with the community, please note:
-> - This is actively used but still evolving
-> - Some edge cases may not be fully handled
-> - Documentation and codebase are being improved
-> 
-> **We welcome contributions!** See [Contributing](##-contributing) below.
+
 
 This repository hosts the Iterative Prompt Optimization Framework, an open-source Python library developed by Daniel Fiuza, from the HelpFirst.ai team. It automates the process of refining prompts to improve text classification performance with Large Language Models (LLMs), without requiring access to the model's internal parameters or fine-tuning.
 
 > **Note**  
 > - **Requirements**: this framework only work for binary and multiclass classification tasks. Currently only supports JSON output-like format with a chain of thought output to capture model reasoning steps.
 
+> **Note**  
+> This library originated from internal R&D efforts at HelpFirst.ai to improve our LLM-based classification systems. While we've found it valuable in our work and are excited to share it with the community, please note:
+> - This is actively used but still evolving
+> - Some edge cases may not be fully handled
+> - Documentation and codebase are being improved
+> 
+> **We welcome contributions!** See [Contributing] section below.
 
 ---
 ## 🔍 Introduction
@@ -33,7 +34,7 @@ def optimize_prompt(
     initial_prompt: str,               # Starting prompt template
     eval_data: pd.DataFrame,           # Must contain 'text' and 'label' columns
     output_schema: dict,               # Requires chain_of_thought_key and classification_key
-    iterations: int = 3,               # Number of optimization cycles (1-5 recommended)
+    iterations: int = 3,               # Number of optimization cycles (5-15 recommended)
     eval_provider: str = None,         # Provider for evaluation model
     eval_model: str = None,            # Model name for evaluation
     optim_provider: str = None,        # Provider for optimization model
@@ -43,59 +44,82 @@ def optimize_prompt(
     # ... other optional parameters ...
 ) -> tuple[str, dict]:  # Returns (optimized_prompt, final_metrics)
 ```
+[TODO: add a link here to the examples:
+- binary: /Users/danielfiuzadosil/Documents/GitHub/AI-Prompt-Optimiser/examples/binary_classifier/example_sentiments.ipynb
+- multiclass: /Users/danielfiuzadosil/Documents/GitHub/AI-Prompt-Optimiser/examples/muticlass_classifier/example_news.ipynb]
 
-### ⚙️ How Does It Work?
+### ⚙️ How Does It Work? (Teacher-Student Framework)
 
-1. **Dual Model Setup** (Verified in `optimize.py`)
-   ```python
-   # Actual model initialization happens in optimize_prompt()
-   self.eval_model = select_model(eval_provider, eval_model)
-   self.optim_model = select_model(optim_provider, optim_model)
-   ```
+This framework improves LLM classification through iterative prompt refinement, mimicking how educators enhance exam instructions:
 
-2. **Evaluation Phase** (Verified in `evaluation.py`)
-   ```python
-   # evaluation.evaluate_prompt() calls:
-   raw_output = model_interface.get_model_output(...)
-   parsed = utils.transform_and_compare_output(...)  # Handles JSON validation
-   ```
+**1. Student's Initial Exam Attempt**  
+*(Handled by `evaluation.evaluate_prompt()`)*  
+The student model (evaluation LLM) executes the current prompt:
+- **Input**: Prompt (exam instructions) + Text samples (test questions)
+- **Output**: Predictions with chain-of-thought reasoning
+- **Error Types**:
+  - 🚫 False Positives: Incorrect positive classifications
+  - 🚫 False Negatives: Missed true positives
+  - ❌ Invalid Outputs: Formatting mistakes
 
-3. **Context Construction** (Verified in `prompt_generation*.py`)
-   ```python
-   # prompt_generation.py lines 42-51
-   analysis_prompts = [
-       config.FALSE_POSITIVES_ANALYSIS_PROMPT.format(...),
-       config.FALSE_NEGATIVES_ANALYSIS_PROMPT.format(...)
-   ]
-   ```
+**2. Teacher's Error Diagnosis**  
+*(Implemented in `prompt_generation*.py`)*  
+The teacher model (optimization LLM) analyzes errors:
+```python
+# Core analysis pattern
+analysis = {
+    'true_positives': analyze_success_patterns(true_positives),
+    'false_positives': find_overly_broad_criteria(false_positives),
+    'false_negatives': identify_missed_patterns(false_negatives),
+    'invalid_outputs': detect_format_ambiguities(invalid_outputs)
+}
+```
+- **True Positives**: Reinforces effective reasoning strategies
+- **False Positives**: Tightens classification boundaries
+- **False Negatives**: Clarifies edge case handling
+- **Invalid Outputs**: Strengthens format specifications
 
-4. **Prompt Optimization** (Verified in `prompts.py`/`prompts_multiclass.py`)
-   ```python
-   # prompt_generation.py line 127
-   engineered_prompt = PROMPT_ENGINEER_INPUT.format(
-       initial_prompt=current_prompt,
-       metrics=previous_metrics,
-       analyses=combined_analyses
-   )
-   ```
+**3. Instruction Refinement**  
+*(Optimization loop in `optimize.py`)*  
+The teacher updates the exam guidelines:
 
-5. **Validation Process** (Verified in `prompt_generation.validate_and_improve_prompt()`)
-   ```python
-   # Uses VALIDATION_AND_IMPROVEMENT_PROMPT template
-   # Checks for clarity/specificity but not formal schema validation
-   ```
+- Preserves successful elements
+- Adds targeted error examples
+- Specifies output constraints
+- Clarifies ambiguous instructions
 
-6. **Iteration Loop** (Verified in `optimize.py` main loop)
-   ```python
-   # optimize.py lines 189-217
-   for iteration in range(1, iterations + 1):
-       results = evaluate_prompt(...)
-       new_prompt = generate_new_prompt(...)
-       validated_prompt = validate_and_improve_prompt(...)
-       generate_iteration_dashboard(...)
-   ```
+**4. Quality Assurance Check** *(Optional)*  
+*(Via `VALIDATION_AND_IMPROVEMENT_PROMPT`)*  
 
----
+Ensures new prompts:
+1. Maintain task focus and clarity
+2. Follow format requirements
+3. Avoid unintended biases
+4. Balance conciseness/completeness
+
+**Outcome**:
+- ✅ **Valid**: Proceeds to student retesting  
+- 🛠 **Needs Improvement**: Further refines prompt, and provides an improved prompt. 
+
+**5. Retesting & Iteration**  
+*(Main loop in `optimize_prompt()`)*  
+The student retakes the exam with refined instructions:
+
+**Cycle Continues Until**:
+- Target metrics achieved, or
+- Max iterations reached
+
+**Why This Works**  
+With fixed model weights, better prompts enable:
+- 🎯 **Precision Boost**: Error examples focus model attention
+- 🧠 **Reasoning Structure**: Chain-of-thought reduces guessing
+- 📝 **Format Compliance**: Schema validation minimizes parsing errors
+- 🔁 **Continuous Improvement**: Multiple refinement passes
+
+**Implementation Notes**  
+- Supports binary & multiclass workflows
+- Customizable validation strictness
+- Teacher's Diagnosis prompt instructions can be customized
 
 ## ✨ Features
 
